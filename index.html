@@ -266,7 +266,7 @@
     <div id="daysContainer" class="space-y-4"></div>
   </main>
 
-  <!-- MODAL: TAGE EINFÜGEN MIT MODUS-AUSWAHL -->
+  <!-- MODAL: TAGE EINFÜGEN -->
   <div id="insertDayModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -280,7 +280,6 @@
         Wie soll der neue Tag eingefügt werden?
       </p>
 
-      <!-- Betroffene Buchungen Warnbox -->
       <div id="insertBookingsWarningBox" class="hidden p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
         <div class="font-bold flex items-center gap-1.5">
           <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i> Nachfolgende feste Buchungen gefunden:
@@ -288,9 +287,7 @@
         <div id="insertBookingsList" class="text-[11px] space-y-0.5 opacity-90 max-h-28 overflow-y-auto font-mono"></div>
       </div>
 
-      <!-- Auswahlmöglichkeiten -->
       <div class="space-y-2.5">
-        <!-- MODUS A -->
         <button onclick="executeInsertDay('gap')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition group">
           <div class="flex items-center justify-between">
             <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -299,11 +296,10 @@
             <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Fügt einen Tag ein, <b>ohne</b> nachfolgende Tage kalendarisch nach hinten zu schieben. Die Gesamtreisedauer bleibt unverändert (letzter Tag wird aufgebraucht).
+            Fügt einen Tag ein, <b>ohne</b> nachfolgende feste Buchungen kalendarisch zu verschieben. Die Gesamtreisedauer bleibt unverändert (letzter Puffer-Tag wird aufgebraucht).
           </p>
         </button>
 
-        <!-- MODUS B -->
         <button onclick="executeInsertDay('extend')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition group">
           <div class="flex items-center justify-between">
             <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -319,6 +315,64 @@
 
       <div class="flex justify-end pt-2">
         <button onclick="closeInsertDayModal()" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-800 dark:text-white transition">
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEU: MODAL ZUM TAGE LÖSCHEN (GLEICHE VORGEHENSWEISE) -->
+  <div id="deleteDayModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-trash-can text-rose-500"></i> <span id="deleteModalDayLabel"></span> löschen
+        </h3>
+        <button onclick="closeDeleteDayModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
+      </div>
+
+      <p class="text-xs text-slate-600 dark:text-slate-300">
+        Wie möchtest du diesen Tag entfernen?
+      </p>
+
+      <!-- Warnbox für eigene & nachfolgende Buchungen -->
+      <div id="deleteBookingsWarningBox" class="hidden p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1.5">
+        <div class="font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i> Achtung: Feste Buchungen betroffen!
+        </div>
+        <div id="deleteBookingsList" class="text-[11px] space-y-0.5 opacity-90 max-h-28 overflow-y-auto font-mono"></div>
+      </div>
+
+      <div class="space-y-2.5">
+        <!-- MODUS A (LÖSCHEN): In Lücke auffüllen -->
+        <button onclick="executeDeleteDay('fillGap')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition group">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Modus A: Als Lücke entfernen (Reisedauer bleibt gleich)
+            </span>
+            <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Entfernt diesen Tag, <b>ohne</b> nachfolgende feste Buchungstage nach vorne zu ziehen. Am Ende der Reise wird automatisch ein freier Tag ergänzt, sodass dein Rückflug-/Enddatum exakt gleich bleibt.
+          </p>
+        </button>
+
+        <!-- MODUS B (LÖSCHEN): Reise verkürzen -->
+        <button onclick="executeDeleteDay('shorten')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/30 transition group">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span> Modus B: Reise um 1 Tag verkürzen
+            </span>
+            <span class="text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">Alles rückt -1 Tag auf</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Löscht diesen Tag und zieht alle Folgetage um einen Kalendertag nach vorne (-1 Tag). Das Enddatum der Reise verkürzt sich um 1 Tag.
+          </p>
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeDeleteDayModal()" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-800 dark:text-white transition">
           Abbrechen
         </button>
       </div>
@@ -377,6 +431,7 @@
     let currentFilter = 'all';
     let searchQuery = '';
     let pendingInsertIndex = null;
+    let pendingDeleteIndex = null;
 
     const STORAGE_KEY = 'reiseplaner_pro_pwa_data';
     const BACKUP_KEY = 'reiseplaner_pro_backups';
@@ -855,11 +910,8 @@
       };
 
       if (mode === 'gap') {
-        // MODUS A: In Lücke einfügen (Dauer bleibt gleich)
-        // Findet den nächsten ungebuchten Tag oder baut den letzten Tag ab
         tripData.days.splice(dayIndex + 1, 0, newDay);
 
-        // Suche von hinten nach dem ersten Tag ohne feste Buchungen
         let removeIndex = -1;
         for (let i = tripData.days.length - 1; i > dayIndex + 1; i--) {
           if (!hasFixedBookings(tripData.days[i]) && !(tripData.days[i].location || '').trim()) {
@@ -871,7 +923,6 @@
         if (removeIndex !== -1) {
           tripData.days.splice(removeIndex, 1);
         } else {
-          // Falls kein leerer Tag da ist, letzten Tag entfernen (nach Bestätigung)
           const lastIndex = tripData.days.length - 1;
           if (hasFixedBookings(tripData.days[lastIndex])) {
             alert("Am Ende der Reise liegt eine feste Buchung. Bitte nutze Modus B, um die Reise zu verlängern.");
@@ -881,7 +932,6 @@
           tripData.days.splice(lastIndex, 1);
         }
 
-        // Datumskette nur bis zur nächsten festen Buchung synchronisieren
         let dateCursor = new Date(curDay.date + 'T12:00:00');
         for (let i = dayIndex + 1; i < tripData.days.length; i++) {
           dateCursor.setDate(dateCursor.getDate() + 1);
@@ -890,7 +940,6 @@
 
         showToast("Tag in Lücke eingefügt (Reisezeitraum unverändert)");
       } else {
-        // MODUS B: Reise um 1 Tag verlängern (Alles nach hinten schieben)
         tripData.days.splice(dayIndex + 1, 0, newDay);
 
         for (let i = dayIndex + 2; i < tripData.days.length; i++) {
@@ -915,6 +964,112 @@
       renderDays();
     }
 
+    // --- NEU: TAGE LÖSCHEN MODAL-DIALOG (GLEICHE VORGEHENSWEISE) ---
+    function openDeleteDayModal(dayIndex) {
+      pendingDeleteIndex = dayIndex;
+      const curDay = tripData.days[dayIndex];
+      const label = document.getElementById('deleteModalDayLabel');
+      if (label) label.innerText = `Tag ${dayIndex + 1} (${curDay ? curDay.date : ''})`;
+
+      const warnBox = document.getElementById('deleteBookingsWarningBox');
+      const listEl = document.getElementById('deleteBookingsList');
+
+      const issues = [];
+      // Eigene Buchungen des Tages
+      if (hasFixedBookings(curDay)) {
+        issues.push(`⚠️ DIESER TAG ENTHÄLT: ${getFixedBookingSummary(curDay)}`);
+      }
+      // Nachfolgende Buchungen
+      for (let i = dayIndex + 1; i < tripData.days.length; i++) {
+        if (hasFixedBookings(tripData.days[i])) {
+          issues.push(`• Tag ${i + 1} (${tripData.days[i].date}): ${getFixedBookingSummary(tripData.days[i])}`);
+        }
+      }
+
+      if (issues.length > 0) {
+        listEl.innerHTML = issues.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+        warnBox.classList.remove('hidden');
+      } else {
+        warnBox.classList.add('hidden');
+        listEl.innerHTML = '';
+      }
+
+      document.getElementById('deleteDayModal').classList.remove('hidden');
+    }
+
+    function closeDeleteDayModal() {
+      document.getElementById('deleteDayModal').classList.add('hidden');
+      pendingDeleteIndex = null;
+    }
+
+    function executeDeleteDay(mode) {
+      if (pendingDeleteIndex === null) return;
+      const dayIndex = pendingDeleteIndex;
+      const curDay = tripData.days[dayIndex];
+      if (!curDay) return;
+
+      if (mode === 'fillGap') {
+        // MODUS A: Tag als Lücke entfernen (Reisedauer bleibt exakt gleich, Folgebuchungen unberührt)
+        tripData.days.splice(dayIndex, 1);
+
+        // Am Ende einen leeren Puffer-Tag anhängen, damit der Zeitraum gleich bleibt
+        const lastDay = tripData.days[tripData.days.length - 1];
+        let newLastDate = new Date();
+        if (lastDay) {
+          const ld = new Date(lastDay.date + 'T12:00:00');
+          ld.setDate(ld.getDate() + 1);
+          newLastDate = ld;
+        }
+
+        const appendDay = {
+          date: newLastDate.toISOString().split('T')[0],
+          location: '',
+          isCollapsed: false,
+          lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+          dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
+          transports: [],
+          activities: [],
+          images: [],
+          notes: ''
+        };
+        tripData.days.push(appendDay);
+
+        // Kalenderdaten ab dem gelöschten Tag neu durchnummerieren
+        if (dayIndex > 0) {
+          let cursor = new Date(tripData.days[dayIndex - 1].date + 'T12:00:00');
+          for (let i = dayIndex; i < tripData.days.length; i++) {
+            cursor.setDate(cursor.getDate() + 1);
+            tripData.days[i].date = cursor.toISOString().split('T')[0];
+          }
+        }
+
+        showToast("Tag entfernt. Puffer-Tag am Ende ergänzt (Reisedauer unverändert)");
+      } else {
+        // MODUS B: Reise um 1 Tag verkürzen (Alles rückt um 1 Tag vor)
+        tripData.days.splice(dayIndex, 1);
+
+        for (let i = dayIndex; i < tripData.days.length; i++) {
+          const nextD = new Date(tripData.days[i].date + 'T12:00:00');
+          nextD.setDate(nextD.getDate() - 1);
+          tripData.days[i].date = nextD.toISOString().split('T')[0];
+        }
+
+        if (tripData.endDate) {
+          const endD = new Date(tripData.endDate + 'T12:00:00');
+          endD.setDate(endD.getDate() - 1);
+          tripData.endDate = endD.toISOString().split('T')[0];
+          document.getElementById('endDate').value = tripData.endDate;
+        }
+
+        showToast("Tag gelöscht & Reise um 1 Tag verkürzt");
+      }
+
+      closeDeleteDayModal();
+      normalizeDataModel();
+      saveToStorage();
+      renderDays();
+    }
+
     function copyLocationToNextDay(dayIndex) {
       const curLoc = (tripData.days[dayIndex]?.location || '').trim();
       if (!curLoc) {
@@ -929,966 +1084,6 @@
       } else {
         showToast("Kein Folgetag vorhanden", true);
       }
-    }
-
-    function deleteDay(dayIndex) {
-      const curDay = tripData.days[dayIndex];
-      if (!curDay) return;
-
-      const dayHasBookings = hasFixedBookings(curDay);
-      const affected = [];
-      for (let i = dayIndex + 1; i < tripData.days.length; i++) {
-        if (hasFixedBookings(tripData.days[i])) {
-          affected.push('• Tag ' + (i + 1) + ' (' + tripData.days[i].date + '): ' + getFixedBookingSummary(tripData.days[i]));
-        }
-      }
-
-      let confirmMsg = "Möchtest du Tag " + (dayIndex + 1) + " wirklich löschen? Alle nachfolgenden Tage rücken um 1 Tag vor.";
-      if (dayHasBookings) {
-        confirmMsg = "⚠️ WARNUNG: Tag " + (dayIndex + 1) + " enthält EIGENE feste Buchungen (" + getFixedBookingSummary(curDay) + ")!\n\n" + confirmMsg;
-      }
-      if (affected.length > 0) {
-        confirmMsg += "\n\nFolgende gebuchte Tage rücken um 1 Tag nach vorne:\n" + affected.slice(0, 4).join("\n");
-      }
-
-      if (!confirm(confirmMsg)) return;
-
-      tripData.days.splice(dayIndex, 1);
-
-      for (let i = dayIndex; i < tripData.days.length; i++) {
-        const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-        nextD.setDate(nextD.getDate() - 1);
-        tripData.days[i].date = nextD.toISOString().split('T')[0];
-      }
-
-      if (tripData.endDate) {
-        const endD = new Date(tripData.endDate + 'T12:00:00');
-        endD.setDate(endD.getDate() - 1);
-        tripData.endDate = endD.toISOString().split('T')[0];
-        document.getElementById('endDate').value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      saveToStorage();
-      renderDays();
-      showToast("Tag gelöscht und Zeitraum angepasst");
-    }
-
-    // --- DATUMS- & COUNTDOWN-HELFER ---
-    function getTodayIso() {
-      const now = new Date();
-      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    }
-
-    function updateTripCountdown() {
-      const badge = document.getElementById('tripCountdownBadge');
-      if (!badge) return;
-
-      if (!tripData.startDate || !tripData.endDate) {
-        badge.classList.add('hidden');
-        return;
-      }
-
-      const todayStr = getTodayIso();
-      const tNow = new Date(todayStr + 'T00:00:00').getTime();
-      const tStart = new Date(tripData.startDate + 'T00:00:00').getTime();
-      const tEnd = new Date(tripData.endDate + 'T00:00:00').getTime();
-      const msPerDay = 1000 * 60 * 60 * 24;
-
-      if (tNow < tStart) {
-        const diff = Math.ceil((tStart - tNow) / msPerDay);
-        badge.innerHTML = '<i class="fa-solid fa-plane-departure text-indigo-500 dark:text-indigo-400"></i> Noch ' + diff + ' Tage bis zum Start';
-        badge.className = "hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80";
-        badge.classList.remove('hidden');
-      } else if (tNow >= tStart && tNow <= tEnd) {
-        const currentDayNum = Math.floor((tNow - tStart) / msPerDay) + 1;
-        const totalDays = Math.floor((tEnd - tStart) / msPerDay) + 1;
-        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Reisetag ' + currentDayNum + ' von ' + totalDays + ' (Heute)';
-        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
-        badge.classList.remove('hidden');
-      } else {
-        badge.innerHTML = '<i class="fa-solid fa-flag-checkered text-slate-400"></i> Reise beendet';
-        badge.className = "hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
-        badge.classList.remove('hidden');
-      }
-    }
-
-    function jumpToToday() {
-      const today = getTodayIso();
-      const targetIndex = (tripData.days || []).findIndex(d => d.date === today);
-
-      if (targetIndex === -1) {
-        showToast("Heute (" + today + ") liegt nicht im Reisezeitraum", true);
-        return;
-      }
-
-      if (currentFilter !== 'all' || searchQuery !== '') {
-        setFilter('all');
-        clearSearch();
-      }
-
-      if (tripData.days[targetIndex].isCollapsed) {
-        toggleDayCollapse(targetIndex);
-      }
-
-      setTimeout(() => {
-        const el = document.getElementById('day-card-' + targetIndex);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('ring-4', 'ring-indigo-400');
-          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 2000);
-          showToast("Zu Tag " + (targetIndex + 1) + " (Heute) gesprungen");
-        }
-      }, 100);
-    }
-
-    function openGoogleMaps(locationStr) {
-      if (!locationStr || !locationStr.trim()) {
-        showToast("Bitte zuerst einen Tagesort eingeben", true);
-        return;
-      }
-      window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
-    }
-
-    // --- FILTER & SUCHE ---
-    function setFilter(filterType) {
-      currentFilter = filterType;
-      ['all', 'open_lodging', 'travel_days', 'pending_costs'].forEach(id => {
-        const btn = document.getElementById('filter-' + id);
-        if (btn) {
-          btn.className = (id === filterType)
-            ? "px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow"
-            : "px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
-        }
-      });
-      renderDays();
-    }
-
-    function handleSearch(val) {
-      searchQuery = (val || '').trim().toLowerCase();
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (clearBtn) clearBtn.classList.toggle('hidden', searchQuery.length === 0);
-      renderDays();
-    }
-
-    function clearSearch() {
-      const input = document.getElementById('searchInput');
-      if (input) input.value = '';
-      searchQuery = '';
-      const clearBtn = document.getElementById('clearSearchBtn');
-      if (clearBtn) clearBtn.classList.add('hidden');
-      renderDays();
-    }
-
-    // --- RECHEN- & KOSTEN-HELFER ---
-    function isDayBooked(day) {
-      if (!day || !day.lodging) return false;
-      const s = (day.lodging.costStatus || '').toLowerCase();
-      return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
-    }
-
-    function getTransportIcon(title) {
-      const t = (title || '').toLowerCase();
-      if (t.includes('flug') || t.includes('flight') || t.includes('airline') || t.includes('airport')) return 'fa-plane';
-      if (t.includes('zug') || t.includes('bahn') || t.includes('train') || t.includes('ice') || t.includes('rail')) return 'fa-train';
-      if (t.includes('bus') || t.includes('shuttle') || t.includes('van')) return 'fa-bus';
-      if (t.includes('boot') || t.includes('fähre') || t.includes('ferry') || t.includes('boat') || t.includes('speedboot')) return 'fa-ship';
-      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
-      if (t.includes('taxi') || t.includes('grab') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
-      return 'fa-plane-departure';
-    }
-
-    function getHeaderTransportLineContent(day) {
-      if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
-
-      let html = '<div class="flex flex-wrap items-center gap-1.5 pb-1">';
-      html += '<span class="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 shrink-0 mr-0.5">' +
-        '<i class="fa-solid fa-route"></i> Transport:' +
-      '</span>';
-
-      day.transports.forEach(tr => {
-        const icon = getTransportIcon(tr.title);
-        const titleText = (tr.title || 'Transport').trim();
-        const status = (tr.costStatus || 'geplant').toLowerCase();
-        
-        let badgeClass = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700/80';
-        let statusText = '⏳ Geplant';
-        if (status === 'bezahlt' || status === 'gebucht') {
-          badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700/80';
-          statusText = '✅ Gebucht';
-        } else if (status === 'reserviert') {
-          badgeClass = 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-700/80';
-          statusText = '📌 Reserviert';
-        }
-
-        html += '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium shadow-xs transition ' + badgeClass + '">' +
-          '<i class="fa-solid ' + icon + ' text-cyan-600 dark:text-cyan-400"></i>' +
-          '<span class="font-bold text-slate-800 dark:text-white">' + escapeHtml(titleText) + '</span>';
-
-        if (tr.hint && tr.hint.trim()) {
-          html += '<span class="text-[10px] opacity-80 border-l border-slate-300 dark:border-slate-700 pl-1.5 italic">' + escapeHtml(tr.hint.trim()) + '</span>';
-        }
-
-        html += '<span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-white/60 dark:bg-slate-900/60 border border-black/5 dark:border-white/10">' + statusText + '</span>';
-        html += '</span>';
-      });
-
-      html += '</div>';
-      return html;
-    }
-
-    function getDayCostBreakdown(day) {
-      let total = 0;
-      let paid = 0;
-
-      if (day && day.lodging) {
-        const c = convertToEur(day.lodging.price, day.lodging.currency);
-        total += c;
-        const s = (day.lodging.costStatus || '').toLowerCase();
-        if (s === 'bezahlt' || s === 'gebucht') paid += c;
-      }
-
-      if (day && day.dailyExpenses && day.dailyExpenses.amount) {
-        const c = convertToEur(day.dailyExpenses.amount, day.dailyExpenses.currency);
-        total += c;
-        paid += c;
-      }
-
-      if (day && Array.isArray(day.transports)) {
-        day.transports.forEach(t => {
-          if (!t) return;
-          const c = convertToEur(t.cost, t.currency);
-          total += c;
-          const s = (t.costStatus || '').toLowerCase();
-          if (s === 'bezahlt' || s === 'gebucht') paid += c;
-        });
-      }
-
-      if (day && Array.isArray(day.activities)) {
-        day.activities.forEach(a => {
-          if (!a) return;
-          const c = convertToEur(a.cost, a.currency);
-          total += c;
-          const s = (a.costStatus || '').toLowerCase();
-          if (s === 'bezahlt' || s === 'gebucht') paid += c;
-        });
-      }
-
-      return { total: total, paid: paid, pending: total - paid };
-    }
-
-    function formatEuro(num) {
-      return (Number(num) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
-    }
-
-    function getStatusBadgeClass(status) {
-      const s = (status || '').toLowerCase();
-      if (s === 'bezahlt' || s === 'gebucht') {
-        return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-700/80';
-      }
-      if (s === 'reserviert') {
-        return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-400 dark:border-sky-700/80';
-      }
-      return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-400 dark:border-amber-700/80';
-    }
-
-    function autoResizeTextarea(el) {
-      if (!el) return;
-      el.style.height = 'auto';
-      el.style.height = Math.max(el.scrollHeight, 32) + 'px';
-    }
-
-    function autoResizeAllTextareas() {
-      requestAnimationFrame(() => {
-        document.querySelectorAll('textarea.auto-hint').forEach(ta => {
-          if (ta.offsetParent !== null) {
-            ta.style.height = 'auto';
-            ta.style.height = Math.max(ta.scrollHeight, 32) + 'px';
-          }
-        });
-      });
-    }
-
-    // --- ROLLIERENDES BACKUP-SYSTEM ---
-    function createRollingBackup() {
-      try {
-        let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
-        if (!Array.isArray(backups)) backups = [];
-        const currentSnapshot = JSON.stringify(tripData);
-        if (backups.length > 0 && JSON.stringify(backups[0].data) === currentSnapshot) return;
-
-        const now = new Date();
-        backups.unshift({
-          timestamp: now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' um ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          title: tripData.title || 'Unbenannte Reise',
-          daysCount: (tripData.days || []).length,
-          data: JSON.parse(currentSnapshot)
-        });
-
-        if (backups.length > 3) backups = backups.slice(0, 3);
-        localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
-      } catch (e) {
-        console.warn("Backup-Fehler:", e);
-      }
-    }
-
-    function showRestoreModal() {
-      const modal = document.getElementById('restoreModal');
-      const list = document.getElementById('backupList');
-      if (!modal || !list) return;
-
-      let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
-      list.innerHTML = '';
-      if (!Array.isArray(backups) || backups.length === 0) {
-        list.innerHTML = '<p class="text-xs text-slate-500 italic p-3 text-center">Noch keine Sicherungsstände vorhanden.</p>';
-      } else {
-        backups.forEach((b, idx) => {
-          const item = document.createElement('div');
-          item.className = "p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs";
-          item.innerHTML = 
-            '<div><div class="font-bold text-slate-800 dark:text-white flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Stand ' + (idx + 1) + ': ' + escapeHtml(b.timestamp) + '</div>' +
-            '<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">' + escapeHtml(b.title) + ' (' + b.daysCount + ' Tage)</div></div>' +
-            '<button onclick="restoreBackup(' + idx + ')" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shrink-0 shadow">Laden</button>';
-          list.appendChild(item);
-        });
-      }
-      modal.classList.remove('hidden');
-    }
-
-    function closeRestoreModal() {
-      const modal = document.getElementById('restoreModal');
-      if (modal) modal.classList.add('hidden');
-    }
-
-    function restoreBackup(idx) {
-      try {
-        const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
-        if (backups[idx] && backups[idx].data) {
-          if (!confirm("Möchtest du den Stand vom " + backups[idx].timestamp + " laden?")) return;
-          tripData = backups[idx].data;
-          normalizeDataModel();
-          saveToStorage();
-          syncUI();
-          closeRestoreModal();
-          showToast("Stand geladen");
-        }
-      } catch (e) {
-        showToast("Fehler beim Wiederherstellen", true);
-      }
-    }
-
-    // --- NORMALISIERUNG & SPEICHERUNG ---
-    function normalizeDataModel() {
-      if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 }, checklist: [], days: [] };
-      }
-      if (tripData.generalNotes === undefined) tripData.generalNotes = "";
-      if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
-      if (!tripData.exchangeRates.VND) tripData.exchangeRates.VND = 27000;
-      if (!Array.isArray(tripData.checklist) || tripData.checklist.length === 0) {
-        tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
-      }
-      if (!Array.isArray(tripData.days)) {
-        tripData.days = [];
-        return;
-      }
-
-      tripData.days.forEach(day => {
-        if (!day || typeof day !== 'object') return;
-        if (day.location === undefined) day.location = '';
-        if (day.notes === undefined) day.notes = '';
-        if (day.isCollapsed === undefined) day.isCollapsed = false;
-        if (!Array.isArray(day.images)) day.images = [];
-
-        if (!day.lodging || typeof day.lodging !== 'object') {
-          day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
-        } else {
-          if (day.lodging.name === undefined) day.lodging.name = '';
-          if (day.lodging.price === undefined) day.lodging.price = '';
-          if (!day.lodging.currency) day.lodging.currency = 'EUR';
-          if (day.lodging.hint === undefined) day.lodging.hint = '';
-          if (day.lodging.link === undefined) day.lodging.link = '';
-          if (day.lodging.notes === undefined) day.lodging.notes = '';
-          if (!day.lodging.costStatus) day.lodging.costStatus = day.lodging.isBooked ? 'gebucht' : 'geplant';
-          day.lodging.isBooked = isDayBooked(day);
-        }
-
-        if (!day.dailyExpenses || typeof day.dailyExpenses !== 'object') {
-          day.dailyExpenses = { amount: '', currency: 'EUR', notes: '' };
-        } else {
-          if (day.dailyExpenses.amount === undefined) day.dailyExpenses.amount = '';
-          if (!day.dailyExpenses.currency) day.dailyExpenses.currency = 'EUR';
-          if (day.dailyExpenses.notes === undefined) day.dailyExpenses.notes = '';
-        }
-
-        if (!Array.isArray(day.transports)) {
-          day.transports = [];
-        } else {
-          day.transports.forEach(t => {
-            if (!t) return;
-            if (t.title === undefined) t.title = '';
-            if (t.cost === undefined) t.cost = '';
-            if (!t.currency) t.currency = 'EUR';
-            if (!t.costStatus) t.costStatus = 'geplant';
-            if (t.hint === undefined) t.hint = '';
-            if (t.link === undefined) t.link = '';
-          });
-        }
-
-        if (!Array.isArray(day.activities)) {
-          day.activities = [];
-        } else {
-          day.activities.forEach(a => {
-            if (!a) return;
-            if (a.title === undefined) a.title = '';
-            if (a.cost === undefined) a.cost = '';
-            if (!a.currency) a.currency = 'EUR';
-            if (!a.costStatus) a.costStatus = 'geplant';
-            if (a.hint === undefined) a.hint = '';
-            if (a.link === undefined) a.link = '';
-            if (a.done === undefined) a.done = false;
-          });
-        }
-      });
-    }
-
-    async function saveToFile(forceSaveAs) {
-      createRollingBackup();
-      saveToStorage();
-      const jsonContent = JSON.stringify(tripData, null, 2);
-      const safeTitle = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
-      const fileName = 'Reiseplan_' + safeTitle + '.json';
-
-      if ('showSaveFilePicker' in window) {
-        try {
-          if (!activeFileHandle || forceSaveAs) {
-            activeFileHandle = await window.showSaveFilePicker({
-              suggestedName: fileName,
-              types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }]
-            });
-          }
-          const writableStream = await activeFileHandle.createWritable();
-          await writableStream.write(jsonContent);
-          await writableStream.close();
-          updateFileStatus(activeFileHandle.name);
-          showToast('Gespeichert in: ' + activeFileHandle.name);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      const blob = new Blob([jsonContent], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      showToast("Download gestartet");
-    }
-
-    async function openFile() {
-      if ('showOpenFilePicker' in window) {
-        try {
-          const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }],
-            multiple: false
-          });
-          const file = await handle.getFile();
-          const parsed = JSON.parse(await file.text());
-
-          if (parsed && Array.isArray(parsed.days)) {
-            activeFileHandle = handle;
-            tripData = parsed;
-            normalizeDataModel();
-            createRollingBackup();
-            saveToStorage();
-            syncUI();
-            updateFileStatus(handle.name);
-            showToast('Datei geöffnet');
-          }
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-      document.getElementById('importInput').click();
-    }
-
-    function importJSONFallback(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const parsed = JSON.parse(e.target.result);
-          if (parsed && Array.isArray(parsed.days)) {
-            activeFileHandle = null;
-            tripData = parsed;
-            normalizeDataModel();
-            createRollingBackup();
-            saveToStorage();
-            syncUI();
-            updateFileStatus(file.name);
-            showToast('Datei geladen');
-          }
-        } catch (err) {
-          showToast("Fehler beim Lesen", true);
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function saveToStorage() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(tripData));
-      } catch (e) {
-        if (e.name === 'QuotaExceededError' || e.code === 22) {
-          showToast("Speicher voll! Bitte alte Screenshots löschen oder Datei exportieren", true);
-        }
-      }
-      updateStats();
-    }
-
-    function loadFromStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        try {
-          tripData = JSON.parse(raw);
-          normalizeDataModel();
-          syncUI();
-        } catch (e) {
-          updateStats();
-        }
-      } else {
-        normalizeDataModel();
-        syncUI();
-      }
-    }
-
-    function syncUI() {
-      document.getElementById('tripTitle').value = tripData.title || '';
-      document.getElementById('startDate').value = tripData.startDate || '';
-      document.getElementById('endDate').value = tripData.endDate || '';
-      document.getElementById('generalNotes').value = tripData.generalNotes || '';
-      
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
-      const elTHB = document.getElementById('rateTHB');
-      const elUSD = document.getElementById('rateUSD');
-      const elLAK = document.getElementById('rateLAK');
-      const elVND = document.getElementById('rateVND');
-      if (elTHB) elTHB.value = rates.THB || 38;
-      if (elUSD) elUSD.value = rates.USD || 1.08;
-      if (elLAK) elLAK.value = rates.LAK || 24000;
-      if (elVND) elVND.value = rates.VND || 27000;
-
-      renderChecklist();
-      renderDays();
-    }
-
-    function saveMetaData() {
-      tripData.title = document.getElementById('tripTitle').value;
-      tripData.startDate = document.getElementById('startDate').value;
-      tripData.endDate = document.getElementById('endDate').value;
-      saveToStorage();
-    }
-
-    function saveGeneralNotes(val) {
-      tripData.generalNotes = val;
-      saveToStorage();
-    }
-
-    // --- TAGE GENERIEREN ---
-    function generateOrUpdateDays() {
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      if (!start || !end) {
-        alert("Bitte Start- und Enddatum auswählen.");
-        return;
-      }
-      const sParts = start.split('-').map(Number);
-      const eParts = end.split('-').map(Number);
-      const dStart = new Date(sParts[0], sParts[1] - 1, sParts[2], 12, 0, 0);
-      const dEnd = new Date(eParts[0], eParts[1] - 1, eParts[2], 12, 0, 0);
-
-      if (dStart > dEnd) {
-        alert("Startdatum darf nicht nach dem Enddatum liegen.");
-        return;
-      }
-
-      normalizeDataModel();
-      const existingMap = new Map();
-      tripData.days.forEach(d => { if (d && d.date) existingMap.set(d.date, d); });
-
-      const newDays = [];
-      let cur = new Date(dStart);
-      while (cur <= dEnd) {
-        const iso = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
-        if (existingMap.has(iso)) {
-          newDays.push(existingMap.get(iso));
-        } else {
-          newDays.push({
-            date: iso,
-            location: '',
-            isCollapsed: false,
-            lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-            dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
-            transports: [],
-            activities: [],
-            images: [],
-            notes: ''
-          });
-        }
-        cur.setDate(cur.getDate() + 1);
-      }
-
-      tripData.days = newDays;
-      normalizeDataModel();
-      saveToStorage();
-      renderDays();
-    }
-
-    // --- RENDERING ---
-    function renderDays() {
-      const container = document.getElementById('daysContainer');
-      if (!container) return;
-      container.innerHTML = '';
-
-      if (!tripData.days || tripData.days.length === 0) {
-        container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400 no-print">' +
-          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden.</p></div>';
-        updateStats();
-        return;
-      }
-
-      const todayIso = getTodayIso();
-      let matchCount = 0;
-
-      tripData.days.forEach((day, index) => {
-        let matchesFilter = true;
-        if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
-        else if (currentFilter === 'travel_days') matchesFilter = Array.isArray(day.transports) && day.transports.length > 0;
-        else if (currentFilter === 'pending_costs') matchesFilter = getDayCostBreakdown(day).pending > 0;
-
-        let matchesSearch = true;
-        if (searchQuery) {
-          const loc = (day.location || '').toLowerCase();
-          const hotel = (day.lodging && day.lodging.name ? day.lodging.name : '').toLowerCase();
-          const notes = (day.notes || '').toLowerCase();
-          const hint = (day.lodging && day.lodging.hint ? day.lodging.hint : '').toLowerCase();
-          const trs = (day.transports || []).map(t => (t.title || '') + ' ' + (t.hint || '')).join(' ').toLowerCase();
-          const acts = (day.activities || []).map(a => (a.title || '') + ' ' + (a.hint || '')).join(' ').toLowerCase();
-          matchesSearch = (loc + ' ' + hotel + ' ' + notes + ' ' + hint + ' ' + trs + ' ' + acts).includes(searchQuery);
-        }
-
-        if (matchesFilter && matchesSearch) {
-          matchCount++;
-          container.appendChild(createDayElement(day, index, day.date === todayIso));
-        }
-      });
-
-      if (matchCount === 0) {
-        container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 text-center text-slate-600 dark:text-slate-400 no-print">' +
-          '<p class="text-sm font-semibold">Keine Tage gefunden</p>' +
-          '<button onclick="setFilter(\'all\'); clearSearch();" class="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Filter zurücksetzen</button></div>';
-      }
-
-      updateStats();
-      autoResizeAllTextareas();
-    }
-
-    function createDayElement(day, index, isToday) {
-      const isBooked = isDayBooked(day);
-      const isFixed = hasFixedBookings(day);
-      const dParts = (day.date || '').split('-').map(Number);
-      const dObj = dParts.length === 3 ? new Date(dParts[0], dParts[1] - 1, dParts[2], 12, 0, 0) : new Date();
-      const dayName = dObj.toLocaleDateString('de-DE', { weekday: 'short' });
-      const dayFormatted = dObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-      const dayCosts = getDayCostBreakdown(day);
-      const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
-      const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
-      const images = Array.isArray(day.images) ? day.images : [];
-
-      const card = document.createElement('div');
-      card.id = 'day-card-' + index;
-      
-      let borderBgClass = isBooked 
-        ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30' 
-        : 'bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-500/30';
-      if (isToday) borderBgClass = 'bg-white dark:bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/80 today-highlight';
-
-      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + borderBgClass;
-
-      let html = '';
-
-      // --- HEADER ---
-      let headerBgClass = isBooked 
-        ? 'border-emerald-200 bg-emerald-100/60 dark:border-emerald-500/20 dark:bg-emerald-950/30' 
-        : 'border-amber-200 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-950/30';
-      if (isToday) headerBgClass = 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40';
-
-      html += '<div class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + headerBgClass + '">';
-      
-      html += '<div class="flex items-center gap-3">' +
-        '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
-          '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
-          '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
-        '</div>' +
-        '<div><div class="flex items-center gap-1.5">' +
-          '<span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
-          (isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
-          (isFixed ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white tracking-wider no-print shadow-xs" title="Dieser Tag enthält feste Buchungen (Unterkunft, Flug/Zug oder Ticket)">🔒 Gebucht</span>' : '') +
-        '</div></div>' +
-      '</div>';
-
-      // Tagesort & Zeile vor Tagesort für Transport im eingeklappten Zustand
-      const hasLoc = (day.location || '').trim() !== '';
-      html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
-      
-      html += '<div id="day-header-transport-' + index + '" class="' + (day.isCollapsed && hasTransports ? '' : 'hidden') + '">' +
-        getHeaderTransportLineContent(day) +
-      '</div>';
-
-      // TAGESORT INPUT-FELD + KOPIERBUTTON FÜR FOLGETAG
-      html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
-          (hasLoc ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
-          '<button type="button" onclick="openGoogleMaps(\'' + escapeHtml(day.location || '') + '\')" ' +
-            'class="mr-2.5 shrink-0 transition no-print ' + (hasLoc ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
-            'title="' + (hasLoc ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
-            '<i class="fa-solid fa-map-location-dot text-lg"></i>' +
-          '</button>' +
-          '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
-            'oninput="handleLocationInput(' + index + ', this.value)" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
-          '<button type="button" onclick="copyLocationToNextDay(' + index + ')" title="Ort auf Folgetag kopieren" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-bold px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/60 ml-1.5 shrink-0 no-print transition flex items-center gap-1">' +
-            '<i class="fa-solid fa-arrow-down"></i> <span class="hidden sm:inline">Folgetag</span>' +
-          '</button>' +
-          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-1.5 no-print ' + (hasLoc ? '' : 'hidden') + '">📍 Festgelegt</span>' +
-        '</div>' +
-      '</div>';
-
-      // Statusanzeige des Tages
-      let statusLabel = 'Übernachtung offen';
-      let statusIcon = 'fa-clock';
-      if (day.lodging.costStatus === 'reserviert') { 
-        statusLabel = 'Übernachtung reserviert'; 
-        statusIcon = 'fa-bookmark'; 
-      } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') { 
-        statusLabel = 'Übernachtung gebucht'; 
-        statusIcon = 'fa-check'; 
-      }
-
-      html += '<div class="flex flex-wrap items-center gap-2 self-end md:self-auto">' +
-        '<div class="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono flex items-center gap-1.5" title="Tagessumme">' +
-          '<i class="fa-solid fa-wallet text-violet-500"></i>' +
-          '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
-        '</div>' +
-        '<button onclick="toggleBookingStatus(' + index + ')" class="h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
-          (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white') + '">' +
-          '<i class="fa-solid ' + statusIcon + '"></i> ' + statusLabel +
-        '</button>' +
-        '<button onclick="openInsertDayModal(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print shadow-xs" title="Neuen Tag danach einfügen (+1 Tag)">' +
-          '<i class="fa-solid fa-calendar-plus text-sm"></i>' +
-        '</button>' +
-        '<button onclick="deleteDay(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print border-l-2 shadow-xs" title="Diesen Tag löschen">' +
-          '<i class="fa-solid fa-trash-can text-sm"></i>' +
-        '</button>' +
-        '<button onclick="toggleDayCollapse(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print shadow-xs">' +
-          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-sm"></i>' +
-        '</button>' +
-      '</div>';
-      html += '</div>';
-
-      // --- DETAILS-BEREICH ---
-      html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5 ' + (day.isCollapsed ? 'hidden' : '') + '">';
-      
-      // 1. Transport & Aktivitäten
-      if (hasTransports || hasActivities) {
-        const gridClass = (hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4';
-        html += '<div class="' + gridClass + '">';
-
-        if (hasTransports) {
-          html += '<div class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-            '<div class="flex items-center justify-between mb-3">' +
-              '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>' +
-              '<button onclick="addTransportRow(' + index + ')" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
-            '</div><div class="space-y-2.5">';
-          
-          day.transports.forEach((tr, trIdx) => {
-            const trSafeUrl = formatSafeUrl(tr.link);
-            html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">' +
-                '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
-                '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-                '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
-                  SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-                '</select>' +
-                getApproxEurHtml(tr.cost, tr.currency) +
-                '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + '); refreshDayHeaderTransportBadge(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
-                  '<option value="geplant" ' + ((tr.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-                  '<option value="reserviert" ' + (tr.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-                  '<option value="bezahlt" ' + (tr.costStatus === 'bezahlt' || tr.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
-                '</select>' +
-                '<button onclick="removeTransportItem(' + index + ', ' + trIdx + ')" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
-              '</div>' +
-              '<div class="flex items-start gap-2">' +
-                '<textarea rows="1" placeholder="Hinweise (z. B. Gleis, Helme, Kaution)" oninput="autoResizeTextarea(this); updateTransportItem(' + index + ', ' + trIdx + ', \'hint\', this.value)" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(tr.hint || '') + '</textarea>' +
-                '<input type="url" placeholder="Buchungs-URL" value="' + escapeHtml(tr.link || '') + '" oninput="handleTransportLinkChange(' + index + ', ' + trIdx + ', this.value)" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
-                '<a id="tr-link-btn-' + index + '-' + trIdx + '" href="' + escapeHtml(trSafeUrl || '#') + '" target="_blank" class="' + (trSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-              '</div>' +
-            '</div>';
-          });
-          html += '</div></div></div>';
-        }
-
-        if (hasActivities) {
-          html += '<div class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-            '<div class="flex items-center justify-between mb-3">' +
-              '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>' +
-              '<button onclick="addActivityRow(' + index + ')" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
-            '</div><div class="space-y-2.5">';
-
-          day.activities.forEach((act, actIdx) => {
-            const actSafeUrl = formatSafeUrl(act.link);
-            html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">' +
-                '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'done\', this.checked)" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
-                '<input type="text" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
-                '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-                '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
-                  SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-                '</select>' +
-                getApproxEurHtml(act.cost, act.currency) +
-                '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
-                  '<option value="geplant" ' + ((act.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-                  '<option value="reserviert" ' + (act.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-                  '<option value="bezahlt" ' + (act.costStatus === 'bezahlt' || act.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
-                '</select>' +
-                '<button onclick="removeActivityItem(' + index + ', ' + actIdx + ')" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
-              '</div>' +
-              '<div class="flex items-start gap-2">' +
-                '<textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" oninput="autoResizeTextarea(this); updateActivityItem(' + index + ', ' + actIdx + ', \'hint\', this.value)" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
-                '<input type="url" placeholder="Webseite / Ticket" value="' + escapeHtml(act.link || '') + '" oninput="handleActivityLinkChange(' + index + ', ' + actIdx + ', this.value)" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
-                '<a id="act-link-btn-' + index + '-' + actIdx + '" href="' + escapeHtml(actSafeUrl || '#') + '" target="_blank" class="' + (actSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-              '</div>' +
-            '</div>';
-          });
-          html += '</div></div></div>';
-        }
-        html += '</div>';
-      }
-
-      if (!hasTransports || !hasActivities) {
-        html += '<div class="flex flex-wrap items-center gap-3 pt-1 no-print">';
-        if (!hasTransports) {
-          html += '<button onclick="addTransportRow(' + index + ')" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
-            '<i class="fa-solid fa-plane-departure text-cyan-600"></i> + Transport hinzufügen</button>';
-        }
-        if (!hasActivities) {
-          html += '<button onclick="addActivityRow(' + index + ')" class="px-3 py-1.5 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">' +
-            '<i class="fa-solid fa-ticket text-emerald-600"></i> + Aktivität hinzufügen</button>';
-        }
-        html += '</div>';
-      }
-
-      // 2. Tagesausgaben & Verpflegung
-      const de = day.dailyExpenses || { amount: '', currency: 'EUR', notes: '' };
-      html += '<div class="bg-amber-50/50 dark:bg-slate-900/60 rounded-xl p-3 border border-amber-200 dark:border-slate-800 flex flex-wrap sm:flex-nowrap items-center gap-3 text-xs">' +
-        '<span class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 shrink-0">' +
-          '<i class="fa-solid fa-utensils"></i> Tagesbudget / Verpflegung:' +
-        '</span>' +
-        '<input type="text" placeholder="Betrag" value="' + escapeHtml(de.amount || '') + '" ' +
-          'oninput="updateDayField(' + index + ', \'dailyExpenses.amount\', this.value); refreshDayHeaderCost(' + index + ');" ' +
-          'class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 font-mono text-right text-slate-900 dark:text-white">' +
-        '<select onchange="updateDayField(' + index + ', \'dailyExpenses.currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
-          SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((de.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-        '</select>' +
-        getApproxEurHtml(de.amount, de.currency) +
-        '<input type="text" placeholder="Notiz (z. B. Street Food, Trinkgelder)" value="' + escapeHtml(de.notes || '') + '" ' +
-          'oninput="updateDayField(' + index + ', \'dailyExpenses.notes\', this.value)" ' +
-          'class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
-      '</div>';
-
-      // 3. Tagesnotizen & Screenshots
-      html += '<div class="space-y-3">' +
-        '<div class="flex items-center justify-between">' +
-          '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
-            '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Screenshots' +
-          '</span>' +
-          '<div class="flex items-center gap-2 no-print">' +
-            '<input type="file" id="file-upload-' + index + '" accept="image/*" class="hidden" onchange="handleImageFileSelect(event, ' + index + ')">' +
-            '<button type="button" onclick="document.getElementById(\'file-upload-' + index + '\').click()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
-              '<i class="fa-solid fa-image"></i> Screenshot anhängen' +
-            '</button>' +
-            '<span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>' +
-          '</div>' +
-        '</div>' +
-        '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshot direkt per Strg + V einfügen)" ' +
-          'onpaste="handleDayPaste(event, ' + index + ')" ' +
-          'oninput="autoResizeTextarea(this); updateDayField(' + index + ', \'notes\', this.value)" ' +
-          'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">' +
-          escapeHtml(day.notes || '') +
-        '</textarea>';
-
-      if (images.length > 0) {
-        html += '<div class="flex flex-wrap gap-2.5 pt-1">';
-        images.forEach((imgSrc, imgIdx) => {
-          html += '<div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">' +
-            '<img src="' + imgSrc + '" onclick="openLightbox(\'' + imgSrc + '\')" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">' +
-            '<button onclick="deleteDayImage(' + index + ', ' + imgIdx + ')" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>' +
-          '</div>';
-        });
-        html += '</div>';
-      }
-
-      html += '</div>';
-
-      // 4. Übernachtung
-      let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
-      let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
-      const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
-
-      html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
-        '<div class="flex items-center justify-between mb-3">' +
-          '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung (Tagesabschluss)</h3>' +
-          '<span class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
-        '</div>' +
-        '<div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">' +
-          '<div class="md:col-span-5">' +
-            '<input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="' + escapeHtml(day.lodging.name || '') + '" ' +
-              'oninput="updateDayField(' + index + ', \'lodging.name\', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
-          '</div>' +
-          '<div class="md:col-span-4 flex items-center gap-1.5">' +
-            '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
-              'oninput="updateDayField(' + index + ', \'lodging.price\', this.value); refreshDayHeaderCost(' + index + ');" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
-            '<select onchange="updateDayField(' + index + ', \'lodging.currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
-              SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-            '</select>' +
-            getApproxEurHtml(day.lodging.price, day.lodging.currency) +
-          '</div>' +
-          '<div class="md:col-span-3">' +
-            '<select onchange="updateLodgingCostStatus(' + index + ', this.value)" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(day.lodging.costStatus || 'geplant') + '">' +
-              '<option value="geplant" ' + ((day.lodging.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-              '<option value="reserviert" ' + (day.lodging.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-              '<option value="gebucht" ' + (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' ? 'selected' : '') + '>✅ Gebucht</option>' +
-            '</select>' +
-          '</div>' +
-        '</div>' +
-        '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">' +
-          '<div><textarea rows="1" placeholder="Hinweise (z. B. Stornofrist, Frühstück)" oninput="autoResizeTextarea(this); updateDayField(' + index + ', \'lodging.hint\', this.value)" class="auto-hint w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 placeholder-slate-400 focus:border-indigo-500">' + escapeHtml(day.lodging.hint || '') + '</textarea></div>' +
-          '<div class="flex gap-2">' +
-            '<input type="url" placeholder="Buchungslink (https://...)" value="' + escapeHtml(day.lodging.link || '') + '" oninput="handleLodgingLinkChange(' + index + ', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">' +
-            '<a id="lodging-link-btn-' + index + '" href="' + escapeHtml(lodgingSafeUrl || '#') + '" target="_blank" class="' + (lodgingSafeUrl ? '' : 'hidden') + ' px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-          '</div>' +
-          '<div><input type="text" placeholder="Adresse / Check-in Notiz" value="' + escapeHtml(day.lodging.notes || '') + '" oninput="updateDayField(' + index + ', \'lodging.notes\', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>' +
-        '</div>' +
-      '</div>';
-
-      html += '</div>';
-      card.innerHTML = html;
-      return card;
     }
 
     // --- FORMULAR-INTERAKTIONEN ---
@@ -2117,7 +1312,9 @@
     window.openInsertDayModal = openInsertDayModal;
     window.closeInsertDayModal = closeInsertDayModal;
     window.executeInsertDay = executeInsertDay;
-    window.deleteDay = deleteDay;
+    window.openDeleteDayModal = openDeleteDayModal;
+    window.closeDeleteDayModal = closeDeleteDayModal;
+    window.executeDeleteDay = executeDeleteDay;
     window.handleLodgingLinkChange = handleLodgingLinkChange;
     window.handleTransportLinkChange = handleTransportLinkChange;
     window.handleActivityLinkChange = handleActivityLinkChange;
