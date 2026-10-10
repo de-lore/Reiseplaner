@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.1</title>
+  <title>Reiseplaner Pro v1.2</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -52,6 +52,13 @@
     .today-highlight {
       box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.45);
     }
+    .timeline-scroll::-webkit-scrollbar {
+      height: 6px;
+    }
+    .timeline-scroll::-webkit-scrollbar-thumb {
+      background-color: rgba(148, 163, 184, 0.4);
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-16 transition-colors duration-200">
@@ -66,7 +73,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.1</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.2</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -85,6 +92,9 @@
 
         <button onclick="showRestoreModal()" id="restoreBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-amber-600 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Vorherigen Speicherstand wiederherstellen">
           <i class="fa-solid fa-rotate-left"></i> Rückgängig
+        </button>
+        <button onclick="exportToCSV()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-emerald-700 dark:text-emerald-300 text-xs font-semibold transition flex items-center gap-1.5" title="Kostenaufstellung als CSV (Excel) herunterladen">
+          <i class="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i> CSV
         </button>
         <button onclick="saveToFile(false)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30" title="Direkt in Datei sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> Speichern
@@ -212,6 +222,17 @@
           <input type="number" id="rateLAK" step="100" value="24000" oninput="updateRate('LAK', this.value)" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
         </div>
       </div>
+    </section>
+
+    <!-- ROUTEN-TIMELINE (VISUELLE MINIMAP DER ETAPPEN) -->
+    <section id="routeTimelineCard" class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm dark:shadow-xl transition-colors duration-200 no-print">
+      <div class="flex items-center justify-between mb-2.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+          <i class="fa-solid fa-signs-post text-indigo-500"></i> Reiseverlauf & Etappen-Minimap
+        </h2>
+        <span class="text-[11px] text-slate-400">Klicken, um direkt zum Tag zu springen</span>
+      </div>
+      <div id="routeTimelineContainer" class="timeline-scroll flex items-center gap-2 overflow-x-auto pb-1 text-xs"></div>
     </section>
 
     <!-- ALLGEMEINE HINWEISE & CHECKLISTE -->
@@ -515,7 +536,7 @@
       }, 2500);
     }
 
-    // --- SCREENSHOT-VERARBEITUNG ---
+    // --- MULTI-UPLOAD & PDF-VERARBEITUNG ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
       const items = e.clipboardData.items;
@@ -524,83 +545,137 @@
           e.preventDefault();
           const file = items[i].getAsFile();
           if (file) {
-            processAndAddImage(file, dayIndex);
+            processAndAddAttachment(file, dayIndex);
           }
           return;
         }
       }
     }
 
-    function handleImageFileSelect(event, dayIndex) {
-      const file = event.target.files && event.target.files[0];
-      if (file) {
-        processAndAddImage(file, dayIndex);
+    function handleDocFileSelect(event, dayIndex) {
+      const files = event.target.files;
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => processAndAddAttachment(file, dayIndex));
       }
       event.target.value = '';
     }
 
-    function processAndAddImage(file, dayIndex) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const img = new Image();
-        img.onload = function() {
-          const maxDim = 1200;
-          let w = img.width;
-          let h = img.height;
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w);
-              w = maxDim;
-            } else {
-              w = Math.round((w * maxDim) / h);
-              h = maxDim;
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+    function processAndAddAttachment(file, dayIndex) {
+      if (!tripData.days[dayIndex]) return;
+      if (!Array.isArray(tripData.days[dayIndex].images)) {
+        tripData.days[dayIndex].images = [];
+      }
 
-          if (!tripData.days[dayIndex]) return;
-          if (!Array.isArray(tripData.days[dayIndex].images)) {
-            tripData.days[dayIndex].images = [];
-          }
-          tripData.days[dayIndex].images.push(dataUrl);
+      const reader = new FileReader();
+
+      if (file.type === 'application/pdf') {
+        reader.onload = function(e) {
+          tripData.days[dayIndex].images.push({
+            type: 'pdf',
+            name: file.name || 'Dokument.pdf',
+            data: e.target.result
+          });
           saveToStorage();
           updateImagesDOM(dayIndex);
-          showToast("Screenshot hinzugefügt");
+          showToast("PDF-Beleg angehängt");
         };
-        img.src = e.target.result;
-      };
-      reader.readAsDataURL(file);
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('image/')) {
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            const maxDim = 1200;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                h = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
+            tripData.days[dayIndex].images.push({
+              type: 'image',
+              name: file.name || 'Screenshot.jpg',
+              data: dataUrl
+            });
+            saveToStorage();
+            updateImagesDOM(dayIndex);
+            showToast("Screenshot hinzugefügt");
+          };
+          img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+      } else {
+        showToast("Nicht unterstütztes Format (nur Bilder & PDFs)", true);
+      }
     }
 
-    function deleteDayImage(dayIndex, imgIndex) {
+    function deleteDayAttachment(dayIndex, itemIdx) {
       if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].images)) return;
-      tripData.days[dayIndex].images.splice(imgIndex, 1);
+      tripData.days[dayIndex].images.splice(itemIdx, 1);
       saveToStorage();
       updateImagesDOM(dayIndex);
-      showToast("Screenshot gelöscht");
+      showToast("Beleg entfernt");
+    }
+
+    function openPdfAttachment(dataUrl, fileName) {
+      if (!dataUrl) return;
+      const win = window.open();
+      if (win) {
+        win.document.write('<title>' + escapeHtml(fileName || 'Dokument') + '</title><body style="margin:0;"><iframe src="' + dataUrl + '" style="border:0; top:0px; left:0px; bottom:0px; right:0px; width:100%; height:100%;" allowfullscreen></iframe></body>');
+      } else {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = fileName || 'Dokument.pdf';
+        a.click();
+      }
     }
 
     function updateImagesDOM(dayIndex) {
       const container = document.getElementById('images-container-' + dayIndex);
       if (!container) return;
-      const images = tripData.days[dayIndex].images || [];
-      if (images.length === 0) {
+      const items = tripData.days[dayIndex].images || [];
+      if (items.length === 0) {
         container.innerHTML = '';
         container.classList.add('hidden');
         return;
       }
       container.classList.remove('hidden');
-      container.innerHTML = images.map((imgSrc, imgIdx) => `
-        <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">
-          <img src="${imgSrc}" data-action="open-lightbox" data-img-src="${imgSrc}" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">
-          <button data-action="delete-image" data-day-index="${dayIndex}" data-img-index="${imgIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
-        </div>
-      `).join('');
+      container.innerHTML = items.map((item, itemIdx) => {
+        const isPdf = (typeof item === 'object' && item.type === 'pdf') || (typeof item === 'string' && item.startsWith('data:application/pdf'));
+        const fileSrc = typeof item === 'object' ? item.data : item;
+        const fileName = typeof item === 'object' ? item.name : 'Beleg';
+
+        if (isPdf) {
+          return `
+            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-sm">
+              <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
+              <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-day-index="${dayIndex}" data-item-index="${itemIdx}" title="PDF ansehen">
+                <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(fileName)}</span>
+                <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
+              </div>
+              <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">
+            <img src="${fileSrc}" data-action="open-lightbox" data-img-src="${fileSrc}" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">
+            <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
+          </div>
+        `;
+      }).join('');
     }
 
     function openLightbox(src) {
@@ -627,6 +702,158 @@
         return trimmed;
       }
       return 'https://' + trimmed;
+    }
+
+    // --- CSV-EXPORT DER AUSGABEN ---
+    function exportToCSV() {
+      const rows = [
+        ["Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (Original)", "Waehrung", "Euro-Aequivalent", "Status", "Hinweis / Link"]
+      ];
+
+      (tripData.days || []).forEach((d, idx) => {
+        const dayNr = idx + 1;
+        const loc = d.location || '';
+        
+        // Unterkunft
+        if (d.lodging && (d.lodging.name || d.lodging.price)) {
+          const eur = convertToEur(d.lodging.price, d.lodging.currency);
+          rows.push([
+            dayNr,
+            d.date || '',
+            loc,
+            "Unterkunft",
+            d.lodging.name || '',
+            d.lodging.price || '0',
+            d.lodging.currency || 'EUR',
+            eur.toFixed(2),
+            d.lodging.costStatus || 'geplant',
+            (d.lodging.hint || '') + (d.lodging.link ? ' | ' + d.lodging.link : '')
+          ]);
+        }
+
+        // Transporte
+        (d.transports || []).forEach(tr => {
+          const eur = convertToEur(tr.cost, tr.currency);
+          rows.push([
+            dayNr,
+            d.date || '',
+            loc,
+            "Transport",
+            tr.title || '',
+            tr.cost || '0',
+            tr.currency || 'EUR',
+            eur.toFixed(2),
+            tr.costStatus || 'geplant',
+            (tr.hint || '') + (tr.link ? ' | ' + tr.link : '')
+          ]);
+        });
+
+        // Aktivitäten
+        (d.activities || []).forEach(act => {
+          const eur = convertToEur(act.cost, act.currency);
+          rows.push([
+            dayNr,
+            d.date || '',
+            loc,
+            "Aktivitaet",
+            act.title || '',
+            act.cost || '0',
+            act.currency || 'EUR',
+            eur.toFixed(2),
+            act.costStatus || 'geplant',
+            (act.hint || '') + (act.link ? ' | ' + act.link : '')
+          ]);
+        });
+      });
+
+      // Excel-freundliches deutsches Format mit Semicolon und UTF-8 BOM
+      const csvContent = "\uFEFF" + rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(";")).join("\r\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const safeTitle = (tripData.title || 'Reise').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+      a.href = url;
+      a.download = `Ausgaben_${safeTitle}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      showToast("CSV-Export heruntergeladen");
+    }
+
+    // --- VISUELLE ROUTEN-TIMELINE (MINIMAP) ---
+    function renderRouteTimeline() {
+      const container = document.getElementById('routeTimelineContainer');
+      const card = document.getElementById('routeTimelineCard');
+      if (!container || !card) return;
+
+      const days = tripData.days || [];
+      if (days.length === 0) {
+        card.classList.add('hidden');
+        return;
+      }
+      card.classList.remove('hidden');
+
+      // Gruppiere fortlaufende Tage mit demselben Ort
+      const stops = [];
+      let currentStop = null;
+
+      days.forEach((day, idx) => {
+        const rawLoc = (day.location || '').trim();
+        const displayLoc = rawLoc || 'Tag ' + (idx + 1);
+
+        if (!currentStop || currentStop.location !== displayLoc) {
+          currentStop = {
+            location: displayLoc,
+            isDefined: rawLoc !== '',
+            startDay: idx + 1,
+            endDay: idx + 1,
+            targetIndex: idx
+          };
+          stops.push(currentStop);
+        } else {
+          currentStop.endDay = idx + 1;
+        }
+      });
+
+      let html = '';
+      stops.forEach((stop, i) => {
+        const daySpan = stop.startDay === stop.endDay 
+          ? `T${stop.startDay}` 
+          : `T${stop.startDay}–${stop.endDay}`;
+
+        const isLast = i === stops.length - 1;
+        const badgeColor = stop.isDefined 
+          ? 'bg-indigo-50 border-indigo-200 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-800 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900' 
+          : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-200';
+
+        html += `
+          <button onclick="scrollToDay(${stop.targetIndex})" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shrink-0 transition text-xs font-semibold shadow-xs ${badgeColor}">
+            <span class="px-1.5 py-0.2 rounded bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-700 dark:text-indigo-300 text-[10px] uppercase font-bold">${daySpan}</span>
+            <span class="truncate max-w-[130px]">${escapeHtml(stop.location)}</span>
+          </button>
+        `;
+
+        if (!isLast) {
+          html += `<i class="fa-solid fa-angle-right text-slate-400 dark:text-slate-600 text-xs shrink-0"></i>`;
+        }
+      });
+
+      container.innerHTML = html;
+    }
+
+    function scrollToDay(index) {
+      if (tripData.days[index] && tripData.days[index].isCollapsed) {
+        toggleDayCollapse(index);
+      }
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + index);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-indigo-400');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 1800);
+        }
+      }, 50);
     }
 
     // --- WECHSELKURSE & UMRECHNUNG ---
@@ -757,6 +984,7 @@
       normalizeDataModel();
       saveToStorage();
       renderDays();
+      renderRouteTimeline();
       showToast("Neuer Tag nach Tag " + (dayIndex + 1) + " eingefügt (+1 Tag)");
     }
 
@@ -779,6 +1007,7 @@
       normalizeDataModel();
       saveToStorage();
       renderDays();
+      renderRouteTimeline();
       showToast("Tag gelöscht und Zeitraum angepasst");
     }
 
@@ -1105,6 +1334,19 @@
         if (day.isCollapsed === undefined) day.isCollapsed = false;
         if (!Array.isArray(day.images)) day.images = [];
 
+        // Bereinigung & Migration von Bild-Objekten
+        day.images = day.images.map(img => {
+          if (typeof img === 'string') {
+            const isPdf = img.startsWith('data:application/pdf');
+            return {
+              type: isPdf ? 'pdf' : 'image',
+              name: isPdf ? 'Dokument.pdf' : 'Screenshot.jpg',
+              data: img
+            };
+          }
+          return img;
+        });
+
         if (!day.lodging || typeof day.lodging !== 'object') {
           day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
         } else {
@@ -1165,7 +1407,7 @@
       // 1. Aus IndexedDB laden
       let saved = await idbGet('trip_data');
       
-      // 2. Fallback / automatische Migration aus altem localStorage falls noch nicht in IndexedDB
+      // 2. Fallback / automatische Migration aus altem localStorage
       if (!saved) {
         const legacy = localStorage.getItem('reiseplaner_pro_pwa_data');
         if (legacy) {
@@ -1298,6 +1540,7 @@
 
       renderChecklist();
       renderDays();
+      renderRouteTimeline();
     }
 
     function saveMetaData() {
@@ -1305,6 +1548,7 @@
       tripData.startDate = document.getElementById('startDate').value;
       tripData.endDate = document.getElementById('endDate').value;
       saveToStorage();
+      renderRouteTimeline();
     }
 
     function saveGeneralNotes(val) {
@@ -1365,6 +1609,7 @@
       normalizeDataModel();
       saveToStorage();
       renderDays();
+      renderRouteTimeline();
     }
 
     // --- RENDERING ---
@@ -1538,16 +1783,16 @@
       }
       html += '</div>';
 
-      // 2. Tagesnotizen & Screenshots
+      // 2. Tagesnotizen & Screenshots / Belege (Multi & PDF)
       html += '<div class="space-y-3">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
-            '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Screenshots' +
+            '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)' +
           '</span>' +
           '<div class="flex items-center gap-2 no-print">' +
-            '<input type="file" id="file-upload-' + index + '" accept="image/*" class="hidden" onchange="handleImageFileSelect(event, ' + index + ')">' +
+            '<input type="file" id="file-upload-' + index + '" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ' + index + ')">' +
             '<button type="button" data-action="trigger-file-upload" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
-              '<i class="fa-solid fa-image pointer-events-none"></i> Screenshot anhängen' +
+              '<i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen (PDF / Bild)' +
             '</button>' +
             '<span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>' +
           '</div>' +
@@ -1560,14 +1805,6 @@
         '</textarea>';
 
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
-      if (images.length > 0) {
-        images.forEach((imgSrc, imgIdx) => {
-          html += '<div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">' +
-            '<img src="' + imgSrc + '" data-action="open-lightbox" data-img-src="' + imgSrc + '" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">' +
-            '<button data-action="delete-image" data-day-index="' + index + '" data-img-index="' + imgIdx + '" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>' +
-          '</div>';
-        });
-      }
       html += '</div></div>';
 
       // 3. Übernachtung
@@ -1613,6 +1850,10 @@
 
       html += '</div>';
       card.innerHTML = html;
+      
+      // Initiale Anhänge rendern
+      setTimeout(() => updateImagesDOM(index), 0);
+
       return card;
     }
 
@@ -1749,9 +1990,15 @@
             if (src) openLightbox(src);
             break;
           }
-          case 'delete-image': {
-            const imgIdx = parseInt(target.getAttribute('data-img-index'), 10);
-            deleteDayImage(dayIdx, imgIdx);
+          case 'open-pdf': {
+            const itIdx = parseInt(target.getAttribute('data-item-index'), 10);
+            const doc = tripData.days[dayIdx].images[itIdx];
+            if (doc) openPdfAttachment(doc.data || doc, doc.name);
+            break;
+          }
+          case 'delete-attachment': {
+            const itIdx = parseInt(target.getAttribute('data-item-index'), 10);
+            deleteDayAttachment(dayIdx, itIdx);
             break;
           }
         }
@@ -1862,6 +2109,7 @@
               }
             }
             saveToStorage();
+            renderRouteTimeline();
           } else if (field === 'notes') {
             tripData.days[dayIdx].notes = target.value;
             saveToStorage();
@@ -2177,10 +2425,11 @@
     window.insertDayAfter = insertDayAfter;
     window.deleteDay = deleteDay;
     window.handleDayPaste = handleDayPaste;
-    window.handleImageFileSelect = handleImageFileSelect;
-    window.deleteDayImage = deleteDayImage;
+    window.handleDocFileSelect = handleDocFileSelect;
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
+    window.exportToCSV = exportToCSV;
+    window.scrollToDay = scrollToDay;
   </script>
 </body>
 </html>
