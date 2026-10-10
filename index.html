@@ -66,6 +66,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold border border-indigo-200 dark:border-indigo-800">v2.2</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -351,7 +352,7 @@
             <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Entfernt diesen Tag aus dem Ablauf. Flexible Tage rücken auf; vor der nächsten festen Buchung (bzw. am Ende) wird ein freier Puffer-Tag eingefügt, sodass alle Buchungen und das Enddatum unverändert bleiben.
+            Entfernt diesen Tag. Die flexiblen Tage bis zur nächsten festen Buchung rücken vor, und vor der Buchung wird ein Puffer-Tag eingeschoben. Feste Hotels und das Reise-Enddatum behalten ihr exaktes Datum!
           </p>
         </button>
 
@@ -490,31 +491,12 @@
       renderDays();
     }
 
-    // --- SERVICE WORKER MIT AUTO-UPDATE-LISTENER ---
+    // --- SERVICE WORKER ---
     function initServiceWorker() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').then((reg) => {
           reg.update();
-
-          reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                if (confirm("Eine neue Version des Reiseplaners ist verfügbar! Jetzt aktualisieren?")) {
-                  window.location.reload();
-                }
-              }
-            });
-          });
         }).catch(err => console.warn('Service Worker Info:', err));
-
-        let refreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          if (!refreshing) {
-            refreshing = true;
-            window.location.reload();
-          }
-        });
       }
     }
 
@@ -929,14 +911,6 @@
       return (num || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     }
 
-    function getApproxEurHtml(val, currency) {
-      const curr = (currency || 'EUR').toUpperCase();
-      if (!val || curr === 'EUR') return '';
-      const eur = convertToEur(val, curr);
-      if (eur === 0) return '';
-      return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
-    }
-
     // --- CHECKLISTEN-LOGIK ---
     const DEFAULT_CHECKLIST = [
       "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
@@ -1000,7 +974,7 @@
       }
     }
 
-    // --- FESTE BUCHUNGSPRÜFUNG ---
+    // --- FESTE BUCHUNGSPRÜFUNG (SYNCHRON & ZUVERLÄSSIG) ---
     function isDayBooked(day) {
       if (!day || !day.lodging) return false;
       return day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' || !!day.lodging.isBooked;
@@ -1008,7 +982,7 @@
 
     function hasFixedBookings(day) {
       if (!day) return false;
-      const bookedLodging = day.lodging && (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt');
+      const bookedLodging = day.lodging && (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' || !!day.lodging.isBooked);
       const bookedTransport = Array.isArray(day.transports) && day.transports.some(t => t.costStatus === 'gebucht' || t.costStatus === 'bezahlt');
       const bookedActivity = Array.isArray(day.activities) && day.activities.some(a => a.costStatus === 'gebucht' || a.costStatus === 'bezahlt');
       return bookedLodging || bookedTransport || bookedActivity;
@@ -1017,7 +991,7 @@
     function getFixedBookingSummary(day) {
       if (!day) return '';
       const list = [];
-      if (day.lodging && (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt')) {
+      if (day.lodging && (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' || day.lodging.isBooked)) {
         list.push('Hotel: ' + (day.lodging.name || 'Gebucht'));
       }
       if (Array.isArray(day.transports)) {
@@ -1149,7 +1123,7 @@
       updateStats();
     }
 
-    // --- TAGE LÖSCHEN MODAL-DIALOG (PRÄZISE PUFFER-LOGIK FÜR FESTE BUCHUNGEN) ---
+    // --- TAGE LÖSCHEN MODAL-DIALOG (PRÄZISE & BUCHUNGSSICHER) ---
     function openDeleteDayModal(dayIndex) {
       pendingDeleteIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
@@ -1193,10 +1167,10 @@
 
       if (mode === 'fillGap') {
         // =========================================================================
-        // MODUS A: Tag entfernen, aber Folgebuchungen kalendarisch unberührt lassen!
+        // MODUS A: Tag entfernen, aber Folgebuchungen kalendarisch fixieren!
         // =========================================================================
 
-        // 1. Nächste feste Folgebuchung NACH dem gelöschten Tag lokalisieren
+        // 1. Nächste feste Folgebuchung NACH dem gelöschten Tag suchen
         let nextFixedOriginalIndex = -1;
         for (let i = dayIndex + 1; i < tripData.days.length; i++) {
           if (hasFixedBookings(tripData.days[i])) {
@@ -1205,7 +1179,7 @@
           }
         }
 
-        // 2. Den Tag tatsächlich aus der Liste entfernen (Route rückt auf)
+        // 2. Den Tag tatsächlich aus der Liste entfernen
         tripData.days.splice(dayIndex, 1);
 
         // 3. Neuen Puffer-Tag anlegen
@@ -1213,15 +1187,16 @@
         newBufferDay.notes = 'Freier Puffer-Tag';
 
         if (nextFixedOriginalIndex !== -1) {
-          // Puffer-Tag exakt VOR die feste Buchung einschieben (Index verschiebt sich um -1 durch Löschung)
+          // Puffer exakt VOR die feste Folgebuchung einschieben!
+          // Da wir 1 Element gelöscht haben, liegt der Zielindex bei nextFixedOriginalIndex - 1.
           const targetInsertIndex = nextFixedOriginalIndex - 1;
           tripData.days.splice(targetInsertIndex, 0, newBufferDay);
         } else {
-          // Keine festen Buchungen mehr im Restverlauf: Puffer am Reiseende anhängen
+          // Keine festen Buchungen im Folgelauf: Puffer ans Ende hängen
           tripData.days.push(newBufferDay);
         }
 
-        // 4. Kalenderdaten ab startDate durchgehend zuweisen (Enddatum & Buchungen bleiben 100% stabil)
+        // 4. Kalenderdaten ab startDate sauber fortlaufend zuweisen
         if (tripData.startDate) {
           let cursor = new Date(tripData.startDate + 'T12:00:00');
           for (let i = 0; i < tripData.days.length; i++) {
@@ -1230,7 +1205,7 @@
           }
         }
 
-        showToast("Tag gelöscht & Puffer eingefügt (Buchungen & Reisedauer fixiert)");
+        showToast("Tag gelöscht & Puffer eingefügt (Buchungen unverändert)");
 
       } else {
         // =========================================================================
@@ -1239,21 +1214,18 @@
         tripData.days.splice(dayIndex, 1);
 
         if (dayIndex === 0) {
-          // Tag 1 gelöscht -> Startdatum rückt vor
           if (tripData.days.length > 0) {
             tripData.startDate = tripData.days[0].date;
             const startInput = document.getElementById('startDate');
             if (startInput) startInput.value = tripData.startDate;
           }
         } else {
-          // Folgetage kalendarisch um 1 Tag vorziehen
           for (let i = dayIndex; i < tripData.days.length; i++) {
             const nextD = new Date(tripData.days[i].date + 'T12:00:00');
             nextD.setDate(nextD.getDate() - 1);
             tripData.days[i].date = nextD.toISOString().split('T')[0];
           }
 
-          // Reise-Enddatum um 1 Tag verkürzen
           if (tripData.endDate) {
             const endD = new Date(tripData.endDate + 'T12:00:00');
             endD.setDate(endD.getDate() - 1);
@@ -1263,7 +1235,7 @@
           }
         }
 
-        showToast("Reise um 1 Tag verkürzt (Folgetage um 1 Tag vorgezogen)");
+        showToast("Reise um 1 Tag verkürzt");
       }
 
       closeDeleteDayModal();
@@ -1359,14 +1331,12 @@
       let total = 0;
       let paid = 0;
 
-      // Unterkunft
       if (day.lodging && day.lodging.price) {
         const eur = convertToEur(day.lodging.price, day.lodging.currency || 'EUR');
         total += eur;
         if (day.lodging.costStatus === 'bezahlt') paid += eur;
       }
 
-      // Transporte
       if (Array.isArray(day.transports)) {
         day.transports.forEach(t => {
           if (t && t.cost) {
@@ -1377,7 +1347,6 @@
         });
       }
 
-      // Aktivitäten
       if (Array.isArray(day.activities)) {
         day.activities.forEach(a => {
           if (a && a.cost) {
@@ -1388,7 +1357,6 @@
         });
       }
 
-      // Tagesausgaben / Verpflegung
       if (day.dailyExpenses && day.dailyExpenses.amount) {
         const eur = convertToEur(day.dailyExpenses.amount, day.dailyExpenses.currency || 'EUR');
         total += eur;
@@ -1976,7 +1944,7 @@
         .replace(/'/g, "&#039;");
     }
 
-    // --- DATEI-SPEICHERN & ÖFFNEN (DESKTOP & ANDROID/TABLETS) ---
+    // --- DATEI-SPEICHERN & ÖFFNEN ---
     async function saveToFile(forceSaveAs) {
       createRollingBackup();
       saveToStorage();
