@@ -66,7 +66,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold border border-indigo-200 dark:border-indigo-800">v2.3</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold border border-indigo-200 dark:border-indigo-800">v2.4 (App Ready)</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -580,7 +580,6 @@
         tripData.days = [];
       }
 
-      // Filtere ungültige / leere Day-Einträge heraus
       tripData.days = tripData.days.filter(d => d && typeof d === 'object');
 
       tripData.days.forEach(d => {
@@ -1966,7 +1965,7 @@
         .replace(/'/g, "&#039;");
     }
 
-    // --- DATEI-SPEICHERN & ÖFFNEN (ROBUST & BOM-FEST) ---
+    // --- DATEI-SPEICHERN & ÖFFNEN (SYNCHRON & APP-COMPATIBLE) ---
     async function saveToFile(forceSaveAs) {
       createRollingBackup();
       saveToStorage();
@@ -1974,7 +1973,9 @@
       const safeTitle = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
       const fileName = 'Reiseplan_' + safeTitle + '.json';
 
-      if ('showSaveFilePicker' in window) {
+      // 1. Desktop Chromium: File System Access API
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!isMobile && 'showSaveFilePicker' in window) {
         try {
           if (!activeFileHandle || forceSaveAs) {
             activeFileHandle = await window.showSaveFilePicker({
@@ -1998,45 +1999,28 @@
         }
       }
 
+      // 2. Universeller Download (PWA & Mobile kompatibel mit Puffer-Zeit)
       const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
+      a.style.display = 'none';
       a.href = url;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+
+      // Wichtig: URL erst nach 60 Sekunden widerrufen, damit App-Download nicht abbricht
+      setTimeout(() => {
+        a.remove();
+        URL.revokeObjectURL(url);
+      }, 60000);
+
       showToast("Download gestartet");
     }
 
-    async function openFile() {
-      // 1. Versuch: File System Access API
-      if ('showOpenFilePicker' in window) {
-        try {
-          const [handle] = await window.showOpenFilePicker({
-            types: [
-              {
-                description: 'JSON Reiseplan-Datei',
-                accept: {
-                  'application/json': ['.json', '.jason'],
-                  'text/plain': ['.json', '.jason', '.txt']
-                }
-              }
-            ],
-            multiple: false
-          });
-          const file = await handle.getFile();
-          const text = await file.text();
-          processLoadedJSON(text, handle.name, handle);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-          console.warn("showOpenFilePicker fehlgeschlagen, wechsle zu Standard-Input:", err);
-        }
-      }
-
-      // 2. Fallback: Normales Input-Element
+    function openFile() {
+      // WICHTIG FÜR APPS: Sofort synchron den Klick auf den File-Input auslösen,
+      // damit mobile PWA-Container den Dateidialog nicht blockieren!
       const input = document.getElementById('importInput');
       if (input) {
         input.value = '';
@@ -2064,9 +2048,7 @@
           throw new Error("Datei ist leer oder nicht lesbar.");
         }
 
-        // BOM (Byte Order Mark) entfernen, falls von Windows-Editor eingefügt
         const cleanText = jsonText.replace(/^\uFEFF/, '').trim();
-
         const parsed = JSON.parse(cleanText);
         if (!parsed || typeof parsed !== 'object') {
           throw new Error("Inhalt ist kein gültiges Reiseplan-Objekt.");
