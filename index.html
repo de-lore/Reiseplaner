@@ -230,8 +230,8 @@
           <textarea 
             id="generalNotes" 
             rows="4" 
-            placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..."
-            oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);"
+            placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..." 
+            oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);" 
             class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500"
           ></textarea>
         </div>
@@ -251,7 +251,7 @@
               type="text" 
               id="newChecklistItemInput" 
               placeholder="Neuen Punkt hinzufügen..." 
-              onkeydown="if(event.key === 'Enter') addChecklistItem();"
+              onkeydown="if(event.key === 'Enter') addChecklistItem();" 
               class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
             >
             <button onclick="addChecklistItem()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0">
@@ -296,7 +296,7 @@
             <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Fügt einen Tag ein, <b>ohne</b> nachfolgende feste Buchungen kalendarisch zu verschieben. Die Gesamtreisedauer bleibt unverändert (letzter Puffer-Tag wird aufgebraucht).
+            Fügt einen Tag ein, <b>ohne</b> nachfolgende feste Buchungen kalendarisch zu verschieben. Die Gesamtreisedauer bleibt unverändert (der nächste freie Puffertag wird aufgezehrt).
           </p>
         </button>
 
@@ -351,7 +351,7 @@
             <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Entfernt diesen Tag, <b>ohne</b> nachfolgende feste Buchungstage nach vorne zu ziehen. Am Ende der Reise wird automatisch ein freier Tag ergänzt, sodass dein Rückflug-/Enddatum exakt gleich bleibt.
+            Entfernt diesen Tag, <b>ohne</b> nachfolgende feste Buchungen kalendarisch zu verschieben. Ein Puffer füllt die Lücke (vor der nächsten festen Buchung bzw. am Reiseende), sodass feste Termine und das Enddatum erhalten bleiben.
           </p>
         </button>
 
@@ -363,7 +363,7 @@
             <span class="text-[10px] font-semibold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-950/80 px-2 py-0.5 rounded-full">Alles rückt -1 Tag auf</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Löscht diesen Tag und zieht alle Folgetage um einen Kalendertag nach vorne (-1 Tag). Das Enddatum der Reise verkürzt sich um 1 Tag.
+            Löscht diesen Tag und zieht alle Folgetage um einen Kalendertag nach vorne (-1 Tag). Die Gesamtreisedauer verkürzt sich um 1 Tag.
           </p>
         </button>
       </div>
@@ -573,6 +573,178 @@
       }, 2500);
     }
 
+    // --- DATEN-NORMALISIERUNG & PERSISTENZ ---
+    function normalizeDataModel() {
+      if (!tripData.exchangeRates) {
+        tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
+      }
+      if (!Array.isArray(tripData.checklist)) {
+        tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
+      }
+      if (!Array.isArray(tripData.days)) {
+        tripData.days = [];
+      }
+
+      tripData.days.forEach(d => {
+        if (!d.lodging) d.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+        if (!d.lodging.currency) d.lodging.currency = 'EUR';
+        if (!d.lodging.costStatus) d.lodging.costStatus = d.lodging.isBooked ? 'gebucht' : 'geplant';
+        if (!Array.isArray(d.transports)) d.transports = [];
+        d.transports.forEach(t => {
+          if (!t.currency) t.currency = 'EUR';
+          if (!t.costStatus) t.costStatus = 'geplant';
+        });
+        if (!Array.isArray(d.activities)) d.activities = [];
+        d.activities.forEach(a => {
+          if (!a.currency) a.currency = 'EUR';
+          if (!a.costStatus) a.costStatus = 'geplant';
+          if (typeof a.done !== 'boolean') a.done = false;
+        });
+        if (!Array.isArray(d.images)) d.images = [];
+        if (typeof d.isCollapsed !== 'boolean') d.isCollapsed = false;
+      });
+    }
+
+    function saveToStorage() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tripData));
+      } catch (e) {
+        console.warn("Storage-Fehler (evtl. Speicher voll):", e);
+      }
+    }
+
+    function loadFromStorage() {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          tripData = JSON.parse(stored);
+        } catch (e) {
+          console.error("Fehler beim Parsen aus Storage:", e);
+        }
+      }
+      normalizeDataModel();
+      syncUI();
+    }
+
+    function createRollingBackup() {
+      try {
+        let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+        backups.unshift({
+          timestamp: new Date().toISOString(),
+          data: JSON.parse(JSON.stringify(tripData))
+        });
+        if (backups.length > 3) backups = backups.slice(0, 3);
+        localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+      } catch (e) {
+        console.warn("Backup-Erstellung fehlgeschlagen:", e);
+      }
+    }
+
+    function showRestoreModal() {
+      const listEl = document.getElementById('backupList');
+      if (!listEl) return;
+      const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+      if (backups.length === 0) {
+        listEl.innerHTML = '<div class="text-xs text-slate-500 py-3 text-center">Keine Sicherungspunkte vorhanden</div>';
+      } else {
+        listEl.innerHTML = backups.map((b, idx) => {
+          const d = new Date(b.timestamp);
+          const timeStr = d.toLocaleDateString('de-DE') + ' ' + d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+          const dayCount = (b.data && b.data.days) ? b.data.days.length : 0;
+          return `
+            <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-900/60 transition">
+              <div>
+                <div class="text-xs font-bold text-slate-800 dark:text-slate-200">Stand: ${timeStr}</div>
+                <div class="text-[11px] text-slate-500">${dayCount} Tage &bull; ${escapeHtml(b.data.title || 'Ohne Titel')}</div>
+              </div>
+              <button onclick="restoreBackup(${idx})" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold">
+                Laden
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+      document.getElementById('restoreModal').classList.remove('hidden');
+    }
+
+    function closeRestoreModal() {
+      document.getElementById('restoreModal').classList.add('hidden');
+    }
+
+    function restoreBackup(idx) {
+      const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+      if (backups[idx] && backups[idx].data) {
+        tripData = backups[idx].data;
+        normalizeDataModel();
+        saveToStorage();
+        syncUI();
+        closeRestoreModal();
+        showToast("Speicherstand erfolgreich geladen");
+      }
+    }
+
+    function syncUI() {
+      document.getElementById('tripTitle').value = tripData.title || '';
+      document.getElementById('startDate').value = tripData.startDate || '';
+      document.getElementById('endDate').value = tripData.endDate || '';
+      document.getElementById('generalNotes').value = tripData.generalNotes || '';
+
+      if (tripData.exchangeRates) {
+        if (document.getElementById('rateTHB')) document.getElementById('rateTHB').value = tripData.exchangeRates.THB || 38;
+        if (document.getElementById('rateUSD')) document.getElementById('rateUSD').value = tripData.exchangeRates.USD || 1.08;
+        if (document.getElementById('rateLAK')) document.getElementById('rateLAK').value = tripData.exchangeRates.LAK || 24000;
+        if (document.getElementById('rateVND')) document.getElementById('rateVND').value = tripData.exchangeRates.VND || 27000;
+      }
+
+      renderChecklist();
+      renderDays();
+      updateStats();
+      autoResizeAllTextareas();
+    }
+
+    function saveMetaData() {
+      tripData.title = document.getElementById('tripTitle').value;
+      tripData.startDate = document.getElementById('startDate').value;
+      tripData.endDate = document.getElementById('endDate').value;
+      saveToStorage();
+      updateTripCountdown();
+    }
+
+    function saveGeneralNotes(val) {
+      tripData.generalNotes = val;
+      saveToStorage();
+    }
+
+    function updateTripCountdown() {
+      const badge = document.getElementById('tripCountdownBadge');
+      if (!badge) return;
+      if (!tripData.startDate) {
+        badge.classList.add('hidden');
+        return;
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const start = new Date(tripData.startDate + 'T00:00:00');
+      const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));
+
+      if (diffDays > 0) {
+        badge.innerHTML = `<i class="fa-regular fa-clock"></i> In ${diffDays} Tagen`;
+        badge.classList.remove('hidden');
+      } else if (diffDays === 0) {
+        badge.innerHTML = `<i class="fa-solid fa-plane-departure"></i> Heute geht's los!`;
+        badge.classList.remove('hidden');
+      } else {
+        const end = tripData.endDate ? new Date(tripData.endDate + 'T00:00:00') : null;
+        if (end && today <= end) {
+          badge.innerHTML = `<i class="fa-solid fa-compass"></i> Reise läuft`;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    }
+
     // --- SCREENSHOT-VERARBEITUNG MIT SPEICHERSCHUTZ ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
@@ -725,7 +897,7 @@
       }
     }
 
-    // --- WECHSELKURSE (FOKUSSTABIL OHNE RENDERDAYS) ---
+    // --- WECHSELKURSE & WÄHRUNGSUMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
       if (!isNaN(num) && num > 0) {
@@ -735,6 +907,7 @@
         if (Array.isArray(tripData.days)) {
           tripData.days.forEach((_, idx) => refreshDayHeaderCost(idx));
         }
+        updateStats();
       }
     }
 
@@ -750,6 +923,10 @@
       const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
       const rate = rates[curr] || 1;
       return num / rate;
+    }
+
+    function formatEuro(num) {
+      return (num || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
     }
 
     function getApproxEurHtml(val, currency) {
@@ -824,6 +1001,11 @@
     }
 
     // --- FESTE BUCHUNGSPRÜFUNG ---
+    function isDayBooked(day) {
+      if (!day || !day.lodging) return false;
+      return day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' || !!day.lodging.isBooked;
+    }
+
     function hasFixedBookings(day) {
       if (!day) return false;
       const bookedLodging = day.lodging && (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt');
@@ -849,6 +1031,20 @@
         });
       }
       return list.join(', ');
+    }
+
+    function createEmptyDayObject(dateStr) {
+      return {
+        date: dateStr || '',
+        location: '',
+        isCollapsed: false,
+        lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+        dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
+        transports: [],
+        activities: [],
+        images: [],
+        notes: ''
+      };
     }
 
     // --- TAGE EINFÜGEN MODAL-DIALOG ---
@@ -890,66 +1086,60 @@
       const curDay = tripData.days[dayIndex];
       if (!curDay) return;
 
-      const d = new Date(curDay.date + 'T12:00:00');
-      d.setDate(d.getDate() + 1);
-      const isoNew = d.toISOString().split('T')[0];
-
-      const newDay = {
-        date: isoNew,
-        location: curDay.location || '',
-        isCollapsed: false,
-        lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-        dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
-        transports: [],
-        activities: [],
-        images: [],
-        notes: ''
-      };
+      const newDay = createEmptyDayObject('');
+      newDay.location = curDay.location || '';
 
       if (mode === 'gap') {
-        tripData.days.splice(dayIndex + 1, 0, newDay);
-
+        // Finde den nächsten freien Puffertag NACH dem Einfügepunkt
         let removeIndex = -1;
-        for (let i = tripData.days.length - 1; i > dayIndex + 1; i--) {
+        for (let i = tripData.days.length - 1; i > dayIndex; i--) {
           if (!hasFixedBookings(tripData.days[i]) && !(tripData.days[i].location || '').trim()) {
             removeIndex = i;
             break;
           }
         }
 
-        if (removeIndex !== -1) {
-          tripData.days.splice(removeIndex, 1);
-        } else {
+        if (removeIndex === -1) {
           const lastIndex = tripData.days.length - 1;
-          if (hasFixedBookings(tripData.days[lastIndex])) {
-            alert("Am Ende der Reise liegt eine feste Buchung. Bitte nutze Modus B, um die Reise zu verlängern.");
-            tripData.days.splice(dayIndex + 1, 1);
-            return;
+          if (!hasFixedBookings(tripData.days[lastIndex])) {
+            removeIndex = lastIndex;
           }
-          tripData.days.splice(lastIndex, 1);
         }
 
-        let dateCursor = new Date(curDay.date + 'T12:00:00');
-        for (let i = dayIndex + 1; i < tripData.days.length; i++) {
-          dateCursor.setDate(dateCursor.getDate() + 1);
-          tripData.days[i].date = dateCursor.toISOString().split('T')[0];
+        if (removeIndex === -1) {
+          alert("Kein freier Puffertag ohne feste Buchung gefunden! Bitte nutze Modus B, um die Reise um einen Tag zu verlängern.");
+          return;
+        }
+
+        tripData.days.splice(removeIndex, 1);
+        tripData.days.splice(dayIndex + 1, 0, newDay);
+
+        // Kalenderdaten ab Startdatum synchronisieren (Reisezeitraum bleibt gleich)
+        if (tripData.startDate) {
+          let cursor = new Date(tripData.startDate + 'T12:00:00');
+          for (let i = 0; i < tripData.days.length; i++) {
+            tripData.days[i].date = cursor.toISOString().split('T')[0];
+            cursor.setDate(cursor.getDate() + 1);
+          }
         }
 
         showToast("Tag in Lücke eingefügt (Reisezeitraum unverändert)");
       } else {
+        // MODUS B: Reise verlängern (+1 Tag)
         tripData.days.splice(dayIndex + 1, 0, newDay);
 
-        for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-          const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-          nextD.setDate(nextD.getDate() + 1);
-          tripData.days[i].date = nextD.toISOString().split('T')[0];
+        if (tripData.startDate) {
+          let cursor = new Date(tripData.startDate + 'T12:00:00');
+          for (let i = 0; i < tripData.days.length; i++) {
+            tripData.days[i].date = cursor.toISOString().split('T')[0];
+            cursor.setDate(cursor.getDate() + 1);
+          }
         }
 
-        if (tripData.endDate) {
-          const endD = new Date(tripData.endDate + 'T12:00:00');
-          endD.setDate(endD.getDate() + 1);
-          tripData.endDate = endD.toISOString().split('T')[0];
-          document.getElementById('endDate').value = tripData.endDate;
+        if (tripData.days.length > 0) {
+          tripData.endDate = tripData.days[tripData.days.length - 1].date;
+          const endInput = document.getElementById('endDate');
+          if (endInput) endInput.value = tripData.endDate;
         }
 
         showToast("Reise um +1 Tag verlängert & Folgetage angepasst");
@@ -959,9 +1149,10 @@
       normalizeDataModel();
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
-    // --- TAGE LÖSCHEN MODAL-DIALOG ---
+    // --- TAGE LÖSCHEN MODAL-DIALOG (VOLLSTÄNDIG KORRIGIERT) ---
     function openDeleteDayModal(dayIndex) {
       pendingDeleteIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
@@ -1004,61 +1195,74 @@
       if (!curDay) return;
 
       if (mode === 'fillGap') {
+        // MODUS A: Tag entfernen, Reisedauer & feste Folgebuchungen stabil halten
         tripData.days.splice(dayIndex, 1);
+        const newEmptyDay = createEmptyDayObject('');
 
-        const lastDay = tripData.days[tripData.days.length - 1];
-        let newLastDate = new Date();
-        if (lastDay) {
-          const ld = new Date(lastDay.date + 'T12:00:00');
-          ld.setDate(ld.getDate() + 1);
-          newLastDate = ld;
-        }
-
-        const appendDay = {
-          date: newLastDate.toISOString().split('T')[0],
-          location: '',
-          isCollapsed: false,
-          lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-          dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
-          transports: [],
-          activities: [],
-          images: [],
-          notes: ''
-        };
-        tripData.days.push(appendDay);
-
-        if (dayIndex > 0) {
-          let cursor = new Date(tripData.days[dayIndex - 1].date + 'T12:00:00');
-          for (let i = dayIndex; i < tripData.days.length; i++) {
-            cursor.setDate(cursor.getDate() + 1);
-            tripData.days[i].date = cursor.toISOString().split('T')[0];
+        // Finde erste feste Folgebuchung nach der gelöschten Position
+        let nextFixedIndex = -1;
+        for (let i = dayIndex; i < tripData.days.length; i++) {
+          if (hasFixedBookings(tripData.days[i])) {
+            nextFixedIndex = i;
+            break;
           }
         }
 
-        showToast("Tag entfernt. Puffer-Tag am Ende ergänzt (Reisedauer unverändert)");
+        if (nextFixedIndex !== -1) {
+          // Puffer direkt VOR der festen Buchung einfügen, damit deren Kalendertag exakt fixiert bleibt
+          tripData.days.splice(nextFixedIndex, 0, newEmptyDay);
+        } else {
+          // Keine festen Folgebuchungen: Puffer am Reiseende ergänzen
+          tripData.days.push(newEmptyDay);
+        }
+
+        // Datumskette ab startDate fortlaufend aktualisieren (Reisedauer & Enddatum unverändert)
+        if (tripData.startDate) {
+          let cursor = new Date(tripData.startDate + 'T12:00:00');
+          for (let i = 0; i < tripData.days.length; i++) {
+            tripData.days[i].date = cursor.toISOString().split('T')[0];
+            cursor.setDate(cursor.getDate() + 1);
+          }
+        }
+
+        showToast("Tag entfernt. Puffer eingesetzt (Feste Termine & Enddatum bleiben stabil)");
       } else {
+        // MODUS B: Reise um 1 Tag verkürzen (-1 Tag)
         tripData.days.splice(dayIndex, 1);
 
-        for (let i = dayIndex; i < tripData.days.length; i++) {
-          const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-          nextD.setDate(nextD.getDate() - 1);
-          tripData.days[i].date = nextD.toISOString().split('T')[0];
+        if (dayIndex === 0) {
+          // Tag 1 gelöscht -> Startdatum rückt auf Tag 2 vor
+          if (tripData.days.length > 0) {
+            tripData.startDate = tripData.days[0].date;
+            const startInput = document.getElementById('startDate');
+            if (startInput) startInput.value = tripData.startDate;
+          }
+        } else {
+          // Folgetage kalendarisch um 1 Tag vorziehen
+          for (let i = dayIndex; i < tripData.days.length; i++) {
+            const nextD = new Date(tripData.days[i].date + 'T12:00:00');
+            nextD.setDate(nextD.getDate() - 1);
+            tripData.days[i].date = nextD.toISOString().split('T')[0];
+          }
+
+          // Enddatum um 1 Tag verkürzen
+          if (tripData.endDate) {
+            const endD = new Date(tripData.endDate + 'T12:00:00');
+            endD.setDate(endD.getDate() - 1);
+            tripData.endDate = endD.toISOString().split('T')[0];
+            const endInput = document.getElementById('endDate');
+            if (endInput) endInput.value = tripData.endDate;
+          }
         }
 
-        if (tripData.endDate) {
-          const endD = new Date(tripData.endDate + 'T12:00:00');
-          endD.setDate(endD.getDate() - 1);
-          tripData.endDate = endD.toISOString().split('T')[0];
-          document.getElementById('endDate').value = tripData.endDate;
-        }
-
-        showToast("Tag gelöscht & Reise um 1 Tag verkürzt");
+        showToast("Tag gelöscht & Reisedauer um 1 Tag verkürzt");
       }
 
       closeDeleteDayModal();
       normalizeDataModel();
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function copyLocationToNextDay(dayIndex) {
@@ -1077,7 +1281,7 @@
       }
     }
 
-    // --- FORMULAR-INTERAKTIONEN ---
+    // --- FORMULAR-INTERAKTIONEN & RENDER-HILFEN ---
     function handleLocationInput(dayIndex, value) {
       if (!tripData.days[dayIndex]) return;
       tripData.days[dayIndex].location = value;
@@ -1103,6 +1307,7 @@
       tripData.days[dayIndex].lodging.isBooked = isDayBooked(tripData.days[dayIndex]);
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function toggleBookingStatus(dayIndex) {
@@ -1112,6 +1317,7 @@
       tripData.days[dayIndex].lodging.isBooked = !currentBooked;
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function updateDayField(dayIndex, fieldPath, value) {
@@ -1124,11 +1330,64 @@
         tripData.days[dayIndex][fieldPath] = value;
       }
       saveToStorage();
+      if (fieldPath.includes('price') || fieldPath.includes('amount') || fieldPath.includes('currency') || fieldPath.includes('cost')) {
+        refreshDayHeaderCost(dayIndex);
+      }
+    }
+
+    function getStatusBadgeClass(status) {
+      if (status === 'bezahlt') return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800';
+      if (status === 'gebucht') return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-800';
+      return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-800';
     }
 
     function updateSelectStyle(selectEl) {
       if (!selectEl) return;
       selectEl.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(selectEl.value);
+    }
+
+    function getDayCostBreakdown(day) {
+      if (!day) return { total: 0, paid: 0, pending: 0 };
+      let total = 0;
+      let paid = 0;
+
+      // Unterkunft
+      if (day.lodging && day.lodging.price) {
+        const eur = convertToEur(day.lodging.price, day.lodging.currency || 'EUR');
+        total += eur;
+        if (day.lodging.costStatus === 'bezahlt') paid += eur;
+      }
+
+      // Transporte
+      if (Array.isArray(day.transports)) {
+        day.transports.forEach(t => {
+          if (t && t.cost) {
+            const eur = convertToEur(t.cost, t.currency || 'EUR');
+            total += eur;
+            if (t.costStatus === 'bezahlt') paid += eur;
+          }
+        });
+      }
+
+      // Aktivitäten
+      if (Array.isArray(day.activities)) {
+        day.activities.forEach(a => {
+          if (a && a.cost) {
+            const eur = convertToEur(a.cost, a.currency || 'EUR');
+            total += eur;
+            if (a.costStatus === 'bezahlt') paid += eur;
+          }
+        });
+      }
+
+      // Tagesausgaben / Verpflegung
+      if (day.dailyExpenses && day.dailyExpenses.amount) {
+        const eur = convertToEur(day.dailyExpenses.amount, day.dailyExpenses.currency || 'EUR');
+        total += eur;
+        paid += eur; // Vor Ort getätigte Ausgaben zählen als bezahlt
+      }
+
+      return { total, paid, pending: total - paid };
     }
 
     function refreshDayHeaderCost(dayIndex) {
@@ -1137,6 +1396,16 @@
       const display = document.getElementById('day-cost-display-' + dayIndex);
       if (display) display.innerText = formatEuro(costs.total);
       updateStats();
+    }
+
+    function getHeaderTransportLineContent(day) {
+      if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
+      return day.transports.map(t => {
+        const icon = t.title.toLowerCase().includes('flug') ? 'plane' : (t.title.toLowerCase().includes('zug') ? 'train' : 'van-shuttle');
+        return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium border border-slate-200 dark:border-slate-700">
+          <i class="fa-solid fa-${icon} text-indigo-500"></i> ${escapeHtml(t.title || 'Transport')}
+        </span>`;
+      }).join(' ');
     }
 
     function toggleDayCollapse(dayIndex) {
@@ -1180,12 +1449,16 @@
       tripData.days[dayIndex].transports.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function updateTransportItem(dayIndex, itemIndex, field, value) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports || !tripData.days[dayIndex].transports[itemIndex]) return;
       tripData.days[dayIndex].transports[itemIndex][field] = value;
       saveToStorage();
+      if (field === 'cost' || field === 'currency' || field === 'costStatus') {
+        refreshDayHeaderCost(dayIndex);
+      }
     }
 
     function removeTransportItem(dayIndex, itemIndex) {
@@ -1193,6 +1466,7 @@
       tripData.days[dayIndex].transports.splice(itemIndex, 1);
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function addActivityRow(dayIndex) {
@@ -1201,12 +1475,16 @@
       tripData.days[dayIndex].activities.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', done: false });
       saveToStorage();
       renderDays();
+      updateStats();
     }
 
     function updateActivityItem(dayIndex, itemIndex, field, value) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].activities || !tripData.days[dayIndex].activities[itemIndex]) return;
       tripData.days[dayIndex].activities[itemIndex][field] = value;
       saveToStorage();
+      if (field === 'cost' || field === 'currency' || field === 'costStatus') {
+        refreshDayHeaderCost(dayIndex);
+      }
       if (field === 'done') renderDays();
     }
 
@@ -1215,6 +1493,435 @@
       tripData.days[dayIndex].activities.splice(itemIndex, 1);
       saveToStorage();
       renderDays();
+      updateStats();
+    }
+
+    // --- TAGE GENERIEREN & DATUMSLOGIK ---
+    function generateOrUpdateDays() {
+      const sVal = document.getElementById('startDate').value;
+      const eVal = document.getElementById('endDate').value;
+      if (!sVal || !eVal) {
+        alert("Bitte Start- und Enddatum auswählen!");
+        return;
+      }
+      const start = new Date(sVal + 'T12:00:00');
+      const end = new Date(eVal + 'T12:00:00');
+      if (end < start) {
+        alert("Das Enddatum darf nicht vor dem Startdatum liegen!");
+        return;
+      }
+
+      const diffDays = Math.round((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      const existing = tripData.days || [];
+      const newDays = [];
+
+      let cursor = new Date(start);
+      for (let i = 0; i < diffDays; i++) {
+        const iso = cursor.toISOString().split('T')[0];
+        if (existing[i]) {
+          existing[i].date = iso;
+          newDays.push(existing[i]);
+        } else {
+          newDays.push(createEmptyDayObject(iso));
+        }
+        cursor.setDate(cursor.getDate() + 1);
+      }
+
+      tripData.days = newDays;
+      tripData.startDate = sVal;
+      tripData.endDate = eVal;
+      normalizeDataModel();
+      saveToStorage();
+      renderDays();
+      updateStats();
+      showToast(`${diffDays} Reisetage synchronisiert`);
+    }
+
+    // --- FILTER & SUCHE ---
+    function setFilter(filter) {
+      currentFilter = filter;
+      ['all', 'open_lodging', 'travel_days', 'pending_costs'].forEach(f => {
+        const btn = document.getElementById('filter-' + f);
+        if (!btn) return;
+        if (f === filter) {
+          btn.className = "px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow";
+        } else {
+          btn.className = "px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
+        }
+      });
+      renderDays();
+    }
+
+    function handleSearch(val) {
+      searchQuery = (val || '').toLowerCase().trim();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.classList.toggle('hidden', searchQuery.length === 0);
+      renderDays();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      if (input) input.value = '';
+      handleSearch('');
+    }
+
+    function jumpToToday() {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const idx = tripData.days.findIndex(d => d.date === todayStr);
+      if (idx !== -1) {
+        const el = document.getElementById('day-card-' + idx);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('today-highlight');
+          setTimeout(() => el.classList.remove('today-highlight'), 3000);
+        }
+      } else {
+        showToast("Kein Reisetag für das heutige Datum gefunden", true);
+      }
+    }
+
+    function openGoogleMaps(dayIndex) {
+      const loc = (tripData.days[dayIndex]?.location || '').trim();
+      if (!loc) return;
+      window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(loc), '_blank');
+    }
+
+    function autoResizeTextarea(el) {
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    }
+
+    function autoResizeAllTextareas() {
+      document.querySelectorAll('textarea.auto-hint').forEach(autoResizeTextarea);
+    }
+
+    // --- HAUPT-RENDERING DER TAGE ---
+    function renderDays() {
+      const container = document.getElementById('daysContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      (tripData.days || []).forEach((day, idx) => {
+        // Filter-Prüfung
+        if (currentFilter === 'open_lodging' && isDayBooked(day)) return;
+        if (currentFilter === 'travel_days' && (!day.transports || day.transports.length === 0)) return;
+        if (currentFilter === 'pending_costs' && getDayCostBreakdown(day).pending <= 0) return;
+
+        // Volltextsuche
+        if (searchQuery) {
+          const haystack = [
+            day.date,
+            day.location,
+            day.lodging?.name,
+            day.lodging?.notes,
+            day.notes,
+            ...(day.transports || []).map(t => t.title + ' ' + (t.hint || '')),
+            ...(day.activities || []).map(a => a.title + ' ' + (a.hint || ''))
+          ].join(' ').toLowerCase();
+          if (!haystack.includes(searchQuery)) return;
+        }
+
+        const dateObj = new Date(day.date + 'T12:00:00');
+        const weekday = isNaN(dateObj) ? '' : dateObj.toLocaleDateString('de-DE', { weekday: 'short' });
+        const dateFormatted = isNaN(dateObj) ? day.date : dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const isToday = day.date === todayStr;
+        const booked = isDayBooked(day);
+        const dayCost = getDayCostBreakdown(day);
+
+        const card = document.createElement('div');
+        card.id = 'day-card-' + idx;
+        card.className = `day-card bg-white dark:bg-slate-800 rounded-2xl border ${isToday ? 'border-indigo-500 ring-2 ring-indigo-500/30' : 'border-slate-200 dark:border-slate-700'} shadow-sm dark:shadow-xl transition-all overflow-hidden`;
+        card.onpaste = (e) => handleDayPaste(e, idx);
+
+        card.innerHTML = `
+          <!-- Card Header -->
+          <div class="p-4 bg-slate-50/70 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="px-2.5 py-1 rounded-xl bg-indigo-600 text-white font-bold text-xs shrink-0 shadow-sm">
+                Tag ${idx + 1}
+              </span>
+              <span class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <i class="fa-regular fa-calendar text-slate-400"></i> ${weekday}, ${dateFormatted}
+                ${isToday ? '<span class="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Heute</span>' : ''}
+              </span>
+              <span id="day-header-transport-${idx}" class="${day.isCollapsed && day.transports?.length > 0 ? '' : 'hidden'}">
+                ${getHeaderTransportLineContent(day)}
+              </span>
+            </div>
+
+            <div class="flex items-center gap-2 text-xs no-print flex-wrap">
+              <span class="font-mono font-bold text-slate-700 dark:text-slate-200 mr-2 flex items-center gap-1">
+                <i class="fa-solid fa-wallet text-slate-400 text-[11px]"></i>
+                <span id="day-cost-display-${idx}">${formatEuro(dayCost.total)}</span>
+              </span>
+
+              <button onclick="copyLocationToNextDay(${idx})" class="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Ort auf Folgetag übertragen">
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+              <button onclick="openInsertDayModal(${idx})" class="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-indigo-600 dark:text-indigo-400 transition" title="Tag hier einfügen">
+                <i class="fa-solid fa-calendar-plus"></i>
+              </button>
+              <button onclick="openDeleteDayModal(${idx})" class="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-rose-500 transition" title="Diesen Tag löschen">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+              <button onclick="toggleDayCollapse(${idx})" class="p-1.5 rounded-lg border border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Ein-/Ausklappen">
+                <i id="collapse-icon-${idx}" class="fa-solid fa-${day.isCollapsed ? 'chevron-down' : 'chevron-up'} text-sm"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Card Body -->
+          <div id="day-body-${idx}" class="${day.isCollapsed ? 'hidden' : ''} p-5 space-y-4">
+            
+            <!-- Zeile 1: Ort & Unterkunft -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <!-- Aufenthaltsort -->
+              <div>
+                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                  <span><i class="fa-solid fa-location-dot text-indigo-500 mr-1"></i> Aufenthaltsort / Region</span>
+                  <button onclick="openGoogleMaps(${idx})" class="text-indigo-500 hover:underline capitalize text-[10px] font-normal no-print flex items-center gap-1">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> In Maps öffnen
+                  </button>
+                </label>
+                <div id="loc-box-${idx}" class="relative flex items-center rounded-xl px-3 py-1.5 border transition ${day.location ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700'}">
+                  <input 
+                    type="text" 
+                    value="${escapeHtml(day.location || '')}" 
+                    placeholder="z. B. Luang Prabang, Thakhek..." 
+                    oninput="handleLocationInput(${idx}, this.value)" 
+                    class="w-full bg-transparent text-sm text-slate-900 dark:text-white font-medium focus:outline-none"
+                  >
+                  <span id="loc-badge-${idx}" class="${day.location ? '' : 'hidden'} text-[10px] px-1.5 py-0.5 rounded bg-indigo-600 text-white font-bold shrink-0">Aktiv</span>
+                </div>
+              </div>
+
+              <!-- Übernachtung / Hotel -->
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <i class="fa-solid fa-bed text-indigo-500 mr-1"></i> Übernachtung
+                  </label>
+                  <div class="flex items-center gap-1.5 no-print">
+                    <button onclick="toggleBookingStatus(${idx})" class="text-[10px] font-bold px-2 py-0.5 rounded-md border transition ${booked ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300'}">
+                      <i class="fa-solid fa-${booked ? 'circle-check' : 'circle-exclamation'}"></i> ${booked ? 'Gebucht' : 'Offen'}
+                    </button>
+                    <select onchange="updateLodgingCostStatus(${idx}, this.value); updateSelectStyle(this);" class="text-[10px] font-bold rounded px-1.5 py-0.5 border ${getStatusBadgeClass(day.lodging.costStatus)}">
+                      <option value="geplant" ${day.lodging.costStatus === 'geplant' ? 'selected' : ''}>Geplant</option>
+                      <option value="gebucht" ${day.lodging.costStatus === 'gebucht' ? 'selected' : ''}>Gebucht (Offen)</option>
+                      <option value="bezahlt" ${day.lodging.costStatus === 'bezahlt' ? 'selected' : ''}>Bezahlt</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  <div class="sm:col-span-6">
+                    <input 
+                      type="text" 
+                      value="${escapeHtml(day.lodging.name || '')}" 
+                      placeholder="Hotel / Guesthouse Name" 
+                      oninput="updateDayField(${idx}, 'lodging.name', this.value)" 
+                      class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"
+                    >
+                  </div>
+                  <div class="sm:col-span-3 flex items-center gap-1">
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      value="${escapeHtml(day.lodging.price || '')}" 
+                      placeholder="Preis" 
+                      oninput="updateDayField(${idx}, 'lodging.price', this.value)" 
+                      class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-900 dark:text-white font-mono text-right focus:border-indigo-500"
+                    >
+                    <select onchange="updateDayField(${idx}, 'lodging.currency', this.value); refreshDayHeaderCost(${idx});" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-1.5 py-1.5 text-xs font-mono">
+                      ${SUPPORTED_CURRENCIES.map(c => `<option value="${c}" ${(day.lodging.currency \vert{}\vert{} 'EUR') === c ? 'selected' : ''}>${c}</option>`).join('')}
+                    </select>
+                  </div>
+                  <div class="sm:col-span-3 flex items-center gap-1">
+                    <input 
+                      type="text" 
+                      value="${escapeHtml(day.lodging.link || '')}" 
+                      placeholder="Buchungslink" 
+                      oninput="handleLodgingLinkChange(${idx}, this.value)" 
+                      class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500 truncate"
+                    >
+                    <a id="lodging-link-btn-${idx}" href="${formatSafeUrl(day.lodging.link)}" target="_blank" class="${formatSafeUrl(day.lodging.link) ? '' : 'hidden'} p-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 dark:hover:bg-indigo-900 text-indigo-600 dark:text-indigo-400 text-xs shrink-0 no-print" title="Link aufrufen">
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Zeile 2: Transporte -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-route text-sky-500"></i> Transfers & Transporte
+                </span>
+                <button onclick="addTransportRow(${idx})" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline no-print flex items-center gap-1">
+                  <i class="fa-solid fa-plus"></i> Transport hinzufügen
+                </button>
+              </div>
+
+              <div class="space-y-2">
+                ${(day.transports || []).map((t, trIdx) => `
+                  <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-200 dark:border-slate-700/70">
+                    <div class="sm:col-span-4">
+                      <input 
+                        type="text" 
+                        value="${escapeHtml(t.title || '')}" 
+                        placeholder="z. B. Flug HAN -> LPQ, Minivan, Zug" 
+                        oninput="updateTransportItem(${idx},${trIdx}, 'title', this.value)" 
+                        class="w-full bg-transparent text-xs text-slate-900 dark:text-white focus:outline-none"
+                      >
+                    </div>
+                    <div class="sm:col-span-3 flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value="${escapeHtml(t.cost || '')}" 
+                        placeholder="Kosten" 
+                        oninput="updateTransportItem(${idx},${trIdx}, 'cost', this.value)" 
+                        class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white font-mono text-right"
+                      >
+                      <select onchange="updateTransportItem(${idx}, ${trIdx}, 'currency', this.value); refreshDayHeaderCost(${idx});" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-1 py-1 text-xs font-mono">
+                        ${SUPPORTED_CURRENCIES.map(c => `<option value="${c}" ${(t.currency || 'EUR') === c ? 'selected' : ''}>${c}</option>`).join('')}
+                      </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <select onchange="updateTransportItem(${idx}, ${trIdx}, 'costStatus', this.value); updateSelectStyle(this); refreshDayHeaderCost(${idx});" class="w-full text-[11px] font-bold rounded px-1.5 py-1 border ${getStatusBadgeClass(t.costStatus)}">
+                        <option value="geplant" ${t.costStatus === 'geplant' ? 'selected' : ''}>Geplant</option>
+                        <option value="gebucht" ${t.costStatus === 'gebucht' ? 'selected' : ''}>Gebucht</option>
+                        <option value="bezahlt" ${t.costStatus === 'bezahlt' ? 'selected' : ''}>Bezahlt</option>
+                      </select>
+                    </div>
+                    <div class="sm:col-span-3 flex items-center gap-1">
+                      <input 
+                        type="text" 
+                        value="${escapeHtml(t.link || '')}" 
+                        placeholder="Ticket / Buchungslink" 
+                        oninput="handleTransportLinkChange(${idx},${trIdx}, this.value)" 
+                        class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white truncate"
+                      >
+                      <a id="tr-link-btn-${idx}-${trIdx}" href="${formatSafeUrl(t.link)}" target="_blank" class="${formatSafeUrl(t.link) ? '' : 'hidden'} p-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs shrink-0 no-print" title="Ticket öffnen">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                      </a>
+                      <button onclick="removeTransportItem(${idx},${trIdx})" class="p-1 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs shrink-0 no-print" title="Entfernen">&times;</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Zeile 3: Aktivitäten & Programm -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700/60">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <i class="fa-solid fa-camera text-emerald-500"></i> Geplante Aktivitäten & Sightseeing
+                </span>
+                <button onclick="addActivityRow(${idx})" class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline no-print flex items-center gap-1">
+                  <i class="fa-solid fa-plus"></i> Aktivität hinzufügen
+                </button>
+              </div>
+
+              <div class="space-y-2">
+                ${(day.activities || []).map((a, actIdx) => `
+                  <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center bg-slate-50 dark:bg-slate-900/60 p-2 rounded-xl border border-slate-200 dark:border-slate-700/70">
+                    <div class="sm:col-span-4 flex items-center gap-2">
+                      <input type="checkbox" ${a.done ? 'checked' : ''} onchange="updateActivityItem(${idx},${actIdx}, 'done', this.checked)" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 shrink-0">
+                      <input 
+                        type="text" 
+                        value="${escapeHtml(a.title || '')}" 
+                        placeholder="z. B. Kuang Si Wasserfälle, Höhlentour" 
+                        oninput="updateActivityItem(${idx},${actIdx}, 'title', this.value)" 
+                        class="w-full bg-transparent text-xs text-slate-900 dark:text-white ${a.done ? 'line-through text-slate-400' : ''} focus:outline-none"
+                      >
+                    </div>
+                    <div class="sm:col-span-3 flex items-center gap-1">
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        value="${escapeHtml(a.cost || '')}" 
+                        placeholder="Eintritt/Kosten" 
+                        oninput="updateActivityItem(${idx},${actIdx}, 'cost', this.value)" 
+                        class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white font-mono text-right"
+                      >
+                      <select onchange="updateActivityItem(${idx}, ${actIdx}, 'currency', this.value); refreshDayHeaderCost(${idx});" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-1 py-1 text-xs font-mono">
+                        ${SUPPORTED_CURRENCIES.map(c => `<option value="${c}" ${(a.currency || 'EUR') === c ? 'selected' : ''}>${c}</option>`).join('')}
+                      </select>
+                    </div>
+                    <div class="sm:col-span-2">
+                      <select onchange="updateActivityItem(${idx}, ${actIdx}, 'costStatus', this.value); updateSelectStyle(this); refreshDayHeaderCost(${idx});" class="w-full text-[11px] font-bold rounded px-1.5 py-1 border ${getStatusBadgeClass(a.costStatus)}">
+                        <option value="geplant" ${a.costStatus === 'geplant' ? 'selected' : ''}>Geplant</option>
+                        <option value="gebucht" ${a.costStatus === 'gebucht' ? 'selected' : ''}>Gebucht</option>
+                        <option value="bezahlt" ${a.costStatus === 'bezahlt' ? 'selected' : ''}>Bezahlt</option>
+                      </select>
+                    </div>
+                    <div class="sm:col-span-3 flex items-center gap-1">
+                      <input 
+                        type="text" 
+                        value="${escapeHtml(a.link || '')}" 
+                        placeholder="Info / Ticket Link" 
+                        oninput="handleActivityLinkChange(${idx},${actIdx}, this.value)" 
+                        class="w-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white truncate"
+                      >
+                      <a id="act-link-btn-${idx}-${actIdx}" href="${formatSafeUrl(a.link)}" target="_blank" class="${formatSafeUrl(a.link) ? '' : 'hidden'} p-1.5 rounded-lg bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 text-xs shrink-0 no-print" title="Link aufrufen">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                      </a>
+                      <button onclick="removeActivityItem(${idx},${actIdx})" class="p-1 rounded-lg text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/40 text-xs shrink-0 no-print" title="Entfernen">&times;</button>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Zeile 4: Tagesnotizen & Screenshots -->
+            <div class="pt-2 border-t border-slate-200 dark:border-slate-700/60 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                  <i class="fa-solid fa-align-left text-indigo-500 mr-1"></i> Tagesnotizen / Tipps
+                </label>
+                <textarea 
+                  rows="2" 
+                  placeholder="Notizen für diesen Tag (Roller-Verleih, Restaurant-Tipps, Wegbeschreibungen)..." 
+                  oninput="autoResizeTextarea(this); updateDayField(${idx}, 'notes', this.value);" 
+                  class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
+                >${escapeHtml(day.notes || '')}</textarea>
+              </div>
+
+              <div>
+                <div class="flex items-center justify-between mb-1">
+                  <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <i class="fa-solid fa-images text-indigo-500 mr-1"></i> Tickets & Screenshots
+                  </label>
+                  <label class="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer no-print flex items-center gap-1">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Bild hochladen
+                    <input type="file" accept="image/*" class="hidden" onchange="handleImageFileSelect(event, ${idx})">
+                  </label>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 min-h-[46px]">
+                  ${(day.images || []).map((img, imgIdx) => `
+                    <div class="relative group w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-200 dark:bg-slate-800 shrink-0 shadow-sm cursor-pointer" onclick="openLightbox('${img}')">
+                      <img src="${img}" class="w-full h-full object-cover">
+                      <button onclick="event.stopPropagation(); deleteDayImage(${idx},${imgIdx})" class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition no-print">&times;</button>
+                    </div>
+                  `).join('')}
+                  <span class="text-[10px] text-slate-400 italic">Strg + V drücken oder Bilddatei auswählen</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        `;
+
+        container.appendChild(card);
+      });
+
+      autoResizeAllTextareas();
     }
 
     // --- STATISTIKEN & GESAMTSUMMEN ---
@@ -1263,7 +1970,7 @@
         .replace(/'/g, "&#039;");
     }
 
-    // --- DATEI-SPEICHERN & ÖFFNEN (ROBUST AUCH FÜR ANDROID/TABLETS) ---
+    // --- DATEI-SPEICHERN & ÖFFNEN (DESKTOP & ANDROID/TABLETS) ---
     async function saveToFile(forceSaveAs) {
       createRollingBackup();
       saveToStorage();
@@ -1291,7 +1998,7 @@
         }
       }
 
-      // Android/Fallback: Direkter Download-Trigger
+      // Fallback: Direkter Download-Trigger
       const blob = new Blob([jsonContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -1305,7 +2012,6 @@
     }
 
     async function openFile() {
-      // Desktop: File System Access API (falls unterstützt)
       if ('showOpenFilePicker' in window) {
         try {
           const [handle] = await window.showOpenFilePicker({
@@ -1322,10 +2028,9 @@
         }
       }
 
-      // Android & Browser-Standard: Fallback auf natives Input-Element
       const input = document.getElementById('importInput');
       if (input) {
-        input.value = ''; // Wert zurücksetzen, damit dieselbe Datei mehrfach gewählt werden kann
+        input.value = '';
         input.click();
       }
     }
