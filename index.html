@@ -321,7 +321,7 @@
     </div>
   </div>
 
-  <!-- NEU: MODAL ZUM TAGE LÖSCHEN (GLEICHE VORGEHENSWEISE) -->
+  <!-- MODAL: TAGE LÖSCHEN -->
   <div id="deleteDayModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -335,7 +335,6 @@
         Wie möchtest du diesen Tag entfernen?
       </p>
 
-      <!-- Warnbox für eigene & nachfolgende Buchungen -->
       <div id="deleteBookingsWarningBox" class="hidden p-3 rounded-xl bg-rose-50 dark:bg-rose-950/50 border border-rose-300 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200 space-y-1.5">
         <div class="font-bold flex items-center gap-1.5">
           <i class="fa-solid fa-triangle-exclamation text-rose-600 dark:text-rose-400"></i> Achtung: Feste Buchungen betroffen!
@@ -344,7 +343,6 @@
       </div>
 
       <div class="space-y-2.5">
-        <!-- MODUS A (LÖSCHEN): In Lücke auffüllen -->
         <button onclick="executeDeleteDay('fillGap')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/30 transition group">
           <div class="flex items-center justify-between">
             <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -357,7 +355,6 @@
           </p>
         </button>
 
-        <!-- MODUS B (LÖSCHEN): Reise verkürzen -->
         <button onclick="executeDeleteDay('shorten')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-rose-500 hover:bg-rose-50/50 dark:hover:bg-rose-950/30 transition group">
           <div class="flex items-center justify-between">
             <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
@@ -964,7 +961,7 @@
       renderDays();
     }
 
-    // --- NEU: TAGE LÖSCHEN MODAL-DIALOG (GLEICHE VORGEHENSWEISE) ---
+    // --- TAGE LÖSCHEN MODAL-DIALOG ---
     function openDeleteDayModal(dayIndex) {
       pendingDeleteIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
@@ -975,11 +972,9 @@
       const listEl = document.getElementById('deleteBookingsList');
 
       const issues = [];
-      // Eigene Buchungen des Tages
       if (hasFixedBookings(curDay)) {
         issues.push(`⚠️ DIESER TAG ENTHÄLT: ${getFixedBookingSummary(curDay)}`);
       }
-      // Nachfolgende Buchungen
       for (let i = dayIndex + 1; i < tripData.days.length; i++) {
         if (hasFixedBookings(tripData.days[i])) {
           issues.push(`• Tag ${i + 1} (${tripData.days[i].date}): ${getFixedBookingSummary(tripData.days[i])}`);
@@ -1009,10 +1004,8 @@
       if (!curDay) return;
 
       if (mode === 'fillGap') {
-        // MODUS A: Tag als Lücke entfernen (Reisedauer bleibt exakt gleich, Folgebuchungen unberührt)
         tripData.days.splice(dayIndex, 1);
 
-        // Am Ende einen leeren Puffer-Tag anhängen, damit der Zeitraum gleich bleibt
         const lastDay = tripData.days[tripData.days.length - 1];
         let newLastDate = new Date();
         if (lastDay) {
@@ -1034,7 +1027,6 @@
         };
         tripData.days.push(appendDay);
 
-        // Kalenderdaten ab dem gelöschten Tag neu durchnummerieren
         if (dayIndex > 0) {
           let cursor = new Date(tripData.days[dayIndex - 1].date + 'T12:00:00');
           for (let i = dayIndex; i < tripData.days.length; i++) {
@@ -1045,7 +1037,6 @@
 
         showToast("Tag entfernt. Puffer-Tag am Ende ergänzt (Reisedauer unverändert)");
       } else {
-        // MODUS B: Reise um 1 Tag verkürzen (Alles rückt um 1 Tag vor)
         tripData.days.splice(dayIndex, 1);
 
         for (let i = dayIndex; i < tripData.days.length; i++) {
