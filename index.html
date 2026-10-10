@@ -2009,7 +2009,6 @@
       document.body.appendChild(a);
       a.click();
 
-      // Wichtig: URL erst nach 60 Sekunden widerrufen, damit App-Download nicht abbricht
       setTimeout(() => {
         a.remove();
         URL.revokeObjectURL(url);
@@ -2018,9 +2017,28 @@
       showToast("Download gestartet");
     }
 
-    function openFile() {
-      // WICHTIG FÜR APPS: Sofort synchron den Klick auf den File-Input auslösen,
-      // damit mobile PWA-Container den Dateidialog nicht blockieren!
+    async function openFile() {
+      // 1. Moderne File System Access API für Windows 11 PWA / Chromium Desktop
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+      if (!isMobile && 'showOpenFilePicker' in window) {
+        try {
+          const [handle] = await window.showOpenFilePicker({
+            types: [{
+              description: 'JSON Reiseplan-Datei',
+              accept: { 'application/json': ['.json', '.jason'] }
+            }],
+            multiple: false
+          });
+          const file = await handle.getFile();
+          const text = await file.text();
+          processLoadedJSON(text, file.name, handle);
+          return;
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      // 2. Fallback für mobile Browser / PWA ohne File Picker
       const input = document.getElementById('importInput');
       if (input) {
         input.value = '';
