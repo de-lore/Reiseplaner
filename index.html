@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.2</title>
+  <title>Reiseplaner Pro v1.3</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -73,7 +73,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.2</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.3</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -383,6 +383,45 @@
         console.warn("IndexedDB Set Fehler:", e);
         return false;
       }
+    }
+
+    // --- FARB- & DESIGN-HIERARCHIE (v1.3) ---
+    function getDayVisualClasses(day, isToday) {
+      const isBooked = isDayBooked(day);
+      const hasLocation = (day.location || '').trim() !== '';
+
+      if (isToday) {
+        return {
+          cardClass: 'bg-white dark:bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/80 today-highlight',
+          headerClass: 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40',
+          btnClass: isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (hasLocation ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white')
+        };
+      }
+
+      // 1. Gebuchte Tage: Intensivere grüne Farbe
+      if (isBooked) {
+        return {
+          cardClass: 'bg-emerald-100/70 border-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-500/50',
+          headerClass: 'border-emerald-300 bg-emerald-200/80 dark:border-emerald-500/40 dark:bg-emerald-900/60',
+          btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white'
+        };
+      }
+
+      // 2. Geplante Tage: Intensivere gelbe / amber Farbe
+      if (hasLocation) {
+        return {
+          cardClass: 'bg-amber-100/70 border-amber-400 dark:bg-amber-950/40 dark:border-amber-500/50',
+          headerClass: 'border-amber-300 bg-amber-200/80 dark:border-amber-500/40 dark:bg-amber-900/60',
+          btnClass: 'bg-amber-600 hover:bg-amber-500 text-white'
+        };
+      }
+
+      // 3. Nicht geplante & nicht gebuchte Tage (noch kein Ort): Leicht rote Farbe
+      return {
+        cardClass: 'bg-rose-50/80 border-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50',
+        headerClass: 'border-rose-200 bg-rose-100/70 dark:border-rose-900/40 dark:bg-rose-950/50',
+        btnClass: 'bg-rose-600 hover:bg-rose-500 text-white'
+      };
     }
 
     // --- INITIALISIERUNG ---
@@ -766,7 +805,6 @@
         });
       });
 
-      // Excel-freundliches deutsches Format mit Semicolon und UTF-8 BOM
       const csvContent = "\uFEFF" + rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(";")).join("\r\n");
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -794,7 +832,6 @@
       }
       card.classList.remove('hidden');
 
-      // Gruppiere fortlaufende Tage mit demselben Ort
       const stops = [];
       let currentStop = null;
 
@@ -824,12 +861,12 @@
 
         const isLast = i === stops.length - 1;
         const badgeColor = stop.isDefined 
-          ? 'bg-indigo-50 border-indigo-200 text-indigo-900 dark:bg-indigo-950/70 dark:border-indigo-800 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-900' 
-          : 'bg-slate-100 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-400 hover:bg-slate-200';
+          ? 'bg-amber-100/80 border-amber-300 text-amber-900 dark:bg-amber-950/70 dark:border-amber-800 dark:text-amber-200 hover:bg-amber-200' 
+          : 'bg-rose-100/70 border-rose-300 text-rose-800 dark:bg-rose-950/60 dark:border-rose-900/60 dark:text-rose-300 hover:bg-rose-200';
 
         html += `
           <button onclick="scrollToDay(${stop.targetIndex})" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shrink-0 transition text-xs font-semibold shadow-xs ${badgeColor}">
-            <span class="px-1.5 py-0.2 rounded bg-indigo-600/10 dark:bg-indigo-400/20 text-indigo-700 dark:text-indigo-300 text-[10px] uppercase font-bold">${daySpan}</span>
+            <span class="px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 text-[10px] uppercase font-bold">${daySpan}</span>
             <span class="truncate max-w-[130px]">${escapeHtml(stop.location)}</span>
           </button>
         `;
@@ -1334,7 +1371,6 @@
         if (day.isCollapsed === undefined) day.isCollapsed = false;
         if (!Array.isArray(day.images)) day.images = [];
 
-        // Bereinigung & Migration von Bild-Objekten
         day.images = day.images.map(img => {
           if (typeof img === 'string') {
             const isPdf = img.startsWith('data:application/pdf');
@@ -1404,10 +1440,8 @@
     }
 
     async function loadFromStorage() {
-      // 1. Aus IndexedDB laden
       let saved = await idbGet('trip_data');
       
-      // 2. Fallback / automatische Migration aus altem localStorage
       if (!saved) {
         const legacy = localStorage.getItem('reiseplaner_pro_pwa_data');
         if (legacy) {
@@ -1663,6 +1697,8 @@
 
     function createDayElement(day, index, isToday) {
       const isBooked = isDayBooked(day);
+      const hasLocation = (day.location || '').trim() !== '';
+      const visual = getDayVisualClasses(day, isToday);
       const { dayName, dayFormatted } = formatISODate(day.date);
       const dayCosts = getDayCostBreakdown(day);
       const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
@@ -1671,23 +1707,12 @@
 
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
-      
-      let borderBgClass = isBooked 
-        ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30' 
-        : 'bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-500/30';
-      if (isToday) borderBgClass = 'bg-white dark:bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/80 today-highlight';
-
-      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + borderBgClass;
+      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
 
       let html = '';
 
       // --- HEADER ---
-      let headerBgClass = isBooked 
-        ? 'border-emerald-200 bg-emerald-100/60 dark:border-emerald-500/20 dark:bg-emerald-950/30' 
-        : 'border-amber-200 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-950/30';
-      if (isToday) headerBgClass = 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40';
-
-      html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + headerBgClass + '">';
+      html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass + '">';
       
       html += '<div class="flex items-center gap-3">' +
         '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
@@ -1701,7 +1726,6 @@
       '</div>';
 
       // Tagesort & Zeile vor Tagesort für Transport im eingeklappten Zustand
-      const hasLoc = (day.location || '').trim() !== '';
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
       
       // TRANSPORTZEILE (NUR IM EINGEKLAPPTEN ZUSTAND SICHTBAR)
@@ -1711,15 +1735,15 @@
 
       // TAGESORT INPUT-FELD
       html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
-          (hasLoc ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
+          (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
-            'class="mr-2.5 shrink-0 transition no-print ' + (hasLoc ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
-            'title="' + (hasLoc ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
+            'class="mr-2.5 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
+            'title="' + (hasLocation ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
             '<i class="fa-solid fa-map-location-dot text-lg pointer-events-none"></i>' +
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
             'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
-          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLoc ? '' : 'hidden') + '">📍 Festgelegt</span>' +
+          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLocation ? '' : 'hidden') + '">📍 Festgelegt</span>' +
         '</div>' +
       '</div>';
 
@@ -1739,8 +1763,7 @@
           '<i class="fa-solid fa-wallet text-violet-500"></i>' +
           '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
         '</div>' +
-        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
-          (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white') + '">' +
+        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
           '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
         '</button>' +
         '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
@@ -1851,7 +1874,6 @@
       html += '</div>';
       card.innerHTML = html;
       
-      // Initiale Anhänge rendern
       setTimeout(() => updateImagesDOM(index), 0);
 
       return card;
@@ -2009,7 +2031,6 @@
         const target = e.target;
         const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
 
-        // Checkbox: Aktivität erledigt
         if (target.getAttribute('data-action') === 'toggle-activity-done') {
           const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
           if (tripData.days[dayIdx] && tripData.days[dayIdx].activities[actIdx]) {
@@ -2024,7 +2045,6 @@
           return;
         }
 
-        // Lodging Felder
         const field = target.getAttribute('data-field');
         if (field) {
           if (field.startsWith('lodging.')) {
@@ -2042,7 +2062,6 @@
           return;
         }
 
-        // Transport Felder
         const trField = target.getAttribute('data-tr-field');
         if (trField) {
           const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
@@ -2057,7 +2076,6 @@
           return;
         }
 
-        // Activity Felder
         const actField = target.getAttribute('data-act-field');
         if (actField) {
           const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
@@ -2073,7 +2091,7 @@
         }
       });
 
-      // Input Events (Tippen, ohne Re-Render)
+      // Input Events
       container.addEventListener('input', (e) => {
         const target = e.target;
         const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
@@ -2108,6 +2126,8 @@
                 }
               }
             }
+            // Ändert Ort -> Aktualisiere Kartenfarbe (Rot <-> Gelb)
+            updateDayCardVisualStatus(dayIdx);
             saveToStorage();
             renderRouteTimeline();
           } else if (field === 'notes') {
@@ -2223,21 +2243,20 @@
 
     function updateDayCardVisualStatus(dayIndex) {
       const day = tripData.days[dayIndex];
-      const isBooked = isDayBooked(day);
+      if (!day) return;
       const isToday = day.date === getTodayIso();
+      const visual = getDayVisualClasses(day, isToday);
 
       const card = document.getElementById('day-card-' + dayIndex);
       const header = document.getElementById('day-header-' + dayIndex);
       const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
 
-      if (card && !isToday) {
-        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + 
-          (isBooked ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30' : 'bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-500/30');
+      if (card) {
+        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
       }
-      if (header && !isToday) {
-        header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + 
-          (isBooked ? 'border-emerald-200 bg-emerald-100/60 dark:border-emerald-500/20 dark:bg-emerald-950/30' : 'border-amber-200 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-950/30');
+      if (header) {
+        header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass;
       }
 
       let statusLabel = 'Übernachtung offen';
@@ -2251,8 +2270,7 @@
       }
 
       if (bookingBtn) {
-        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
-          (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white');
+        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass;
         bookingBtn.innerHTML = '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>';
       }
 
