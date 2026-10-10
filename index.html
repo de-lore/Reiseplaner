@@ -351,7 +351,7 @@
             <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
           </div>
           <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Entfernt diesen Tag, <b>ohne</b> nachfolgende feste Buchungen kalendarisch zu verschieben. Falls spätere Tage gebucht sind, bleibt der Tag als leerer Puffertag erhalten, sodass alle Buchungen auf ihrem exakten Datum bleiben.
+            Entfernt diesen Tag aus dem Ablauf. Flexible Tage rücken auf; vor der nächsten festen Buchung (bzw. am Ende) wird ein freier Puffer-Tag eingefügt, sodass alle Buchungen und das Enddatum unverändert bleiben.
           </p>
         </button>
 
@@ -1090,7 +1090,6 @@
       newDay.location = curDay.location || '';
 
       if (mode === 'gap') {
-        // Finde den nächsten freien Puffertag NACH dem Einfügepunkt
         let removeIndex = -1;
         for (let i = tripData.days.length - 1; i > dayIndex; i--) {
           if (!hasFixedBookings(tripData.days[i]) && !(tripData.days[i].location || '').trim()) {
@@ -1114,7 +1113,6 @@
         tripData.days.splice(removeIndex, 1);
         tripData.days.splice(dayIndex + 1, 0, newDay);
 
-        // Kalenderdaten ab Startdatum synchronisieren (Reisezeitraum bleibt gleich)
         if (tripData.startDate) {
           let cursor = new Date(tripData.startDate + 'T12:00:00');
           for (let i = 0; i < tripData.days.length; i++) {
@@ -1125,7 +1123,6 @@
 
         showToast("Tag in Lücke eingefügt (Reisezeitraum unverändert)");
       } else {
-        // MODUS B: Reise verlängern (+1 Tag)
         tripData.days.splice(dayIndex + 1, 0, newDay);
 
         if (tripData.startDate) {
@@ -1152,7 +1149,7 @@
       updateStats();
     }
 
-    // --- TAGE LÖSCHEN MODAL-DIALOG (BUCHUNGSSICHERE IMPLEMENTIERUNG) ---
+    // --- TAGE LÖSCHEN MODAL-DIALOG (PRÄZISE PUFFER-LOGIK FÜR FESTE BUCHUNGEN) ---
     function openDeleteDayModal(dayIndex) {
       pendingDeleteIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
@@ -1196,86 +1193,67 @@
 
       if (mode === 'fillGap') {
         // =========================================================================
-        // MODUS A: Feste Buchungen bleiben strikt auf ihrem Kalenderdatum!
+        // MODUS A: Tag entfernen, aber Folgebuchungen kalendarisch unberührt lassen!
         // =========================================================================
 
-        // 1. Prüfen, ob nach dem gelöschten Tag feste Buchungen existieren
-        let hasSubsequentFixed = false;
+        // 1. Nächste feste Folgebuchung NACH dem gelöschten Tag lokalisieren
+        let nextFixedOriginalIndex = -1;
         for (let i = dayIndex + 1; i < tripData.days.length; i++) {
           if (hasFixedBookings(tripData.days[i])) {
-            hasSubsequentFixed = true;
+            nextFixedOriginalIndex = i;
             break;
           }
         }
 
-        if (hasSubsequentFixed) {
-          // Es gibt spätere feste Buchungen:
-          // Der Tag darf das Datum der Folgetage NICHT verändern.
-          // Er wird an Ort und Stelle zu einem leeren Puffertag zurückgesetzt.
-          tripData.days[dayIndex] = {
-            date: curDay.date, // Exaktes Kalenderdatum bleibt unverändert!
-            location: '',
-            isCollapsed: false,
-            lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-            dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
-            transports: [],
-            activities: [],
-            images: [],
-            notes: 'Freier Tag / Puffer'
-          };
+        // 2. Den Tag tatsächlich aus der Liste entfernen (Route rückt auf)
+        tripData.days.splice(dayIndex, 1);
 
-          showToast("Tag geleert & als Puffer behalten (Buchungen unverändert)");
+        // 3. Neuen Puffer-Tag anlegen
+        const newBufferDay = createEmptyDayObject('');
+        newBufferDay.notes = 'Freier Puffer-Tag';
+
+        if (nextFixedOriginalIndex !== -1) {
+          // Puffer-Tag exakt VOR die feste Buchung einschieben (Index verschiebt sich um -1 durch Löschung)
+          const targetInsertIndex = nextFixedOriginalIndex - 1;
+          tripData.days.splice(targetInsertIndex, 0, newBufferDay);
         } else {
-          // Keine späteren festen Buchungen vorhanden:
-          // Tag kann gefahrlos aus der Kette entfernt werden.
-          // Am Ende wird ein neuer Tag angehängt, damit die Gesamtreisedauer gleich bleibt.
-          tripData.days.splice(dayIndex, 1);
-
-          const lastDay = tripData.days[tripData.days.length - 1];
-          let nextDateStr = '';
-          if (lastDay && lastDay.date) {
-            const ld = new Date(lastDay.date + 'T12:00:00');
-            ld.setDate(ld.getDate() + 1);
-            nextDateStr = ld.toISOString().split('T')[0];
-          }
-
-          tripData.days.push(createEmptyDayObject(nextDateStr));
-
-          // Daten nur für die ungebuchten Tage ab dem Löschpunkt bis zum Ende neu verteilen
-          if (tripData.days[dayIndex]) {
-            let cursor = new Date((dayIndex > 0 ? tripData.days[dayIndex - 1].date : tripData.startDate) + 'T12:00:00');
-            if (dayIndex > 0) cursor.setDate(cursor.getDate() + 1);
-            for (let i = dayIndex; i < tripData.days.length; i++) {
-              tripData.days[i].date = cursor.toISOString().split('T')[0];
-              cursor.setDate(cursor.getDate() + 1);
-            }
-          }
-
-          showToast("Tag entfernt & Puffer am Reiseende ergänzt");
+          // Keine festen Buchungen mehr im Restverlauf: Puffer am Reiseende anhängen
+          tripData.days.push(newBufferDay);
         }
+
+        // 4. Kalenderdaten ab startDate durchgehend zuweisen (Enddatum & Buchungen bleiben 100% stabil)
+        if (tripData.startDate) {
+          let cursor = new Date(tripData.startDate + 'T12:00:00');
+          for (let i = 0; i < tripData.days.length; i++) {
+            tripData.days[i].date = cursor.toISOString().split('T')[0];
+            cursor.setDate(cursor.getDate() + 1);
+          }
+        }
+
+        showToast("Tag gelöscht & Puffer eingefügt (Buchungen & Reisedauer fixiert)");
 
       } else {
         // =========================================================================
-        // MODUS B: Reise bewusst um 1 Tag verkürzen (alles rückt -1 Tag auf)
+        // MODUS B: Reise bewusst um 1 Tag verkürzen (-1 Tag)
         // =========================================================================
         tripData.days.splice(dayIndex, 1);
 
         if (dayIndex === 0) {
-          // Erster Tag gelöscht -> Startdatum rückt vor
+          // Tag 1 gelöscht -> Startdatum rückt vor
           if (tripData.days.length > 0) {
             tripData.startDate = tripData.days[0].date;
             const startInput = document.getElementById('startDate');
             if (startInput) startInput.value = tripData.startDate;
           }
         } else {
-          // Alle nachfolgenden Tage rücken kalendarisch um 1 Tag vor
+          // Folgetage kalendarisch um 1 Tag vorziehen
           for (let i = dayIndex; i < tripData.days.length; i++) {
             const nextD = new Date(tripData.days[i].date + 'T12:00:00');
             nextD.setDate(nextD.getDate() - 1);
             tripData.days[i].date = nextD.toISOString().split('T')[0];
           }
 
-          // Reise-Enddatum um 1 Tag reduzieren
+          // Reise-Enddatum um 1 Tag verkürzen
           if (tripData.endDate) {
             const endD = new Date(tripData.endDate + 'T12:00:00');
             endD.setDate(endD.getDate() - 1);
