@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.3</title>
+  <title>Reiseplaner Pro v1.4</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -284,6 +284,49 @@
     <div id="daysContainer" class="space-y-4"></div>
   </main>
 
+  <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
+  <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div>
+          <h3 id="dayActionModalTitle" class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"></h3>
+          <p id="dayActionModalDesc" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeDayActionModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div id="dayActionModalWarnings" class="hidden"></div>
+
+      <div class="space-y-3">
+        <!-- Modus A Card -->
+        <div class="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
+          <div class="flex items-center justify-between">
+            <span id="dayActionModalTitleA" class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"></span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">Schutz aktiv</span>
+          </div>
+          <p id="dayActionModalDescA" class="text-xs text-slate-600 dark:text-slate-300"></p>
+          <button id="dayActionModalBtnA" onclick="executeDayAction('A')"></button>
+        </div>
+
+        <!-- Modus B Card -->
+        <div class="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
+          <div class="flex items-center justify-between">
+            <span id="dayActionModalTitleB" class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"></span>
+            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Shift</span>
+          </div>
+          <p id="dayActionModalDescB" class="text-xs text-slate-500 dark:text-slate-400"></p>
+          <button id="dayActionModalBtnB" onclick="executeDayAction('B')"></button>
+        </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <button onclick="closeDayActionModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX) -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeLightbox()">
     <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
@@ -335,6 +378,7 @@
     let currentFilter = 'all';
     let searchQuery = '';
     let saveDebounceTimer = null;
+    let pendingModalAction = null; // { type: 'delete' | 'insert', dayIndex: number }
 
     const THEME_KEY = 'reiseplaner_pro_theme';
     const DB_NAME = 'ReiseplanerPro_DB_v1';
@@ -401,8 +445,8 @@
       // 1. Gebuchte Tage: Intensivere grüne Farbe
       if (isBooked) {
         return {
-          cardClass: 'bg-emerald-100/70 border-emerald-400 dark:bg-emerald-950/40 dark:border-emerald-500/50',
-          headerClass: 'border-emerald-300 bg-emerald-200/80 dark:border-emerald-500/40 dark:bg-emerald-900/60',
+          cardClass: 'bg-emerald-100/80 border-emerald-500 dark:bg-emerald-950/50 dark:border-emerald-500/70',
+          headerClass: 'border-emerald-300 bg-emerald-200/90 dark:border-emerald-500/50 dark:bg-emerald-900/70',
           btnClass: 'bg-emerald-600 hover:bg-emerald-500 text-white'
         };
       }
@@ -410,16 +454,16 @@
       // 2. Geplante Tage: Intensivere gelbe / amber Farbe
       if (hasLocation) {
         return {
-          cardClass: 'bg-amber-100/70 border-amber-400 dark:bg-amber-950/40 dark:border-amber-500/50',
-          headerClass: 'border-amber-300 bg-amber-200/80 dark:border-amber-500/40 dark:bg-amber-900/60',
+          cardClass: 'bg-amber-100/80 border-amber-500 dark:bg-amber-950/50 dark:border-amber-500/70',
+          headerClass: 'border-amber-300 bg-amber-200/90 dark:border-amber-500/50 dark:bg-amber-900/70',
           btnClass: 'bg-amber-600 hover:bg-amber-500 text-white'
         };
       }
 
       // 3. Nicht geplante & nicht gebuchte Tage (noch kein Ort): Leicht rote Farbe
       return {
-        cardClass: 'bg-rose-50/80 border-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50',
-        headerClass: 'border-rose-200 bg-rose-100/70 dark:border-rose-900/40 dark:bg-rose-950/50',
+        cardClass: 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50',
+        headerClass: 'border-rose-200 bg-rose-100/80 dark:border-rose-900/40 dark:bg-rose-950/50',
         btnClass: 'bg-rose-600 hover:bg-rose-500 text-white'
       };
     }
@@ -753,7 +797,6 @@
         const dayNr = idx + 1;
         const loc = d.location || '';
         
-        // Unterkunft
         if (d.lodging && (d.lodging.name || d.lodging.price)) {
           const eur = convertToEur(d.lodging.price, d.lodging.currency);
           rows.push([
@@ -770,7 +813,6 @@
           ]);
         }
 
-        // Transporte
         (d.transports || []).forEach(tr => {
           const eur = convertToEur(tr.cost, tr.currency);
           rows.push([
@@ -787,7 +829,6 @@
           ]);
         });
 
-        // Aktivitäten
         (d.activities || []).forEach(act => {
           const eur = convertToEur(act.cost, act.currency);
           rows.push([
@@ -893,6 +934,208 @@
       }, 50);
     }
 
+    // --- MODAL & MODUS A / MODUS B STEUERUNG (TAGE EINFÜGEN & LÖSCHEN) ---
+    function openDayActionModal(type, dayIndex) {
+      pendingModalAction = { type, dayIndex };
+      const modal = document.getElementById('dayActionModal');
+      const titleEl = document.getElementById('dayActionModalTitle');
+      const descEl = document.getElementById('dayActionModalDesc');
+      const warningsEl = document.getElementById('dayActionModalWarnings');
+      const btnA = document.getElementById('dayActionModalBtnA');
+      const btnB = document.getElementById('dayActionModalBtnB');
+      const titleA = document.getElementById('dayActionModalTitleA');
+      const descA = document.getElementById('dayActionModalDescA');
+      const titleB = document.getElementById('dayActionModalTitleB');
+      const descB = document.getElementById('dayActionModalDescB');
+
+      if (!modal || !tripData.days[dayIndex]) return;
+
+      const day = tripData.days[dayIndex];
+      const dayNum = dayIndex + 1;
+      const { dayName, dayFormatted } = formatISODate(day.date);
+
+      const laterDays = tripData.days.slice(dayIndex + 1);
+      const bookedLater = laterDays.filter(d => isDayBooked(d) || (d.transports && d.transports.some(t => t.costStatus === 'gebucht' || t.costStatus === 'bezahlt' || t.costStatus === 'reserviert')));
+      const hasLaterBookings = bookedLater.length > 0;
+
+      if (type === 'delete') {
+        titleEl.innerHTML = `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayNum} entfernen / anpassen`;
+        descEl.innerHTML = `Datum: <b>${dayFormatted} (${dayName})</b> &bull; Ort: <b>${escapeHtml(day.location || 'Ohne Ort')}</b>`;
+
+        if (hasLaterBookings) {
+          warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
+          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Hinweis zu festen Buchungen:</b> An ${bookedLater.length} nachfolgenden Tag(en) liegen feste Buchungen vor. In <b>Modus A</b> bleiben diese unberührt und behalten exakt ihr gebuchtes Kalenderdatum.</div>`;
+          warningsEl.classList.remove('hidden');
+        } else {
+          warningsEl.classList.add('hidden');
+        }
+
+        titleA.innerText = "Modus A: Feste Buchungen geschützt (Empfohlen)";
+        descA.innerText = `Tag ${dayNum} wird nicht aus dem Kalender gerissen. Der Inhalt wird geleert und als „Freier Tag / Puffer“ am selben Kalendertag markiert. Alle nachfolgenden Tage und gebuchten Hotels/Transporte behalten exakt ihr festes Datum.`;
+        btnA.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Als Puffer leeren (Modus A)`;
+        btnA.className = "w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
+
+        titleB.innerText = "Modus B: Echtes Verkürzen (-1 Tag)";
+        descB.innerHTML = `Tag ${dayNum} wird komplett aus dem Plan entfernt. Alle Folgetage rücken kalendarisch um 1 Tag vor, und das Reise-Enddatum wird um 1 Tag verkürzt.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch bestehende Buchungsdaten!' : ''}`;
+        btnB.innerHTML = `<i class="fa-solid fa-calendar-minus"></i> Reise verkürzen (Modus B)`;
+        btnB.className = "w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
+      } else {
+        // insert
+        titleEl.innerHTML = `<i class="fa-solid fa-calendar-plus text-indigo-500"></i> Neuen Tag nach Tag ${dayNum} einfügen`;
+        descEl.innerHTML = `Neuer Tag zwischen Tag ${dayNum} (${dayFormatted}) und Folgetag.`;
+
+        if (hasLaterBookings) {
+          warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
+          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Achtung bei Buchungen:</b> An ${bookedLater.length} Folgetag(en) liegen feste Buchungen vor. In <b>Modus A</b> dürfen feste Buchungen nicht nach hinten verschoben werden.</div>`;
+          warningsEl.classList.remove('hidden');
+        } else {
+          warningsEl.classList.add('hidden');
+        }
+
+        titleA.innerText = "Modus A: Buchungsschutz prüfen";
+        descA.innerText = hasLaterBookings
+          ? `Prüft, ob vor der nächsten festen Buchung ein freier Puffertag genutzt werden kann, ohne das Datum der Buchung zu verändern.`
+          : `Fügt einen neuen Tag ein. Da keine nachfolgenden Buchungen betroffen sind, wird die Reise sicher um 1 Tag erweitert.`;
+        btnA.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Geschützt einfügen (Modus A)`;
+        btnA.className = "w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
+
+        titleB.innerText = "Modus B: Echtes Verlängern (+1 Tag)";
+        descB.innerHTML = `Fügt einen neuen Tag ein. Alle Folgetage rücken kalendarisch um +1 Tag nach hinten und das Reise-Enddatum wird verlängert.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch nachfolgende Buchungstermine!' : ''}`;
+        btnB.innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Alles nach hinten verschieben (Modus B)`;
+        btnB.className = "w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeDayActionModal() {
+      const modal = document.getElementById('dayActionModal');
+      if (modal) modal.classList.add('hidden');
+      pendingModalAction = null;
+    }
+
+    function executeDayAction(mode) {
+      if (!pendingModalAction) return;
+      const { type, dayIndex } = pendingModalAction;
+      closeDayActionModal();
+
+      if (type === 'delete') {
+        if (mode === 'A') {
+          // Modus A: Freier Tag / Puffer am selben Kalendertag
+          const day = tripData.days[dayIndex];
+          day.location = 'Freier Tag / Puffer';
+          day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+          day.transports = [];
+          day.activities = [];
+          day.notes = '';
+          day.images = [];
+          saveToStorage();
+          renderDays();
+          renderRouteTimeline();
+          showToast(`Tag ${dayIndex + 1} geleert & als Puffer erhalten (Modus A)`);
+        } else {
+          // Modus B: Echtes Verkürzen (-1 Tag)
+          tripData.days.splice(dayIndex, 1);
+          for (let i = dayIndex; i < tripData.days.length; i++) {
+            tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
+          }
+          if (tripData.endDate) {
+            tripData.endDate = addDaysISO(tripData.endDate, -1);
+            const endEl = document.getElementById('endDate');
+            if (endEl) endEl.value = tripData.endDate;
+          }
+          normalizeDataModel();
+          saveToStorage();
+          renderDays();
+          renderRouteTimeline();
+          showToast(`Tag ${dayIndex + 1} gelöscht & Reise verkürzt (Modus B)`);
+        }
+      } else if (type === 'insert') {
+        if (mode === 'A') {
+          // Modus A: Nachfolgende Buchungen schützen
+          const laterDays = tripData.days.slice(dayIndex + 1);
+          const firstBookedRelative = laterDays.findIndex(d => isDayBooked(d) || (d.transports && d.transports.some(t => t.costStatus === 'gebucht' || t.costStatus === 'bezahlt' || t.costStatus === 'reserviert')));
+
+          if (firstBookedRelative !== -1) {
+            const bookedAbsIndex = dayIndex + 1 + firstBookedRelative;
+            let bufferIndex = -1;
+            for (let i = dayIndex + 1; i < bookedAbsIndex; i++) {
+              const d = tripData.days[i];
+              const isPuffer = (d.location || '').toLowerCase().includes('puffer') || (d.location || '').trim() === '';
+              if (isPuffer && !isDayBooked(d)) {
+                bufferIndex = i;
+                break;
+              }
+            }
+
+            if (bufferIndex !== -1) {
+              const curDay = tripData.days[dayIndex];
+              const isoNew = addDaysISO(curDay.date, 1);
+              const newDay = {
+                date: isoNew,
+                location: '',
+                isCollapsed: false,
+                lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+                transports: [],
+                activities: [],
+                images: [],
+                notes: ''
+              };
+
+              tripData.days.splice(bufferIndex, 1);
+              tripData.days.splice(dayIndex + 1, 0, newDay);
+              for (let i = dayIndex + 1; i < bookedAbsIndex; i++) {
+                tripData.days[i].date = addDaysISO(tripData.days[i-1].date, 1);
+              }
+              normalizeDataModel();
+              saveToStorage();
+              renderDays();
+              renderRouteTimeline();
+              showToast(`Tag eingefügt (Puffertag genutzt, Buchung geschützt)`);
+            } else {
+              alert(`Modus A blockiert: An Tag ${bookedAbsIndex + 1} liegt eine feste Buchung. Dazwischen existiert kein freier Puffertag.\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
+            }
+          } else {
+            executeInsertModeB(dayIndex);
+          }
+        } else {
+          // Modus B: Echtes Verlängern
+          executeInsertModeB(dayIndex);
+        }
+      }
+    }
+
+    function executeInsertModeB(dayIndex) {
+      const curDay = tripData.days[dayIndex];
+      if (!curDay) return;
+      const isoNew = addDaysISO(curDay.date, 1);
+      const newDay = {
+        date: isoNew,
+        location: '',
+        isCollapsed: false,
+        lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+        transports: [],
+        activities: [],
+        images: [],
+        notes: ''
+      };
+
+      tripData.days.splice(dayIndex + 1, 0, newDay);
+      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
+        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
+      }
+      if (tripData.endDate) {
+        tripData.endDate = addDaysISO(tripData.endDate, 1);
+        const endEl = document.getElementById('endDate');
+        if (endEl) endEl.value = tripData.endDate;
+      }
+      normalizeDataModel();
+      saveToStorage();
+      renderDays();
+      renderRouteTimeline();
+      showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
+    }
+
     // --- WECHSELKURSE & UMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
@@ -987,65 +1230,6 @@
         saveToStorage();
         renderChecklist();
       }
-    }
-
-    // --- TAGE FLEXIBEL EINFÜGEN & LÖSCHEN ---
-    function insertDayAfter(dayIndex) {
-      const curDay = tripData.days[dayIndex];
-      if (!curDay) return;
-
-      const isoNew = addDaysISO(curDay.date, 1);
-
-      const newDay = {
-        date: isoNew,
-        location: '',
-        isCollapsed: false,
-        lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-        transports: [],
-        activities: [],
-        images: [],
-        notes: ''
-      };
-
-      tripData.days.splice(dayIndex + 1, 0, newDay);
-
-      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
-      }
-
-      if (tripData.endDate) {
-        tripData.endDate = addDaysISO(tripData.endDate, 1);
-        document.getElementById('endDate').value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      saveToStorage();
-      renderDays();
-      renderRouteTimeline();
-      showToast("Neuer Tag nach Tag " + (dayIndex + 1) + " eingefügt (+1 Tag)");
-    }
-
-    function deleteDay(dayIndex) {
-      if (!confirm("Möchtest du Tag " + (dayIndex + 1) + " wirklich löschen? Alle nachfolgenden Tage rücken um 1 Tag auf.")) {
-        return;
-      }
-
-      tripData.days.splice(dayIndex, 1);
-
-      for (let i = dayIndex; i < tripData.days.length; i++) {
-        tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
-      }
-
-      if (tripData.endDate) {
-        tripData.endDate = addDaysISO(tripData.endDate, -1);
-        document.getElementById('endDate').value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      saveToStorage();
-      renderDays();
-      renderRouteTimeline();
-      showToast("Tag gelöscht und Zeitraum angepasst");
     }
 
     // --- COUNTDOWN HELFER ---
@@ -1769,7 +1953,7 @@
         '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
           '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen">' +
+        '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
           '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
         '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
@@ -1973,11 +2157,11 @@
             break;
           }
           case 'insert-day': {
-            insertDayAfter(dayIdx);
+            openDayActionModal('insert', dayIdx);
             break;
           }
           case 'delete-day': {
-            deleteDay(dayIdx);
+            openDayActionModal('delete', dayIdx);
             break;
           }
           case 'toggle-collapse': {
@@ -2126,7 +2310,6 @@
                 }
               }
             }
-            // Ändert Ort -> Aktualisiere Kartenfarbe (Rot <-> Gelb)
             updateDayCardVisualStatus(dayIdx);
             saveToStorage();
             renderRouteTimeline();
@@ -2440,14 +2623,15 @@
     window.toggleChecklistItem = toggleChecklistItem;
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
-    window.insertDayAfter = insertDayAfter;
-    window.deleteDay = deleteDay;
     window.handleDayPaste = handleDayPaste;
     window.handleDocFileSelect = handleDocFileSelect;
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
     window.exportToCSV = exportToCSV;
     window.scrollToDay = scrollToDay;
+    window.openDayActionModal = openDayActionModal;
+    window.closeDayActionModal = closeDayActionModal;
+    window.executeDayAction = executeDayAction;
   </script>
 </body>
 </html>
