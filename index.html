@@ -66,7 +66,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold border border-indigo-200 dark:border-indigo-800">v2.2</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-mono font-bold border border-indigo-200 dark:border-indigo-800">v2.3</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -92,7 +92,7 @@
         <button onclick="saveToFile(true)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Neuen Speicherort wählen">
           <i class="fa-solid fa-folder-plus"></i> Speichern unter...
         </button>
-        <input type="file" id="importInput" accept=".json,application/json" class="hidden" onchange="importJSONFallback(event)">
+        <input type="file" id="importInput" accept=".json,.jason,application/json,text/plain,*/*" class="hidden" onchange="importJSONFallback(event)">
         <button onclick="openFile()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="JSON-Datei laden">
           <i class="fa-solid fa-folder-open"></i> Öffnen
         </button>
@@ -415,6 +415,16 @@
   <script>
     const SUPPORTED_CURRENCIES = ['EUR', 'THB', 'USD', 'LAK', 'VND'];
 
+    const DEFAULT_CHECKLIST = [
+      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
+      "E-Visum beantragt & ausgedruckt",
+      "Auslandskrankenversicherung & Notfallnummer",
+      "Kreditkarten für gebührenfreie Abhebungen (2x)",
+      "eSIM oder lokale SIM-Karte vorbereitet",
+      "Reiseadapter (Typ C/G für SE-Asien)",
+      "Reiseapotheke & Mückenschutz (DEET)"
+    ];
+
     let tripData = {
       title: "",
       startDate: "",
@@ -557,7 +567,10 @@
 
     // --- DATEN-NORMALISIERUNG & PERSISTENZ ---
     function normalizeDataModel() {
-      if (!tripData.exchangeRates) {
+      if (!tripData || typeof tripData !== 'object') {
+        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", exchangeRates: {}, checklist: [], days: [] };
+      }
+      if (!tripData.exchangeRates || typeof tripData.exchangeRates !== 'object') {
         tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
       }
       if (!Array.isArray(tripData.checklist)) {
@@ -567,23 +580,45 @@
         tripData.days = [];
       }
 
+      // Filtere ungültige / leere Day-Einträge heraus
+      tripData.days = tripData.days.filter(d => d && typeof d === 'object');
+
       tripData.days.forEach(d => {
-        if (!d.lodging) d.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+        if (!d.date) d.date = '';
+        if (typeof d.location !== 'string') d.location = '';
+        if (!d.lodging || typeof d.lodging !== 'object') {
+          d.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+        }
         if (!d.lodging.currency) d.lodging.currency = 'EUR';
         if (!d.lodging.costStatus) d.lodging.costStatus = d.lodging.isBooked ? 'gebucht' : 'geplant';
+        if (typeof d.lodging.isBooked !== 'boolean') {
+          d.lodging.isBooked = (d.lodging.costStatus === 'gebucht' || d.lodging.costStatus === 'bezahlt');
+        }
+
+        if (!d.dailyExpenses || typeof d.dailyExpenses !== 'object') {
+          d.dailyExpenses = { amount: '', currency: 'EUR', notes: '' };
+        }
+
         if (!Array.isArray(d.transports)) d.transports = [];
+        d.transports = d.transports.filter(t => t && typeof t === 'object');
         d.transports.forEach(t => {
           if (!t.currency) t.currency = 'EUR';
           if (!t.costStatus) t.costStatus = 'geplant';
+          if (!t.title) t.title = '';
         });
+
         if (!Array.isArray(d.activities)) d.activities = [];
+        d.activities = d.activities.filter(a => a && typeof a === 'object');
         d.activities.forEach(a => {
           if (!a.currency) a.currency = 'EUR';
           if (!a.costStatus) a.costStatus = 'geplant';
           if (typeof a.done !== 'boolean') a.done = false;
+          if (!a.title) a.title = '';
         });
+
         if (!Array.isArray(d.images)) d.images = [];
         if (typeof d.isCollapsed !== 'boolean') d.isCollapsed = false;
+        if (typeof d.notes !== 'string') d.notes = '';
       });
     }
 
@@ -666,10 +701,15 @@
     }
 
     function syncUI() {
-      document.getElementById('tripTitle').value = tripData.title || '';
-      document.getElementById('startDate').value = tripData.startDate || '';
-      document.getElementById('endDate').value = tripData.endDate || '';
-      document.getElementById('generalNotes').value = tripData.generalNotes || '';
+      const titleEl = document.getElementById('tripTitle');
+      const startEl = document.getElementById('startDate');
+      const endEl = document.getElementById('endDate');
+      const notesEl = document.getElementById('generalNotes');
+
+      if (titleEl) titleEl.value = tripData.title || '';
+      if (startEl) startEl.value = tripData.startDate || '';
+      if (endEl) endEl.value = tripData.endDate || '';
+      if (notesEl) notesEl.value = tripData.generalNotes || '';
 
       if (tripData.exchangeRates) {
         if (document.getElementById('rateTHB')) document.getElementById('rateTHB').value = tripData.exchangeRates.THB || 38;
@@ -708,6 +748,11 @@
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const start = new Date(tripData.startDate + 'T00:00:00');
+      if (isNaN(start.getTime())) {
+        badge.classList.add('hidden');
+        return;
+      }
+
       const diffDays = Math.round((start - today) / (1000 * 60 * 60 * 24));
 
       if (diffDays > 0) {
@@ -718,7 +763,7 @@
         badge.classList.remove('hidden');
       } else {
         const end = tripData.endDate ? new Date(tripData.endDate + 'T00:00:00') : null;
-        if (end && today <= end) {
+        if (end && !isNaN(end.getTime()) && today <= end) {
           badge.innerHTML = `<i class="fa-solid fa-compass"></i> Reise läuft`;
           badge.classList.remove('hidden');
         } else {
@@ -912,16 +957,6 @@
     }
 
     // --- CHECKLISTEN-LOGIK ---
-    const DEFAULT_CHECKLIST = [
-      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
-      "E-Visum beantragt & ausgedruckt",
-      "Auslandskrankenversicherung & Notfallnummer",
-      "Kreditkarten für gebührenfreie Abhebungen (2x)",
-      "eSIM oder lokale SIM-Karte vorbereitet",
-      "Reiseadapter (Typ C/G für SE-Asien)",
-      "Reiseapotheke & Mückenschutz (DEET)"
-    ];
-
     function renderChecklist() {
       const container = document.getElementById('checklistContainer');
       const progress = document.getElementById('checklistProgress');
@@ -974,7 +1009,7 @@
       }
     }
 
-    // --- FESTE BUCHUNGSPRÜFUNG (SYNCHRON & ZUVERLÄSSIG) ---
+    // --- FESTE BUCHUNGSPRÜFUNG ---
     function isDayBooked(day) {
       if (!day || !day.lodging) return false;
       return day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' || !!day.lodging.isBooked;
@@ -1123,7 +1158,7 @@
       updateStats();
     }
 
-    // --- TAGE LÖSCHEN MODAL-DIALOG (PRÄZISE & BUCHUNGSSICHER) ---
+    // --- TAGE LÖSCHEN MODAL-DIALOG ---
     function openDeleteDayModal(dayIndex) {
       pendingDeleteIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
@@ -1166,11 +1201,6 @@
       if (!curDay) return;
 
       if (mode === 'fillGap') {
-        // =========================================================================
-        // MODUS A: Tag entfernen, aber Folgebuchungen kalendarisch fixieren!
-        // =========================================================================
-
-        // 1. Nächste feste Folgebuchung NACH dem gelöschten Tag suchen
         let nextFixedOriginalIndex = -1;
         for (let i = dayIndex + 1; i < tripData.days.length; i++) {
           if (hasFixedBookings(tripData.days[i])) {
@@ -1179,24 +1209,18 @@
           }
         }
 
-        // 2. Den Tag tatsächlich aus der Liste entfernen
         tripData.days.splice(dayIndex, 1);
 
-        // 3. Neuen Puffer-Tag anlegen
         const newBufferDay = createEmptyDayObject('');
         newBufferDay.notes = 'Freier Puffer-Tag';
 
         if (nextFixedOriginalIndex !== -1) {
-          // Puffer exakt VOR die feste Folgebuchung einschieben!
-          // Da wir 1 Element gelöscht haben, liegt der Zielindex bei nextFixedOriginalIndex - 1.
           const targetInsertIndex = nextFixedOriginalIndex - 1;
           tripData.days.splice(targetInsertIndex, 0, newBufferDay);
         } else {
-          // Keine festen Buchungen im Folgelauf: Puffer ans Ende hängen
           tripData.days.push(newBufferDay);
         }
 
-        // 4. Kalenderdaten ab startDate sauber fortlaufend zuweisen
         if (tripData.startDate) {
           let cursor = new Date(tripData.startDate + 'T12:00:00');
           for (let i = 0; i < tripData.days.length; i++) {
@@ -1208,9 +1232,6 @@
         showToast("Tag gelöscht & Puffer eingefügt (Buchungen unverändert)");
 
       } else {
-        // =========================================================================
-        // MODUS B: Reise bewusst um 1 Tag verkürzen (-1 Tag)
-        // =========================================================================
         tripData.days.splice(dayIndex, 1);
 
         if (dayIndex === 0) {
@@ -1377,7 +1398,7 @@
     function getHeaderTransportLineContent(day) {
       if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
       return day.transports.map(t => {
-        const icon = t.title.toLowerCase().includes('flug') ? 'plane' : (t.title.toLowerCase().includes('zug') ? 'train' : 'van-shuttle');
+        const icon = (t.title || '').toLowerCase().includes('flug') ? 'plane' : ((t.title || '').toLowerCase().includes('zug') ? 'train' : 'van-shuttle');
         return `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-medium border border-slate-200 dark:border-slate-700">
           <i class="fa-solid fa-${icon} text-indigo-500"></i> ${escapeHtml(t.title || 'Transport')}
         </span>`;
@@ -1581,26 +1602,27 @@
       const todayStr = new Date().toISOString().split('T')[0];
 
       (tripData.days || []).forEach((day, idx) => {
+        if (!day) return;
         if (currentFilter === 'open_lodging' && isDayBooked(day)) return;
         if (currentFilter === 'travel_days' && (!day.transports || day.transports.length === 0)) return;
         if (currentFilter === 'pending_costs' && getDayCostBreakdown(day).pending <= 0) return;
 
         if (searchQuery) {
           const haystack = [
-            day.date,
-            day.location,
-            day.lodging?.name,
-            day.lodging?.notes,
-            day.notes,
-            ...(day.transports || []).map(t => t.title + ' ' + (t.hint || '')),
-            ...(day.activities || []).map(a => a.title + ' ' + (a.hint || ''))
+            day.date || '',
+            day.location || '',
+            day.lodging?.name || '',
+            day.lodging?.notes || '',
+            day.notes || '',
+            ...(day.transports || []).map(t => (t.title || '') + ' ' + (t.hint || '')),
+            ...(day.activities || []).map(a => (a.title || '') + ' ' + (a.hint || ''))
           ].join(' ').toLowerCase();
           if (!haystack.includes(searchQuery)) return;
         }
 
         const dateObj = new Date(day.date + 'T12:00:00');
         const weekday = isNaN(dateObj) ? '' : dateObj.toLocaleDateString('de-DE', { weekday: 'short' });
-        const dateFormatted = isNaN(dateObj) ? day.date : dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        const dateFormatted = isNaN(dateObj) ? (day.date || '') : dateObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
         const isToday = day.date === todayStr;
         const booked = isDayBooked(day);
         const dayCost = getDayCostBreakdown(day);
@@ -1944,7 +1966,7 @@
         .replace(/'/g, "&#039;");
     }
 
-    // --- DATEI-SPEICHERN & ÖFFNEN ---
+    // --- DATEI-SPEICHERN & ÖFFNEN (ROBUST & BOM-FEST) ---
     async function saveToFile(forceSaveAs) {
       createRollingBackup();
       saveToStorage();
@@ -1957,7 +1979,12 @@
           if (!activeFileHandle || forceSaveAs) {
             activeFileHandle = await window.showSaveFilePicker({
               suggestedName: fileName,
-              types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }]
+              types: [
+                {
+                  description: 'JSON Reiseplan-Datei',
+                  accept: { 'application/json': ['.json', '.jason'] }
+                }
+              ]
             });
           }
           const writableStream = await activeFileHandle.createWritable();
@@ -1971,7 +1998,7 @@
         }
       }
 
-      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -1984,10 +2011,19 @@
     }
 
     async function openFile() {
+      // 1. Versuch: File System Access API
       if ('showOpenFilePicker' in window) {
         try {
           const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }],
+            types: [
+              {
+                description: 'JSON Reiseplan-Datei',
+                accept: {
+                  'application/json': ['.json', '.jason'],
+                  'text/plain': ['.json', '.jason', '.txt']
+                }
+              }
+            ],
             multiple: false
           });
           const file = await handle.getFile();
@@ -1996,10 +2032,11 @@
           return;
         } catch (err) {
           if (err.name === 'AbortError') return;
-          console.warn("showOpenFilePicker fehlgeschlagen, nutze Datei-Input:", err);
+          console.warn("showOpenFilePicker fehlgeschlagen, wechsle zu Standard-Input:", err);
         }
       }
 
+      // 2. Fallback: Normales Input-Element
       const input = document.getElementById('importInput');
       if (input) {
         input.value = '';
@@ -2023,9 +2060,16 @@
 
     function processLoadedJSON(jsonText, fileName, fileHandle) {
       try {
-        const parsed = JSON.parse(jsonText);
+        if (!jsonText || typeof jsonText !== 'string') {
+          throw new Error("Datei ist leer oder nicht lesbar.");
+        }
+
+        // BOM (Byte Order Mark) entfernen, falls von Windows-Editor eingefügt
+        const cleanText = jsonText.replace(/^\uFEFF/, '').trim();
+
+        const parsed = JSON.parse(cleanText);
         if (!parsed || typeof parsed !== 'object') {
-          throw new Error("Ungültiges JSON-Format");
+          throw new Error("Inhalt ist kein gültiges Reiseplan-Objekt.");
         }
 
         activeFileHandle = fileHandle || null;
@@ -2038,7 +2082,7 @@
         showToast('Reise erfolgreich geöffnet!');
       } catch (err) {
         console.error("JSON-Importfehler:", err);
-        alert("Die ausgewählte Datei konnte nicht geöffnet werden. Bitte stelle sicher, dass es sich um eine gültige Reiseplan-JSON-Datei handelt.");
+        alert("Die Datei konnte nicht geöffnet werden:\n" + err.message + "\n\nBitte prüfe, ob es sich um eine gültige Reiseplan-Datei handelt.");
       }
     }
 
