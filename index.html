@@ -266,6 +266,65 @@
     <div id="daysContainer" class="space-y-4"></div>
   </main>
 
+  <!-- MODAL: TAGE EINFÜGEN MIT MODUS-AUSWAHL -->
+  <div id="insertDayModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <i class="fa-solid fa-calendar-plus text-indigo-500"></i> Tag einfügen nach <span id="insertModalDayLabel" class="text-indigo-600 dark:text-indigo-400"></span>
+        </h3>
+        <button onclick="closeInsertDayModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
+      </div>
+
+      <p class="text-xs text-slate-600 dark:text-slate-300">
+        Wie soll der neue Tag eingefügt werden?
+      </p>
+
+      <!-- Betroffene Buchungen Warnbox -->
+      <div id="insertBookingsWarningBox" class="hidden p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs text-amber-900 dark:text-amber-200 space-y-1.5">
+        <div class="font-bold flex items-center gap-1.5">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600 dark:text-amber-400"></i> Nachfolgende feste Buchungen gefunden:
+        </div>
+        <div id="insertBookingsList" class="text-[11px] space-y-0.5 opacity-90 max-h-28 overflow-y-auto font-mono"></div>
+      </div>
+
+      <!-- Auswahlmöglichkeiten -->
+      <div class="space-y-2.5">
+        <!-- MODUS A -->
+        <button onclick="executeInsertDay('gap')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition group">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Modus A: In bestehende Lücke einfügen
+            </span>
+            <span class="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">Buchungen bleiben fest</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Fügt einen Tag ein, <b>ohne</b> nachfolgende Tage kalendarisch nach hinten zu schieben. Die Gesamtreisedauer bleibt unverändert (letzter Tag wird aufgebraucht).
+          </p>
+        </button>
+
+        <!-- MODUS B -->
+        <button onclick="executeInsertDay('extend')" class="w-full text-left p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:border-indigo-500 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/30 transition group">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-indigo-500"></span> Modus B: Reise um +1 Tag verlängern
+            </span>
+            <span class="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 rounded-full">Alles schiebt nach hinten</span>
+          </div>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+            Schiebt alle nachfolgenden Tage kalendarisch um 1 Tag weiter. Das Enddatum der Reise wird automatisch um 1 Tag verlängert.
+          </p>
+        </button>
+      </div>
+
+      <div class="flex justify-end pt-2">
+        <button onclick="closeInsertDayModal()" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-800 dark:text-white transition">
+          Abbrechen
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX) -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeLightbox()">
     <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
@@ -317,6 +376,7 @@
     let activeFileHandle = null;
     let currentFilter = 'all';
     let searchQuery = '';
+    let pendingInsertIndex = null;
 
     const STORAGE_KEY = 'reiseplaner_pro_pwa_data';
     const BACKUP_KEY = 'reiseplaner_pro_backups';
@@ -739,45 +799,44 @@
       return list.join(', ');
     }
 
-    // --- TAGE EINFÜGEN, KOPIEREN & LÖSCHEN MIT BUCHUNGSSCHUTZ ---
-    function copyLocationToNextDay(dayIndex) {
-      const curLoc = (tripData.days[dayIndex]?.location || '').trim();
-      if (!curLoc) {
-        showToast("Kein Ort zum Übernehmen vorhanden", true);
-        return;
-      }
-      if (dayIndex + 1 < tripData.days.length) {
-        tripData.days[dayIndex + 1].location = curLoc;
-        saveToStorage();
-        renderDays();
-        showToast("Ort nach Tag " + (dayIndex + 2) + " kopiert");
-      } else {
-        showToast("Kein Folgetag vorhanden", true);
-      }
-    }
-
-    function insertDayAfter(dayIndex) {
+    // --- TAGE EINFÜGEN MODAL-DIALOG ---
+    function openInsertDayModal(dayIndex) {
+      pendingInsertIndex = dayIndex;
       const curDay = tripData.days[dayIndex];
-      if (!curDay) return;
+      const label = document.getElementById('insertModalDayLabel');
+      if (label) label.innerText = `Tag ${dayIndex + 1} (${curDay ? curDay.date : ''})`;
+
+      const warnBox = document.getElementById('insertBookingsWarningBox');
+      const listEl = document.getElementById('insertBookingsList');
 
       const affected = [];
       for (let i = dayIndex + 1; i < tripData.days.length; i++) {
         if (hasFixedBookings(tripData.days[i])) {
-          affected.push('• Tag ' + (i + 1) + ' (' + tripData.days[i].date + '): ' + getFixedBookingSummary(tripData.days[i]));
+          affected.push(`• Tag ${i + 1} (${tripData.days[i].date}): ${getFixedBookingSummary(tripData.days[i])}`);
         }
       }
 
       if (affected.length > 0) {
-        const warning = 
-          "⚠️ ACHTUNG: Nachfolgende Tage enthalten FESTE BUCHUNGEN!\n\n" +
-          "Wenn du hier einen Tag einfügst, verschieben sich alle Folgetage kalendarisch um +1 Tag:\n\n" +
-          affected.slice(0, 5).join("\n") +
-          (affected.length > 5 ? "\n...und " + (affected.length - 5) + " weitere" : "") +
-          "\n\nMöchtest du wirklich alle Folgetage um einen Tag nach hinten schieben?";
-        if (!confirm(warning)) {
-          return;
-        }
+        listEl.innerHTML = affected.map(line => `<div>${escapeHtml(line)}</div>`).join('');
+        warnBox.classList.remove('hidden');
+      } else {
+        warnBox.classList.add('hidden');
+        listEl.innerHTML = '';
       }
+
+      document.getElementById('insertDayModal').classList.remove('hidden');
+    }
+
+    function closeInsertDayModal() {
+      document.getElementById('insertDayModal').classList.add('hidden');
+      pendingInsertIndex = null;
+    }
+
+    function executeInsertDay(mode) {
+      if (pendingInsertIndex === null) return;
+      const dayIndex = pendingInsertIndex;
+      const curDay = tripData.days[dayIndex];
+      if (!curDay) return;
 
       const d = new Date(curDay.date + 'T12:00:00');
       d.setDate(d.getDate() + 1);
@@ -795,25 +854,81 @@
         notes: ''
       };
 
-      tripData.days.splice(dayIndex + 1, 0, newDay);
+      if (mode === 'gap') {
+        // MODUS A: In Lücke einfügen (Dauer bleibt gleich)
+        // Findet den nächsten ungebuchten Tag oder baut den letzten Tag ab
+        tripData.days.splice(dayIndex + 1, 0, newDay);
 
-      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-        nextD.setDate(nextD.getDate() + 1);
-        tripData.days[i].date = nextD.toISOString().split('T')[0];
+        // Suche von hinten nach dem ersten Tag ohne feste Buchungen
+        let removeIndex = -1;
+        for (let i = tripData.days.length - 1; i > dayIndex + 1; i--) {
+          if (!hasFixedBookings(tripData.days[i]) && !(tripData.days[i].location || '').trim()) {
+            removeIndex = i;
+            break;
+          }
+        }
+
+        if (removeIndex !== -1) {
+          tripData.days.splice(removeIndex, 1);
+        } else {
+          // Falls kein leerer Tag da ist, letzten Tag entfernen (nach Bestätigung)
+          const lastIndex = tripData.days.length - 1;
+          if (hasFixedBookings(tripData.days[lastIndex])) {
+            alert("Am Ende der Reise liegt eine feste Buchung. Bitte nutze Modus B, um die Reise zu verlängern.");
+            tripData.days.splice(dayIndex + 1, 1);
+            return;
+          }
+          tripData.days.splice(lastIndex, 1);
+        }
+
+        // Datumskette nur bis zur nächsten festen Buchung synchronisieren
+        let dateCursor = new Date(curDay.date + 'T12:00:00');
+        for (let i = dayIndex + 1; i < tripData.days.length; i++) {
+          dateCursor.setDate(dateCursor.getDate() + 1);
+          tripData.days[i].date = dateCursor.toISOString().split('T')[0];
+        }
+
+        showToast("Tag in Lücke eingefügt (Reisezeitraum unverändert)");
+      } else {
+        // MODUS B: Reise um 1 Tag verlängern (Alles nach hinten schieben)
+        tripData.days.splice(dayIndex + 1, 0, newDay);
+
+        for (let i = dayIndex + 2; i < tripData.days.length; i++) {
+          const nextD = new Date(tripData.days[i].date + 'T12:00:00');
+          nextD.setDate(nextD.getDate() + 1);
+          tripData.days[i].date = nextD.toISOString().split('T')[0];
+        }
+
+        if (tripData.endDate) {
+          const endD = new Date(tripData.endDate + 'T12:00:00');
+          endD.setDate(endD.getDate() + 1);
+          tripData.endDate = endD.toISOString().split('T')[0];
+          document.getElementById('endDate').value = tripData.endDate;
+        }
+
+        showToast("Reise um +1 Tag verlängert & Folgetage angepasst");
       }
 
-      if (tripData.endDate) {
-        const endD = new Date(tripData.endDate + 'T12:00:00');
-        endD.setDate(endD.getDate() + 1);
-        tripData.endDate = endD.toISOString().split('T')[0];
-        document.getElementById('endDate').value = tripData.endDate;
-      }
-
+      closeInsertDayModal();
       normalizeDataModel();
       saveToStorage();
       renderDays();
-      showToast("Neuer Tag eingefügt. Reisezeitraum um 1 Tag erweitert.");
+    }
+
+    function copyLocationToNextDay(dayIndex) {
+      const curLoc = (tripData.days[dayIndex]?.location || '').trim();
+      if (!curLoc) {
+        showToast("Kein Ort zum Übernehmen vorhanden", true);
+        return;
+      }
+      if (dayIndex + 1 < tripData.days.length) {
+        tripData.days[dayIndex + 1].location = curLoc;
+        saveToStorage();
+        renderDays();
+        showToast("Ort nach Tag " + (dayIndex + 2) + " kopiert");
+      } else {
+        showToast("Kein Folgetag vorhanden", true);
+      }
     }
 
     function deleteDay(dayIndex) {
@@ -1574,13 +1689,13 @@
           (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white') + '">' +
           '<i class="fa-solid ' + statusIcon + '"></i> ' + statusLabel +
         '</button>' +
-        '<button onclick="insertDayAfter(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
+        '<button onclick="openInsertDayModal(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print shadow-xs" title="Neuen Tag danach einfügen (+1 Tag)">' +
           '<i class="fa-solid fa-calendar-plus text-sm"></i>' +
         '</button>' +
-        '<button onclick="deleteDay(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print border-l-2" title="Diesen Tag löschen">' +
+        '<button onclick="deleteDay(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print border-l-2 shadow-xs" title="Diesen Tag löschen">' +
           '<i class="fa-solid fa-trash-can text-sm"></i>' +
         '</button>' +
-        '<button onclick="toggleDayCollapse(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
+        '<button onclick="toggleDayCollapse(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print shadow-xs">' +
           '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-sm"></i>' +
         '</button>' +
       '</div>';
@@ -1999,7 +2114,9 @@
     window.toggleChecklistItem = toggleChecklistItem;
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
-    window.insertDayAfter = insertDayAfter;
+    window.openInsertDayModal = openInsertDayModal;
+    window.closeInsertDayModal = closeInsertDayModal;
+    window.executeInsertDay = executeInsertDay;
     window.deleteDay = deleteDay;
     window.handleLodgingLinkChange = handleLodgingLinkChange;
     window.handleTransportLinkChange = handleTransportLinkChange;
