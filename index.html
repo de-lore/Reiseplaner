@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.0</title>
+  <title>Reiseplaner Pro v1.1</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -66,13 +66,13 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600">v1.0</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.1</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
             </span>
           </div>
-          <p id="fileStatusText" class="text-xs text-slate-500 dark:text-slate-400">Keine lokale Datei verknüpft (Speichert im Browserspeicher)</p>
+          <p id="fileStatusText" class="text-xs text-slate-500 dark:text-slate-400">Keine Datei verknüpft (Speichert in IndexedDB)</p>
         </div>
       </div>
 
@@ -281,7 +281,7 @@
         <button onclick="closeRestoreModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">&times;</button>
       </div>
       <p class="text-xs text-slate-600 dark:text-slate-400">
-        Wähle einen der letzten 3 automatischen Sicherungsstände aus:
+        Wähle einen der letzten 3 automatischen Sicherungsstände aus (IndexedDB):
       </p>
       <div id="backupList" class="space-y-2"></div>
       <div class="flex justify-end pt-2">
@@ -299,6 +299,7 @@
   </div>
 
   <script>
+    // --- STATE DEFINITION ---
     let tripData = {
       title: "",
       startDate: "",
@@ -312,18 +313,66 @@
     let activeFileHandle = null;
     let currentFilter = 'all';
     let searchQuery = '';
+    let saveDebounceTimer = null;
 
-    const STORAGE_KEY = 'reiseplaner_pro_pwa_data';
-    const BACKUP_KEY = 'reiseplaner_pro_backups';
     const THEME_KEY = 'reiseplaner_pro_theme';
+    const DB_NAME = 'ReiseplanerPro_DB_v1';
+    const DB_STORE = 'app_state';
 
-    window.addEventListener('DOMContentLoaded', () => {
+    // --- INDEXEDDB SPEICHER-LAYER ---
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(DB_STORE)) {
+            db.createObjectStore(DB_STORE);
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function idbGet(key) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, 'readonly');
+          const req = tx.objectStore(DB_STORE).get(key);
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        });
+      } catch (e) {
+        console.warn("IndexedDB Get Fehler:", e);
+        return null;
+      }
+    }
+
+    async function idbSet(key, value) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put(value, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (e) {
+        console.warn("IndexedDB Set Fehler:", e);
+        return false;
+      }
+    }
+
+    // --- INITIALISIERUNG ---
+    window.addEventListener('DOMContentLoaded', async () => {
       try {
         initTheme();
-        loadFromStorage();
+        await loadFromStorage();
         initServiceWorker();
         initPersistentStorage();
         setupKeyboardShortcuts();
+        setupEventDelegation();
       } catch (e) {
         console.error("Initialisierungsfehler:", e);
       }
@@ -338,6 +387,36 @@
           saveToFile(false);
         }
       });
+    }
+
+    // --- UTC-SICHERE DATUMS-HELFER ---
+    function parseISOParts(isoStr) {
+      if (!isoStr || typeof isoStr !== 'string') return null;
+      const parts = isoStr.split('-').map(Number);
+      if (parts.length !== 3 || isNaN(parts[0])) return null;
+      return { y: parts[0], m: parts[1], d: parts[2] };
+    }
+
+    function addDaysISO(isoStr, numDays) {
+      const p = parseISOParts(isoStr);
+      if (!p) return '';
+      const utcDate = new Date(Date.UTC(p.y, p.m - 1, p.d + numDays, 12, 0, 0));
+      return utcDate.toISOString().split('T')[0];
+    }
+
+    function formatISODate(isoStr) {
+      const p = parseISOParts(isoStr);
+      if (!p) return { dayName: '', dayFormatted: '' };
+      const utcDate = new Date(Date.UTC(p.y, p.m - 1, p.d, 12, 0, 0));
+      return {
+        dayName: utcDate.toLocaleDateString('de-DE', { weekday: 'short', timeZone: 'UTC' }),
+        dayFormatted: utcDate.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
+      };
+    }
+
+    function getTodayIso() {
+      const now = new Date();
+      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     }
 
     // --- THEME-VERWALTUNG ---
@@ -370,7 +449,6 @@
     function toggleTheme() {
       const isDark = document.documentElement.classList.contains('dark');
       setTheme(isDark ? 'light' : 'dark');
-      renderDays();
     }
 
     // --- SERVICE WORKER & PERSISTENZ ---
@@ -416,7 +494,7 @@
         el.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Datei: <b>' + escapeHtml(name) + '</b>';
       } else {
         el.className = "text-xs text-slate-500 dark:text-slate-400";
-        el.innerText = "Keine lokale Datei verknüpft (Speichert im Browserspeicher)";
+        el.innerText = "Keine Datei verknüpft (Speichert in IndexedDB)";
       }
     }
 
@@ -483,7 +561,7 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
 
           if (!tripData.days[dayIndex]) return;
           if (!Array.isArray(tripData.days[dayIndex].images)) {
@@ -491,7 +569,7 @@
           }
           tripData.days[dayIndex].images.push(dataUrl);
           saveToStorage();
-          renderDays();
+          updateImagesDOM(dayIndex);
           showToast("Screenshot hinzugefügt");
         };
         img.src = e.target.result;
@@ -503,8 +581,26 @@
       if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].images)) return;
       tripData.days[dayIndex].images.splice(imgIndex, 1);
       saveToStorage();
-      renderDays();
+      updateImagesDOM(dayIndex);
       showToast("Screenshot gelöscht");
+    }
+
+    function updateImagesDOM(dayIndex) {
+      const container = document.getElementById('images-container-' + dayIndex);
+      if (!container) return;
+      const images = tripData.days[dayIndex].images || [];
+      if (images.length === 0) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      container.innerHTML = images.map((imgSrc, imgIdx) => `
+        <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">
+          <img src="${imgSrc}" data-action="open-lightbox" data-img-src="${imgSrc}" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">
+          <button data-action="delete-image" data-day-index="${dayIndex}" data-img-index="${imgIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
+        </div>
+      `).join('');
     }
 
     function openLightbox(src) {
@@ -523,7 +619,6 @@
       if (img) img.src = '';
     }
 
-    // --- LIVE LINK HANDLER ---
     function formatSafeUrl(urlStr) {
       if (!urlStr) return '';
       const trimmed = urlStr.trim();
@@ -534,61 +629,6 @@
       return 'https://' + trimmed;
     }
 
-    function handleLodgingLinkChange(dayIndex, value) {
-      if (!tripData.days[dayIndex]) return;
-      if (!tripData.days[dayIndex].lodging) tripData.days[dayIndex].lodging = {};
-      tripData.days[dayIndex].lodging.link = value;
-      saveToStorage();
-
-      const btn = document.getElementById('lodging-link-btn-' + dayIndex);
-      if (btn) {
-        const safeUrl = formatSafeUrl(value);
-        if (safeUrl) {
-          btn.href = safeUrl;
-          btn.classList.remove('hidden');
-        } else {
-          btn.classList.add('hidden');
-          btn.href = '#';
-        }
-      }
-    }
-
-    function handleTransportLinkChange(dayIndex, itemIndex, value) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports || !tripData.days[dayIndex].transports[itemIndex]) return;
-      tripData.days[dayIndex].transports[itemIndex].link = value;
-      saveToStorage();
-
-      const btn = document.getElementById('tr-link-btn-' + dayIndex + '-' + itemIndex);
-      if (btn) {
-        const safeUrl = formatSafeUrl(value);
-        if (safeUrl) {
-          btn.href = safeUrl;
-          btn.classList.remove('hidden');
-        } else {
-          btn.classList.add('hidden');
-          btn.href = '#';
-        }
-      }
-    }
-
-    function handleActivityLinkChange(dayIndex, itemIndex, value) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].activities || !tripData.days[dayIndex].activities[itemIndex]) return;
-      tripData.days[dayIndex].activities[itemIndex].link = value;
-      saveToStorage();
-
-      const btn = document.getElementById('act-link-btn-' + dayIndex + '-' + itemIndex);
-      if (btn) {
-        const safeUrl = formatSafeUrl(value);
-        if (safeUrl) {
-          btn.href = safeUrl;
-          btn.classList.remove('hidden');
-        } else {
-          btn.classList.add('hidden');
-          btn.href = '#';
-        }
-      }
-    }
-
     // --- WECHSELKURSE & UMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
@@ -596,7 +636,7 @@
         if (!tripData.exchangeRates) tripData.exchangeRates = {};
         tripData.exchangeRates[curr] = num;
         saveToStorage();
-        renderDays();
+        updateAllCostDisplays();
       }
     }
 
@@ -651,10 +691,10 @@
         row.className = "flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/60 text-xs transition";
         row.innerHTML = 
           '<label class="flex items-center gap-2 cursor-pointer flex-1 overflow-hidden">' +
-            '<input type="checkbox" ' + (item.done ? 'checked' : '') + ' onchange="toggleChecklistItem(' + idx + ')" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 shrink-0">' +
+            '<input type="checkbox" ' + (item.done ? 'checked' : '') + ' data-action="toggle-checklist-item" data-idx="' + idx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 shrink-0">' +
             '<span class="truncate ' + (item.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200') + '">' + escapeHtml(item.text) + '</span>' +
           '</label>' +
-          '<button onclick="removeChecklistItem(' + idx + ')" class="text-rose-400 hover:text-rose-600 px-1 text-xs shrink-0 no-print" title="Löschen">&times;</button>';
+          '<button data-action="remove-checklist-item" data-idx="' + idx + '" class="text-rose-400 hover:text-rose-600 px-1 text-xs shrink-0 no-print" title="Löschen">&times;</button>';
         container.appendChild(row);
       });
     }
@@ -690,9 +730,7 @@
       const curDay = tripData.days[dayIndex];
       if (!curDay) return;
 
-      const d = new Date(curDay.date + 'T12:00:00');
-      d.setDate(d.getDate() + 1);
-      const isoNew = d.toISOString().split('T')[0];
+      const isoNew = addDaysISO(curDay.date, 1);
 
       const newDay = {
         date: isoNew,
@@ -708,15 +746,11 @@
       tripData.days.splice(dayIndex + 1, 0, newDay);
 
       for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-        nextD.setDate(nextD.getDate() + 1);
-        tripData.days[i].date = nextD.toISOString().split('T')[0];
+        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
       }
 
       if (tripData.endDate) {
-        const endD = new Date(tripData.endDate + 'T12:00:00');
-        endD.setDate(endD.getDate() + 1);
-        tripData.endDate = endD.toISOString().split('T')[0];
+        tripData.endDate = addDaysISO(tripData.endDate, 1);
         document.getElementById('endDate').value = tripData.endDate;
       }
 
@@ -734,15 +768,11 @@
       tripData.days.splice(dayIndex, 1);
 
       for (let i = dayIndex; i < tripData.days.length; i++) {
-        const nextD = new Date(tripData.days[i].date + 'T12:00:00');
-        nextD.setDate(nextD.getDate() - 1);
-        tripData.days[i].date = nextD.toISOString().split('T')[0];
+        tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
       }
 
       if (tripData.endDate) {
-        const endD = new Date(tripData.endDate + 'T12:00:00');
-        endD.setDate(endD.getDate() - 1);
-        tripData.endDate = endD.toISOString().split('T')[0];
+        tripData.endDate = addDaysISO(tripData.endDate, -1);
         document.getElementById('endDate').value = tripData.endDate;
       }
 
@@ -752,12 +782,7 @@
       showToast("Tag gelöscht und Zeitraum angepasst");
     }
 
-    // --- DATUMS- & COUNTDOWN-HELFER ---
-    function getTodayIso() {
-      const now = new Date();
-      return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-    }
-
+    // --- COUNTDOWN HELFER ---
     function updateTripCountdown() {
       const badge = document.getElementById('tripCountdownBadge');
       if (!badge) return;
@@ -768,9 +793,18 @@
       }
 
       const todayStr = getTodayIso();
-      const tNow = new Date(todayStr + 'T00:00:00').getTime();
-      const tStart = new Date(tripData.startDate + 'T00:00:00').getTime();
-      const tEnd = new Date(tripData.endDate + 'T00:00:00').getTime();
+      const pNow = parseISOParts(todayStr);
+      const pStart = parseISOParts(tripData.startDate);
+      const pEnd = parseISOParts(tripData.endDate);
+
+      if (!pNow || !pStart || !pEnd) {
+        badge.classList.add('hidden');
+        return;
+      }
+
+      const tNow = Date.UTC(pNow.y, pNow.m - 1, pNow.d);
+      const tStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d);
+      const tEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
       const msPerDay = 1000 * 60 * 60 * 24;
 
       if (tNow < tStart) {
@@ -858,7 +892,7 @@
       renderDays();
     }
 
-    // --- RECHEN- & KOSTEN-HELFER ---
+    // --- KOSTEN- & STATUS-HELFER ---
     function isDayBooked(day) {
       if (!day || !day.lodging) return false;
       const s = (day.lodging.costStatus || '').toLowerCase();
@@ -981,10 +1015,10 @@
       });
     }
 
-    // --- ROLLIERENDES BACKUP-SYSTEM ---
-    function createRollingBackup() {
+    // --- ROLLIERENDES BACKUP-SYSTEM (INDEXEDDB) ---
+    async function createRollingBackup() {
       try {
-        let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+        let backups = (await idbGet('backups')) || [];
         if (!Array.isArray(backups)) backups = [];
         const currentSnapshot = JSON.stringify(tripData);
         if (backups.length > 0 && JSON.stringify(backups[0].data) === currentSnapshot) return;
@@ -998,18 +1032,18 @@
         });
 
         if (backups.length > 3) backups = backups.slice(0, 3);
-        localStorage.setItem(BACKUP_KEY, JSON.stringify(backups));
+        await idbSet('backups', backups);
       } catch (e) {
         console.warn("Backup-Fehler:", e);
       }
     }
 
-    function showRestoreModal() {
+    async function showRestoreModal() {
       const modal = document.getElementById('restoreModal');
       const list = document.getElementById('backupList');
       if (!modal || !list) return;
 
-      let backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+      let backups = (await idbGet('backups')) || [];
       list.innerHTML = '';
       if (!Array.isArray(backups) || backups.length === 0) {
         list.innerHTML = '<p class="text-xs text-slate-500 italic p-3 text-center">Noch keine Sicherungsstände vorhanden.</p>';
@@ -1032,9 +1066,9 @@
       if (modal) modal.classList.add('hidden');
     }
 
-    function restoreBackup(idx) {
+    async function restoreBackup(idx) {
       try {
-        const backups = JSON.parse(localStorage.getItem(BACKUP_KEY) || '[]');
+        const backups = (await idbGet('backups')) || [];
         if (backups[idx] && backups[idx].data) {
           if (!confirm("Möchtest du den Stand vom " + backups[idx].timestamp + " laden?")) return;
           tripData = backups[idx].data;
@@ -1115,9 +1149,52 @@
       });
     }
 
+    function saveToStorage() {
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = setTimeout(async () => {
+        try {
+          await idbSet('trip_data', tripData);
+        } catch (e) {
+          console.error("Speicherfehler:", e);
+        }
+        updateStats();
+      }, 250);
+    }
+
+    async function loadFromStorage() {
+      // 1. Aus IndexedDB laden
+      let saved = await idbGet('trip_data');
+      
+      // 2. Fallback / automatische Migration aus altem localStorage falls noch nicht in IndexedDB
+      if (!saved) {
+        const legacy = localStorage.getItem('reiseplaner_pro_pwa_data');
+        if (legacy) {
+          try {
+            saved = JSON.parse(legacy);
+            await idbSet('trip_data', saved);
+            localStorage.removeItem('reiseplaner_pro_pwa_data');
+            console.log("Migration von localStorage zu IndexedDB erfolgreich abgeschlossen.");
+          } catch (e) {}
+        }
+      }
+
+      if (saved) {
+        try {
+          tripData = saved;
+          normalizeDataModel();
+          syncUI();
+        } catch (e) {
+          updateStats();
+        }
+      } else {
+        normalizeDataModel();
+        syncUI();
+      }
+    }
+
     async function saveToFile(forceSaveAs) {
-      createRollingBackup();
-      saveToStorage();
+      await createRollingBackup();
+      await idbSet('trip_data', tripData);
       const jsonContent = JSON.stringify(tripData, null, 2);
       const safeTitle = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
       const fileName = 'Reiseplan_' + safeTitle + '.json';
@@ -1167,7 +1244,7 @@
             activeFileHandle = handle;
             tripData = parsed;
             normalizeDataModel();
-            createRollingBackup();
+            await createRollingBackup();
             saveToStorage();
             syncUI();
             updateFileStatus(handle.name);
@@ -1185,14 +1262,14 @@
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = async function(e) {
         try {
           const parsed = JSON.parse(e.target.result);
           if (parsed && Array.isArray(parsed.days)) {
             activeFileHandle = null;
             tripData = parsed;
             normalizeDataModel();
-            createRollingBackup();
+            await createRollingBackup();
             saveToStorage();
             syncUI();
             updateFileStatus(file.name);
@@ -1203,29 +1280,6 @@
         }
       };
       reader.readAsText(file);
-    }
-
-    function saveToStorage() {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(tripData));
-      } catch (e) {}
-      updateStats();
-    }
-
-    function loadFromStorage() {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        try {
-          tripData = JSON.parse(raw);
-          normalizeDataModel();
-          syncUI();
-        } catch (e) {
-          updateStats();
-        }
-      } else {
-        normalizeDataModel();
-        syncUI();
-      }
     }
 
     function syncUI() {
@@ -1258,7 +1312,7 @@
       saveToStorage();
     }
 
-    // --- TAGE GENERIEREN ---
+    // --- TAGE GENERIEREN (UTC-BASIERT) ---
     function generateOrUpdateDays() {
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
@@ -1266,10 +1320,13 @@
         alert("Bitte Start- und Enddatum auswählen.");
         return;
       }
-      const sParts = start.split('-').map(Number);
-      const eParts = end.split('-').map(Number);
-      const dStart = new Date(sParts[0], sParts[1] - 1, sParts[2], 12, 0, 0);
-      const dEnd = new Date(eParts[0], eParts[1] - 1, eParts[2], 12, 0, 0);
+      const pStart = parseISOParts(start);
+      const pEnd = parseISOParts(end);
+
+      if (!pStart || !pEnd) return;
+
+      const dStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d);
+      const dEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
 
       if (dStart > dEnd) {
         alert("Startdatum darf nicht nach dem Enddatum liegen.");
@@ -1281,9 +1338,12 @@
       tripData.days.forEach(d => { if (d && d.date) existingMap.set(d.date, d); });
 
       const newDays = [];
-      let cur = new Date(dStart);
+      let cur = dStart;
+      const msPerDay = 1000 * 60 * 60 * 24;
+
       while (cur <= dEnd) {
-        const iso = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+        const dObj = new Date(cur);
+        const iso = dObj.toISOString().split('T')[0];
         if (existingMap.has(iso)) {
           newDays.push(existingMap.get(iso));
         } else {
@@ -1298,7 +1358,7 @@
             notes: ''
           });
         }
-        cur.setDate(cur.getDate() + 1);
+        cur += msPerDay;
       }
 
       tripData.days = newDays;
@@ -1358,10 +1418,7 @@
 
     function createDayElement(day, index, isToday) {
       const isBooked = isDayBooked(day);
-      const dParts = (day.date || '').split('-').map(Number);
-      const dObj = dParts.length === 3 ? new Date(dParts[0], dParts[1] - 1, dParts[2], 12, 0, 0) : new Date();
-      const dayName = dObj.toLocaleDateString('de-DE', { weekday: 'short' });
-      const dayFormatted = dObj.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const { dayName, dayFormatted } = formatISODate(day.date);
       const dayCosts = getDayCostBreakdown(day);
       const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
       const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
@@ -1385,7 +1442,7 @@
         : 'border-amber-200 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-950/30';
       if (isToday) headerBgClass = 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40';
 
-      html += '<div class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + headerBgClass + '">';
+      html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + headerBgClass + '">';
       
       html += '<div class="flex items-center gap-3">' +
         '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
@@ -1410,13 +1467,13 @@
       // TAGESORT INPUT-FELD
       html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
           (hasLoc ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
-          '<button type="button" onclick="openGoogleMaps(\'' + escapeHtml(day.location || '') + '\')" ' +
+          '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
             'class="mr-2.5 shrink-0 transition no-print ' + (hasLoc ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
             'title="' + (hasLoc ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
-            '<i class="fa-solid fa-map-location-dot text-lg"></i>' +
+            '<i class="fa-solid fa-map-location-dot text-lg pointer-events-none"></i>' +
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
-            'oninput="handleLocationInput(' + index + ', this.value)" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
+            'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
           '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLoc ? '' : 'hidden') + '">📍 Festgelegt</span>' +
         '</div>' +
       '</div>';
@@ -1437,18 +1494,18 @@
           '<i class="fa-solid fa-wallet text-violet-500"></i>' +
           '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
         '</div>' +
-        '<button onclick="toggleBookingStatus(' + index + ')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
+        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
           (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white') + '">' +
-          '<i class="fa-solid ' + statusIcon + '"></i> ' + statusLabel +
+          '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
         '</button>' +
-        '<button onclick="insertDayAfter(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
-          '<i class="fa-solid fa-calendar-plus text-xs"></i>' +
+        '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
+          '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button onclick="deleteDay(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen">' +
-          '<i class="fa-solid fa-trash-can text-xs"></i>' +
+        '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen">' +
+          '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button onclick="toggleDayCollapse(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
-          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs"></i>' +
+        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
+          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs pointer-events-none"></i>' +
         '</button>' +
       '</div>';
       html += '</div>';
@@ -1456,94 +1513,30 @@
       // --- DETAILS-BEREICH ---
       html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5 ' + (day.isCollapsed ? 'hidden' : '') + '">';
       
-      // 1. Transport & Aktivitäten
-      if (hasTransports || hasActivities) {
-        const gridClass = (hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4';
-        html += '<div class="' + gridClass + '">';
+      // 1. Transport & Aktivitäten Container
+      html += '<div id="day-modules-grid-' + index + '" class="' + ((hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4') + '">';
 
-        if (hasTransports) {
-          html += '<div class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-            '<div class="flex items-center justify-between mb-3">' +
-              '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>' +
-              '<button onclick="addTransportRow(' + index + ')" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
-            '</div><div class="space-y-2.5">';
-          
-          day.transports.forEach((tr, trIdx) => {
-            const trSafeUrl = formatSafeUrl(tr.link);
-            html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2">' +
-                '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
-                '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-                '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
-                  ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-                '</select>' +
-                getApproxEurHtml(tr.cost, tr.currency) +
-                '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + '); refreshDayHeaderTransportBadge(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
-                  '<option value="geplant" ' + ((tr.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-                  '<option value="reserviert" ' + (tr.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-                  '<option value="bezahlt" ' + (tr.costStatus === 'bezahlt' || tr.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
-                '</select>' +
-                '<button onclick="removeTransportItem(' + index + ', ' + trIdx + ')" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
-              '</div>' +
-              '<div class="flex items-start gap-2">' +
-                '<textarea rows="1" placeholder="Hinweise (z. B. Gleis, Helme, Kaution)" oninput="autoResizeTextarea(this); updateTransportItem(' + index + ', ' + trIdx + ', \'hint\', this.value)" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(tr.hint || '') + '</textarea>' +
-                '<input type="url" placeholder="Buchungs-URL" value="' + escapeHtml(tr.link || '') + '" oninput="handleTransportLinkChange(' + index + ', ' + trIdx + ', this.value)" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
-                '<a id="tr-link-btn-' + index + '-' + trIdx + '" href="' + escapeHtml(trSafeUrl || '#') + '" target="_blank" class="' + (trSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-              '</div>' +
-            '</div>';
-          });
-          html += '</div></div></div>';
-        }
-
-        if (hasActivities) {
-          html += '<div class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-            '<div class="flex items-center justify-between mb-3">' +
-              '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>' +
-              '<button onclick="addActivityRow(' + index + ')" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
-            '</div><div class="space-y-2.5">';
-
-          day.activities.forEach((act, actIdx) => {
-            const actSafeUrl = formatSafeUrl(act.link);
-            html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2">' +
-                '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'done\', this.checked)" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
-                '<input type="text" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
-                '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-                '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
-                  ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-                '</select>' +
-                getApproxEurHtml(act.cost, act.currency) +
-                '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
-                  '<option value="geplant" ' + ((act.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-                  '<option value="reserviert" ' + (act.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-                  '<option value="bezahlt" ' + (act.costStatus === 'bezahlt' || act.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
-                '</select>' +
-                '<button onclick="removeActivityItem(' + index + ', ' + actIdx + ')" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
-              '</div>' +
-              '<div class="flex items-start gap-2">' +
-                '<textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" oninput="autoResizeTextarea(this); updateActivityItem(' + index + ', ' + actIdx + ', \'hint\', this.value)" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
-                '<input type="url" placeholder="Webseite / Ticket" value="' + escapeHtml(act.link || '') + '" oninput="handleActivityLinkChange(' + index + ', ' + actIdx + ', this.value)" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
-                '<a id="act-link-btn-' + index + '-' + actIdx + '" href="' + escapeHtml(actSafeUrl || '#') + '" target="_blank" class="' + (actSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-              '</div>' +
-            '</div>';
-          });
-          html += '</div></div></div>';
-        }
-        html += '</div>';
+      if (hasTransports) {
+        html += renderTransportModuleHTML(day, index);
       }
 
-      if (!hasTransports || !hasActivities) {
-        html += '<div class="flex flex-wrap items-center gap-3 pt-1 no-print">';
-        if (!hasTransports) {
-          html += '<button onclick="addTransportRow(' + index + ')" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
-            '<i class="fa-solid fa-plane-departure text-cyan-600"></i> + Transport hinzufügen</button>';
-        }
-        if (!hasActivities) {
-          html += '<button onclick="addActivityRow(' + index + ')" class="px-3 py-1.5 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">' +
-            '<i class="fa-solid fa-ticket text-emerald-600"></i> + Aktivität hinzufügen</button>';
-        }
-        html += '</div>';
+      if (hasActivities) {
+        html += renderActivityModuleHTML(day, index);
       }
+
+      html += '</div>';
+
+      // Buttons zum Hinzufügen falls noch nicht vorhanden
+      html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
+      if (!hasTransports) {
+        html += '<button data-action="add-transport" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
+          '<i class="fa-solid fa-plane-departure text-cyan-600 pointer-events-none"></i> + Transport hinzufügen</button>';
+      }
+      if (!hasActivities) {
+        html += '<button data-action="add-activity" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">' +
+          '<i class="fa-solid fa-ticket text-emerald-600 pointer-events-none"></i> + Aktivität hinzufügen</button>';
+      }
+      html += '</div>';
 
       // 2. Tagesnotizen & Screenshots
       html += '<div class="space-y-3">' +
@@ -1553,31 +1546,29 @@
           '</span>' +
           '<div class="flex items-center gap-2 no-print">' +
             '<input type="file" id="file-upload-' + index + '" accept="image/*" class="hidden" onchange="handleImageFileSelect(event, ' + index + ')">' +
-            '<button type="button" onclick="document.getElementById(\'file-upload-' + index + '\').click()" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
-              '<i class="fa-solid fa-image"></i> Screenshot anhängen' +
+            '<button type="button" data-action="trigger-file-upload" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
+              '<i class="fa-solid fa-image pointer-events-none"></i> Screenshot anhängen' +
             '</button>' +
             '<span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>' +
           '</div>' +
         '</div>' +
         '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshot direkt per Strg + V einfügen)" ' +
           'onpaste="handleDayPaste(event, ' + index + ')" ' +
-          'oninput="autoResizeTextarea(this); updateDayField(' + index + ', \'notes\', this.value)" ' +
+          'data-day-index="' + index + '" data-field="notes" ' +
           'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">' +
           escapeHtml(day.notes || '') +
         '</textarea>';
 
+      html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       if (images.length > 0) {
-        html += '<div class="flex flex-wrap gap-2.5 pt-1">';
         images.forEach((imgSrc, imgIdx) => {
           html += '<div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">' +
-            '<img src="' + imgSrc + '" onclick="openLightbox(\'' + imgSrc + '\')" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">' +
-            '<button onclick="deleteDayImage(' + index + ', ' + imgIdx + ')" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>' +
+            '<img src="' + imgSrc + '" data-action="open-lightbox" data-img-src="' + imgSrc + '" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">' +
+            '<button data-action="delete-image" data-day-index="' + index + '" data-img-index="' + imgIdx + '" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>' +
           '</div>';
         });
-        html += '</div>';
       }
-
-      html += '</div>';
+      html += '</div></div>';
 
       // 3. Übernachtung
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
@@ -1587,23 +1578,23 @@
       html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
         '<div class="flex items-center justify-between mb-3">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung (Tagesabschluss)</h3>' +
-          '<span class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
+          '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
         '</div>' +
         '<div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">' +
           '<div class="md:col-span-5">' +
             '<input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="' + escapeHtml(day.lodging.name || '') + '" ' +
-              'oninput="updateDayField(' + index + ', \'lodging.name\', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
+              'data-day-index="' + index + '" data-field="lodging.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
           '</div>' +
           '<div class="md:col-span-4 flex items-center gap-1.5">' +
             '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
-              'oninput="updateDayField(' + index + ', \'lodging.price\', this.value); refreshDayHeaderCost(' + index + ');" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
-            '<select onchange="updateDayField(' + index + ', \'lodging.currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
+              'data-day-index="' + index + '" data-field="lodging.price" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
+            '<select data-day-index="' + index + '" data-field="lodging.currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
             '</select>' +
-            getApproxEurHtml(day.lodging.price, day.lodging.currency) +
+            '<span id="lodging-eur-approx-' + index + '">' + getApproxEurHtml(day.lodging.price, day.lodging.currency) + '</span>' +
           '</div>' +
           '<div class="md:col-span-3">' +
-            '<select onchange="updateLodgingCostStatus(' + index + ', this.value)" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(day.lodging.costStatus || 'geplant') + '">' +
+            '<select data-day-index="' + index + '" data-field="lodging.costStatus" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(day.lodging.costStatus || 'geplant') + '">' +
               '<option value="geplant" ' + ((day.lodging.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
               '<option value="reserviert" ' + (day.lodging.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
               '<option value="gebucht" ' + (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' ? 'selected' : '') + '>✅ Gebucht</option>' +
@@ -1611,12 +1602,12 @@
           '</div>' +
         '</div>' +
         '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">' +
-          '<div><textarea rows="1" placeholder="Hinweise (z. B. Stornofrist, Frühstück)" oninput="autoResizeTextarea(this); updateDayField(' + index + ', \'lodging.hint\', this.value)" class="auto-hint w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 placeholder-slate-400 focus:border-indigo-500">' + escapeHtml(day.lodging.hint || '') + '</textarea></div>' +
+          '<div><textarea rows="1" placeholder="Hinweise (z. B. Stornofrist, Frühstück)" data-day-index="' + index + '" data-field="lodging.hint" class="auto-hint w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 placeholder-slate-400 focus:border-indigo-500">' + escapeHtml(day.lodging.hint || '') + '</textarea></div>' +
           '<div class="flex gap-2">' +
-            '<input type="url" placeholder="Buchungslink (https://...)" value="' + escapeHtml(day.lodging.link || '') + '" oninput="handleLodgingLinkChange(' + index + ', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">' +
+            '<input type="url" placeholder="Buchungslink (https://...)" value="' + escapeHtml(day.lodging.link || '') + '" data-day-index="' + index + '" data-field="lodging.link" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">' +
             '<a id="lodging-link-btn-' + index + '" href="' + escapeHtml(lodgingSafeUrl || '#') + '" target="_blank" class="' + (lodgingSafeUrl ? '' : 'hidden') + ' px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
           '</div>' +
-          '<div><input type="text" placeholder="Adresse / Check-in Notiz" value="' + escapeHtml(day.lodging.notes || '') + '" oninput="updateDayField(' + index + ', \'lodging.notes\', this.value)" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>' +
+          '<div><input type="text" placeholder="Adresse / Check-in Notiz" value="' + escapeHtml(day.lodging.notes || '') + '" data-day-index="' + index + '" data-field="lodging.notes" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>' +
         '</div>' +
       '</div>';
 
@@ -1625,32 +1616,352 @@
       return card;
     }
 
-    // --- FORMULAR-INTERAKTIONEN ---
-    function handleLocationInput(dayIndex, value) {
-      if (!tripData.days[dayIndex]) return;
-      tripData.days[dayIndex].location = value;
-      saveToStorage();
+    function renderTransportModuleHTML(day, index) {
+      let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-3">' +
+          '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>' +
+          '<button data-action="add-transport" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
+        '</div><div class="space-y-2.5">';
 
-      const box = document.getElementById('loc-box-' + dayIndex);
-      const badge = document.getElementById('loc-badge-' + dayIndex);
-      if (box && badge) {
-        if ((value || '').trim() !== "") {
-          box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
-          badge.classList.remove('hidden');
-        } else {
-          box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
-          badge.classList.add('hidden');
-        }
-      }
+      day.transports.forEach((tr, trIdx) => {
+        const trSafeUrl = formatSafeUrl(tr.link);
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+          '<div class="flex items-center gap-2">' +
+            '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
+            '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+            '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
+              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+            '</select>' +
+            '<span id="tr-eur-approx-' + index + '-' + trIdx + '">' + getApproxEurHtml(tr.cost, tr.currency) + '</span>' +
+            '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
+              '<option value="geplant" ' + ((tr.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
+              '<option value="reserviert" ' + (tr.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
+              '<option value="bezahlt" ' + (tr.costStatus === 'bezahlt' || tr.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
+            '</select>' +
+            '<button data-action="remove-transport" data-day-index="' + index + '" data-tr-index="' + trIdx + '" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
+          '</div>' +
+          '<div class="flex items-start gap-2">' +
+            '<textarea rows="1" placeholder="Hinweise (z. B. Gleis, Helme, Kaution)" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(tr.hint || '') + '</textarea>' +
+            '<input type="url" placeholder="Buchungs-URL" value="' + escapeHtml(tr.link || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
+            '<a id="tr-link-btn-' + index + '-' + trIdx + '" href="' + escapeHtml(trSafeUrl || '#') + '" target="_blank" class="' + (trSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></div></div>';
+      return html;
     }
 
-    function updateLodgingCostStatus(dayIndex, newStatus) {
-      if (!tripData.days[dayIndex]) return;
-      if (!tripData.days[dayIndex].lodging) tripData.days[dayIndex].lodging = {};
-      tripData.days[dayIndex].lodging.costStatus = newStatus;
-      tripData.days[dayIndex].lodging.isBooked = isDayBooked(tripData.days[dayIndex]);
-      saveToStorage();
-      renderDays();
+    function renderActivityModuleHTML(day, index) {
+      let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-3">' +
+          '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>' +
+          '<button data-action="add-activity" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
+        '</div><div class="space-y-2.5">';
+
+      day.activities.forEach((act, actIdx) => {
+        const actSafeUrl = formatSafeUrl(act.link);
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+          '<div class="flex items-center gap-2">' +
+            '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
+            '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
+            '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+            '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
+              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+            '</select>' +
+            '<span id="act-eur-approx-' + index + '-' + actIdx + '">' + getApproxEurHtml(act.cost, act.currency) + '</span>' +
+            '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
+              '<option value="geplant" ' + ((act.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
+              '<option value="reserviert" ' + (act.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
+              '<option value="bezahlt" ' + (act.costStatus === 'bezahlt' || act.costStatus === 'gebucht' ? 'selected' : '') + '>✅ Bezahlt</option>' +
+            '</select>' +
+            '<button data-action="remove-activity" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
+          '</div>' +
+          '<div class="flex items-start gap-2">' +
+            '<textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
+            '<input type="url" placeholder="Webseite / Ticket" value="' + escapeHtml(act.link || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
+            '<a id="act-link-btn-' + index + '-' + actIdx + '" href="' + escapeHtml(actSafeUrl || '#') + '" target="_blank" class="' + (actSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div></div></div>';
+      return html;
+    }
+
+    // --- EVENT DELEGATION & GRANULARE DOM-UPDATES ---
+    function setupEventDelegation() {
+      const container = document.getElementById('daysContainer');
+      const checklistCont = document.getElementById('checklistContainer');
+
+      // Click Events delegieren
+      container.addEventListener('click', (e) => {
+        const target = e.target.closest('[data-action]');
+        if (!target) return;
+        const action = target.getAttribute('data-action');
+        const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
+
+        switch (action) {
+          case 'open-maps': {
+            const day = tripData.days[dayIdx];
+            if (day) openGoogleMaps(day.location);
+            break;
+          }
+          case 'toggle-booking': {
+            toggleBookingStatus(dayIdx);
+            break;
+          }
+          case 'insert-day': {
+            insertDayAfter(dayIdx);
+            break;
+          }
+          case 'delete-day': {
+            deleteDay(dayIdx);
+            break;
+          }
+          case 'toggle-collapse': {
+            toggleDayCollapse(dayIdx);
+            break;
+          }
+          case 'add-transport': {
+            addTransportRow(dayIdx);
+            break;
+          }
+          case 'remove-transport': {
+            const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
+            removeTransportItem(dayIdx, trIdx);
+            break;
+          }
+          case 'add-activity': {
+            addActivityRow(dayIdx);
+            break;
+          }
+          case 'remove-activity': {
+            const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+            removeActivityItem(dayIdx, actIdx);
+            break;
+          }
+          case 'trigger-file-upload': {
+            const fileInp = document.getElementById('file-upload-' + dayIdx);
+            if (fileInp) fileInp.click();
+            break;
+          }
+          case 'open-lightbox': {
+            const src = target.getAttribute('data-img-src');
+            if (src) openLightbox(src);
+            break;
+          }
+          case 'delete-image': {
+            const imgIdx = parseInt(target.getAttribute('data-img-index'), 10);
+            deleteDayImage(dayIdx, imgIdx);
+            break;
+          }
+        }
+      });
+
+      // Change Events (Selects, Checkboxen)
+      container.addEventListener('change', (e) => {
+        const target = e.target;
+        const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
+
+        // Checkbox: Aktivität erledigt
+        if (target.getAttribute('data-action') === 'toggle-activity-done') {
+          const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+          if (tripData.days[dayIdx] && tripData.days[dayIdx].activities[actIdx]) {
+            tripData.days[dayIdx].activities[actIdx].done = target.checked;
+            const titleInput = document.getElementById('act-title-input-' + dayIdx + '-' + actIdx);
+            if (titleInput) {
+              titleInput.classList.toggle('line-through', target.checked);
+              titleInput.classList.toggle('text-slate-400', target.checked);
+            }
+            saveToStorage();
+          }
+          return;
+        }
+
+        // Lodging Felder
+        const field = target.getAttribute('data-field');
+        if (field) {
+          if (field.startsWith('lodging.')) {
+            const sub = field.split('.')[1];
+            if (!tripData.days[dayIdx].lodging) tripData.days[dayIdx].lodging = {};
+            tripData.days[dayIdx].lodging[sub] = target.value;
+            if (sub === 'costStatus') {
+              tripData.days[dayIdx].lodging.isBooked = isDayBooked(tripData.days[dayIdx]);
+              target.className = 'w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(target.value);
+              updateDayCardVisualStatus(dayIdx);
+            }
+            refreshDayHeaderCost(dayIdx);
+            saveToStorage();
+          }
+          return;
+        }
+
+        // Transport Felder
+        const trField = target.getAttribute('data-tr-field');
+        if (trField) {
+          const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
+          if (tripData.days[dayIdx] && tripData.days[dayIdx].transports[trIdx]) {
+            tripData.days[dayIdx].transports[trIdx][trField] = target.value;
+            if (trField === 'costStatus') {
+              target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
+            }
+            refreshDayHeaderCost(dayIdx);
+            saveToStorage();
+          }
+          return;
+        }
+
+        // Activity Felder
+        const actField = target.getAttribute('data-act-field');
+        if (actField) {
+          const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+          if (tripData.days[dayIdx] && tripData.days[dayIdx].activities[actIdx]) {
+            tripData.days[dayIdx].activities[actIdx][actField] = target.value;
+            if (actField === 'costStatus') {
+              target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
+            }
+            refreshDayHeaderCost(dayIdx);
+            saveToStorage();
+          }
+          return;
+        }
+      });
+
+      // Input Events (Tippen, ohne Re-Render)
+      container.addEventListener('input', (e) => {
+        const target = e.target;
+        const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
+
+        if (target.classList.contains('auto-hint')) {
+          autoResizeTextarea(target);
+        }
+
+        const field = target.getAttribute('data-field');
+        if (field) {
+          if (field === 'location') {
+            tripData.days[dayIdx].location = target.value;
+            const box = document.getElementById('loc-box-' + dayIdx);
+            const badge = document.getElementById('loc-badge-' + dayIdx);
+            const mapsBtn = box ? box.querySelector('[data-action="open-maps"]') : null;
+            const hasLoc = (target.value || '').trim() !== '';
+
+            if (box && badge) {
+              if (hasLoc) {
+                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
+                badge.classList.remove('hidden');
+                if (mapsBtn) {
+                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
+                  mapsBtn.title = "In Google Maps öffnen";
+                }
+              } else {
+                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
+                badge.classList.add('hidden');
+                if (mapsBtn) {
+                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
+                  mapsBtn.title = "Tagesort eintragen";
+                }
+              }
+            }
+            saveToStorage();
+          } else if (field === 'notes') {
+            tripData.days[dayIdx].notes = target.value;
+            saveToStorage();
+          } else if (field.startsWith('lodging.')) {
+            const sub = field.split('.')[1];
+            if (!tripData.days[dayIdx].lodging) tripData.days[dayIdx].lodging = {};
+            tripData.days[dayIdx].lodging[sub] = target.value;
+            if (sub === 'price' || sub === 'currency') {
+              const eurApprox = document.getElementById('lodging-eur-approx-' + dayIdx);
+              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].lodging.price, tripData.days[dayIdx].lodging.currency);
+              refreshDayHeaderCost(dayIdx);
+            } else if (sub === 'link') {
+              const linkBtn = document.getElementById('lodging-link-btn-' + dayIdx);
+              if (linkBtn) {
+                const safeUrl = formatSafeUrl(target.value);
+                if (safeUrl) {
+                  linkBtn.href = safeUrl;
+                  linkBtn.classList.remove('hidden');
+                } else {
+                  linkBtn.classList.add('hidden');
+                  linkBtn.href = '#';
+                }
+              }
+            }
+            saveToStorage();
+          }
+          return;
+        }
+
+        const trField = target.getAttribute('data-tr-field');
+        if (trField) {
+          const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
+          if (tripData.days[dayIdx] && tripData.days[dayIdx].transports[trIdx]) {
+            tripData.days[dayIdx].transports[trIdx][trField] = target.value;
+            if (trField === 'cost' || trField === 'currency') {
+              const eurApprox = document.getElementById('tr-eur-approx-' + dayIdx + '-' + trIdx);
+              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].transports[trIdx].cost, tripData.days[dayIdx].transports[trIdx].currency);
+              refreshDayHeaderCost(dayIdx);
+            } else if (trField === 'link') {
+              const linkBtn = document.getElementById('tr-link-btn-' + dayIdx + '-' + trIdx);
+              if (linkBtn) {
+                const safeUrl = formatSafeUrl(target.value);
+                if (safeUrl) {
+                  linkBtn.href = safeUrl;
+                  linkBtn.classList.remove('hidden');
+                } else {
+                  linkBtn.classList.add('hidden');
+                  linkBtn.href = '#';
+                }
+              }
+            }
+            saveToStorage();
+          }
+          return;
+        }
+
+        const actField = target.getAttribute('data-act-field');
+        if (actField) {
+          const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+          if (tripData.days[dayIdx] && tripData.days[dayIdx].activities[actIdx]) {
+            tripData.days[dayIdx].activities[actIdx][actField] = target.value;
+            if (actField === 'cost' || actField === 'currency') {
+              const eurApprox = document.getElementById('act-eur-approx-' + dayIdx + '-' + actIdx);
+              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].activities[actIdx].cost, tripData.days[dayIdx].activities[actIdx].currency);
+              refreshDayHeaderCost(dayIdx);
+            } else if (actField === 'link') {
+              const linkBtn = document.getElementById('act-link-btn-' + dayIdx + '-' + actIdx);
+              if (linkBtn) {
+                const safeUrl = formatSafeUrl(target.value);
+                if (safeUrl) {
+                  linkBtn.href = safeUrl;
+                  linkBtn.classList.remove('hidden');
+                } else {
+                  linkBtn.classList.add('hidden');
+                  linkBtn.href = '#';
+                }
+              }
+            }
+            saveToStorage();
+          }
+          return;
+        }
+      });
+
+      // Delegation für Checkliste
+      if (checklistCont) {
+        checklistCont.addEventListener('change', (e) => {
+          if (e.target.getAttribute('data-action') === 'toggle-checklist-item') {
+            const idx = parseInt(e.target.getAttribute('data-idx'), 10);
+            toggleChecklistItem(idx);
+          }
+        });
+        checklistCont.addEventListener('click', (e) => {
+          const btn = e.target.closest('[data-action="remove-checklist-item"]');
+          if (btn) {
+            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+            removeChecklistItem(idx);
+          }
+        });
+      }
     }
 
     function toggleBookingStatus(dayIndex) {
@@ -1659,24 +1970,52 @@
       tripData.days[dayIndex].lodging.costStatus = currentBooked ? 'geplant' : 'gebucht';
       tripData.days[dayIndex].lodging.isBooked = !currentBooked;
       saveToStorage();
-      renderDays();
+      updateDayCardVisualStatus(dayIndex);
     }
 
-    function updateDayField(dayIndex, fieldPath, value) {
-      if (!tripData.days[dayIndex]) return;
-      if (fieldPath.startsWith('lodging.')) {
-        const field = fieldPath.split('.')[1];
-        if (!tripData.days[dayIndex].lodging) tripData.days[dayIndex].lodging = {};
-        tripData.days[dayIndex].lodging[field] = value;
-      } else {
-        tripData.days[dayIndex][fieldPath] = value;
+    function updateDayCardVisualStatus(dayIndex) {
+      const day = tripData.days[dayIndex];
+      const isBooked = isDayBooked(day);
+      const isToday = day.date === getTodayIso();
+
+      const card = document.getElementById('day-card-' + dayIndex);
+      const header = document.getElementById('day-header-' + dayIndex);
+      const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
+      const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
+
+      if (card && !isToday) {
+        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + 
+          (isBooked ? 'bg-emerald-50/70 border-emerald-300 dark:bg-emerald-950/20 dark:border-emerald-500/30' : 'bg-amber-50/70 border-amber-300 dark:bg-amber-950/20 dark:border-amber-500/30');
       }
-      saveToStorage();
-    }
+      if (header && !isToday) {
+        header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + 
+          (isBooked ? 'border-emerald-200 bg-emerald-100/60 dark:border-emerald-500/20 dark:bg-emerald-950/30' : 'border-amber-200 bg-amber-100/60 dark:border-amber-500/20 dark:bg-amber-950/30');
+      }
 
-    function updateSelectStyle(selectEl) {
-      if (!selectEl) return;
-      selectEl.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(selectEl.value);
+      let statusLabel = 'Übernachtung offen';
+      let statusIcon = 'fa-clock';
+      if (day.lodging.costStatus === 'reserviert') { 
+        statusLabel = 'Übernachtung reserviert'; 
+        statusIcon = 'fa-bookmark'; 
+      } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') { 
+        statusLabel = 'Übernachtung gebucht'; 
+        statusIcon = 'fa-check'; 
+      }
+
+      if (bookingBtn) {
+        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
+          (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white');
+        bookingBtn.innerHTML = '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>';
+      }
+
+      if (lodgingLabel) {
+        let lText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
+        let lColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
+        lodgingLabel.className = 'text-[11px] font-semibold ' + lColor;
+        lodgingLabel.innerText = lText;
+      }
+
+      updateStats();
     }
 
     function refreshDayHeaderCost(dayIndex) {
@@ -1684,6 +2023,13 @@
       const costs = getDayCostBreakdown(tripData.days[dayIndex]);
       const display = document.getElementById('day-cost-display-' + dayIndex);
       if (display) display.innerText = formatEuro(costs.total);
+      updateStats();
+    }
+
+    function updateAllCostDisplays() {
+      (tripData.days || []).forEach((d, idx) => {
+        refreshDayHeaderCost(idx);
+      });
       updateStats();
     }
 
@@ -1699,14 +2045,14 @@
       if (body && icon) {
         if (tripData.days[dayIndex].isCollapsed) {
           body.classList.add('hidden');
-          icon.className = "fa-solid fa-chevron-down text-xs";
+          icon.className = "fa-solid fa-chevron-down text-xs pointer-events-none";
           if (trLine) {
             trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIndex]);
             trLine.classList.toggle('hidden', !(tripData.days[dayIndex].transports && tripData.days[dayIndex].transports.length > 0));
           }
         } else {
           body.classList.remove('hidden');
-          icon.className = "fa-solid fa-chevron-up text-xs";
+          icon.className = "fa-solid fa-chevron-up text-xs pointer-events-none";
           if (trLine) {
             trLine.classList.add('hidden');
           }
@@ -1730,12 +2076,6 @@
       renderDays();
     }
 
-    function updateTransportItem(dayIndex, itemIndex, field, value) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports || !tripData.days[dayIndex].transports[itemIndex]) return;
-      tripData.days[dayIndex].transports[itemIndex][field] = value;
-      saveToStorage();
-    }
-
     function removeTransportItem(dayIndex, itemIndex) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports) return;
       tripData.days[dayIndex].transports.splice(itemIndex, 1);
@@ -1749,13 +2089,6 @@
       tripData.days[dayIndex].activities.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', done: false });
       saveToStorage();
       renderDays();
-    }
-
-    function updateActivityItem(dayIndex, itemIndex, field, value) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].activities || !tripData.days[dayIndex].activities[itemIndex]) return;
-      tripData.days[dayIndex].activities[itemIndex][field] = value;
-      saveToStorage();
-      if (field === 'done') renderDays();
     }
 
     function removeActivityItem(dayIndex, itemIndex) {
@@ -1818,17 +2151,11 @@
     window.importJSONFallback = importJSONFallback;
     window.toggleAllDays = toggleAllDays;
     window.toggleBookingStatus = toggleBookingStatus;
-    window.updateLodgingCostStatus = updateLodgingCostStatus;
     window.toggleDayCollapse = toggleDayCollapse;
-    window.handleLocationInput = handleLocationInput;
-    window.updateDayField = updateDayField;
-    window.updateSelectStyle = updateSelectStyle;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
-    window.updateTransportItem = updateTransportItem;
     window.removeTransportItem = removeTransportItem;
     window.addActivityRow = addActivityRow;
-    window.updateActivityItem = updateActivityItem;
     window.removeActivityItem = removeActivityItem;
     window.saveMetaData = saveMetaData;
     window.saveGeneralNotes = saveGeneralNotes;
@@ -1849,9 +2176,6 @@
     window.removeChecklistItem = removeChecklistItem;
     window.insertDayAfter = insertDayAfter;
     window.deleteDay = deleteDay;
-    window.handleLodgingLinkChange = handleLodgingLinkChange;
-    window.handleTransportLinkChange = handleTransportLinkChange;
-    window.handleActivityLinkChange = handleActivityLinkChange;
     window.handleDayPaste = handleDayPaste;
     window.handleImageFileSelect = handleImageFileSelect;
     window.deleteDayImage = deleteDayImage;
