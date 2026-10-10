@@ -2,7 +2,7 @@
 <html lang="de" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Reiseplaner Pro</title>
   
   <link rel="manifest" href="manifest.json">
@@ -76,7 +76,7 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="flex items-center gap-2 no-print">
+      <div class="flex items-center gap-2 no-print flex-wrap">
         <button onclick="toggleTheme()" id="themeToggleBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Design wechseln (Hell / Dunkel)">
           <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
           <span id="themeToggleText" class="hidden sm:inline">Hell</span>
@@ -110,7 +110,7 @@
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Reisetitel</label>
-          <input type="text" id="tripTitle" placeholder="z. B. Japan Rundreise" oninput="saveMetaData()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
+          <input type="text" id="tripTitle" placeholder="z. B. Südostasien Rundreise" oninput="saveMetaData()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
         </div>
         <div>
           <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Startdatum</label>
@@ -193,7 +193,7 @@
         </div>
       </div>
 
-      <!-- WECHSELKURSE -->
+      <!-- WECHSELKURSE (inkl. VND) -->
       <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center gap-4 text-xs">
         <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
           <i class="fa-solid fa-coins text-amber-500"></i> Wechselkurse (1 € =):
@@ -209,6 +209,10 @@
         <div class="flex items-center gap-1.5">
           <span class="font-semibold text-slate-500">LAK:</span>
           <input type="number" id="rateLAK" step="100" value="24000" oninput="updateRate('LAK', this.value)" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold text-slate-500">VND:</span>
+          <input type="number" id="rateVND" step="100" value="27000" oninput="updateRate('VND', this.value)" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
         </div>
       </div>
     </section>
@@ -298,12 +302,14 @@
   </div>
 
   <script>
+    const SUPPORTED_CURRENCIES = ['EUR', 'THB', 'USD', 'LAK', 'VND'];
+
     let tripData = {
       title: "",
       startDate: "",
       endDate: "",
       generalNotes: "",
-      exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
+      exchangeRates: { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 },
       checklist: [],
       days: []
     };
@@ -436,7 +442,7 @@
       }, 2500);
     }
 
-    // --- SCREENSHOT-VERARBEITUNG ---
+    // --- SCREENSHOT-VERARBEITUNG MIT SPEICHERSCHUTZ ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
       const items = e.clipboardData.items;
@@ -465,7 +471,8 @@
       reader.onload = function(e) {
         const img = new Image();
         img.onload = function() {
-          const maxDim = 1200;
+          // Komprimierung: Max 800px Kantenlänge & 60% Qualität zur Schonung des localStorages
+          const maxDim = 800;
           let w = img.width;
           let h = img.height;
           if (w > maxDim || h > maxDim) {
@@ -482,7 +489,7 @@
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, w, h);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
 
           if (!tripData.days[dayIndex]) return;
           if (!Array.isArray(tripData.days[dayIndex].images)) {
@@ -491,7 +498,7 @@
           tripData.days[dayIndex].images.push(dataUrl);
           saveToStorage();
           renderDays();
-          showToast("Screenshot hinzugefügt");
+          showToast("Screenshot komprimiert & gesichert");
         };
         img.src = e.target.result;
       };
@@ -588,14 +595,17 @@
       }
     }
 
-    // --- WECHSELKURSE & UMRECHNUNG ---
+    // --- WECHSELKURSE (FOKUSSTABIL OHNE RENDERDAYS) ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
       if (!isNaN(num) && num > 0) {
         if (!tripData.exchangeRates) tripData.exchangeRates = {};
         tripData.exchangeRates[curr] = num;
         saveToStorage();
-        renderDays();
+        // Gezielt nur Header und Gesamtsummen berechnen, um Tastaturfokus nicht zu verlieren
+        if (Array.isArray(tripData.days)) {
+          tripData.days.forEach((_, idx) => refreshDayHeaderCost(idx));
+        }
       }
     }
 
@@ -608,7 +618,7 @@
       const curr = (currency || 'EUR').toUpperCase();
       if (curr === 'EUR') return num;
 
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
+      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
       const rate = rates[curr] || 1;
       return num / rate;
     }
@@ -684,7 +694,23 @@
       }
     }
 
-    // --- TAGE FLEXIBEL EINFÜGEN & LÖSCHEN ---
+    // --- TAGE EINFÜGEN, KOPIEREN & LÖSCHEN ---
+    function copyLocationToNextDay(dayIndex) {
+      const curLoc = (tripData.days[dayIndex]?.location || '').trim();
+      if (!curLoc) {
+        showToast("Kein Ort zum Übernehmen vorhanden", true);
+        return;
+      }
+      if (dayIndex + 1 < tripData.days.length) {
+        tripData.days[dayIndex + 1].location = curLoc;
+        saveToStorage();
+        renderDays();
+        showToast("Ort nach Tag " + (dayIndex + 2) + " kopiert");
+      } else {
+        showToast("Kein Folgetag vorhanden", true);
+      }
+    }
+
     function insertDayAfter(dayIndex) {
       const curDay = tripData.days[dayIndex];
       if (!curDay) return;
@@ -698,6 +724,7 @@
         location: '',
         isCollapsed: false,
         lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+        dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
         transports: [],
         activities: [],
         images: [],
@@ -864,7 +891,6 @@
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
     }
 
-    // Transport-Icon Ermittlung inklusive Roller & Zweirad
     function getTransportIcon(title) {
       const t = (title || '').toLowerCase();
       if (t.includes('flug') || t.includes('flight') || t.includes('airline') || t.includes('airport')) return 'fa-plane';
@@ -876,7 +902,6 @@
       return 'fa-plane-departure';
     }
 
-    // Zeile vor Tagesort im eingeklappten Zustand (ohne Kosten & Link)
     function getHeaderTransportLineContent(day) {
       if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
 
@@ -925,6 +950,12 @@
         total += c;
         const s = (day.lodging.costStatus || '').toLowerCase();
         if (s === 'bezahlt' || s === 'gebucht') paid += c;
+      }
+
+      if (day && day.dailyExpenses && day.dailyExpenses.amount) {
+        const c = convertToEur(day.dailyExpenses.amount, day.dailyExpenses.currency);
+        total += c;
+        paid += c; // Tagesausgaben / Verpflegung gelten direkt als gezahlt
       }
 
       if (day && Array.isArray(day.transports)) {
@@ -1053,10 +1084,11 @@
     // --- NORMALISIERUNG & SPEICHERUNG ---
     function normalizeDataModel() {
       if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
+        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 }, checklist: [], days: [] };
       }
       if (tripData.generalNotes === undefined) tripData.generalNotes = "";
-      if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000 };
+      if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
+      if (!tripData.exchangeRates.VND) tripData.exchangeRates.VND = 27000;
       if (!Array.isArray(tripData.checklist) || tripData.checklist.length === 0) {
         tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
       }
@@ -1083,6 +1115,14 @@
           if (day.lodging.notes === undefined) day.lodging.notes = '';
           if (!day.lodging.costStatus) day.lodging.costStatus = day.lodging.isBooked ? 'gebucht' : 'geplant';
           day.lodging.isBooked = isDayBooked(day);
+        }
+
+        if (!day.dailyExpenses || typeof day.dailyExpenses !== 'object') {
+          day.dailyExpenses = { amount: '', currency: 'EUR', notes: '' };
+        } else {
+          if (day.dailyExpenses.amount === undefined) day.dailyExpenses.amount = '';
+          if (!day.dailyExpenses.currency) day.dailyExpenses.currency = 'EUR';
+          if (day.dailyExpenses.notes === undefined) day.dailyExpenses.notes = '';
         }
 
         if (!Array.isArray(day.transports)) {
@@ -1209,7 +1249,11 @@
     function saveToStorage() {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(tripData));
-      } catch (e) {}
+      } catch (e) {
+        if (e.name === 'QuotaExceededError' || e.code === 22) {
+          showToast("Speicher voll! Bitte alte Screenshots löschen oder als Datei sichern", true);
+        }
+      }
       updateStats();
     }
 
@@ -1235,13 +1279,15 @@
       document.getElementById('endDate').value = tripData.endDate || '';
       document.getElementById('generalNotes').value = tripData.generalNotes || '';
       
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
+      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000, VND: 27000 };
       const elTHB = document.getElementById('rateTHB');
       const elUSD = document.getElementById('rateUSD');
       const elLAK = document.getElementById('rateLAK');
+      const elVND = document.getElementById('rateVND');
       if (elTHB) elTHB.value = rates.THB || 38;
       if (elUSD) elUSD.value = rates.USD || 1.08;
       if (elLAK) elLAK.value = rates.LAK || 24000;
+      if (elVND) elVND.value = rates.VND || 27000;
 
       renderChecklist();
       renderDays();
@@ -1293,6 +1339,7 @@
             location: '',
             isCollapsed: false,
             lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+            dailyExpenses: { amount: '', currency: 'EUR', notes: '' },
             transports: [],
             activities: [],
             images: [],
@@ -1403,12 +1450,11 @@
       const hasLoc = (day.location || '').trim() !== '';
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
       
-      // TRANSPORTZEILE (NUR IM EINGEKLAPPTEN ZUSTAND SICHTBAR)
       html += '<div id="day-header-transport-' + index + '" class="' + (day.isCollapsed && hasTransports ? '' : 'hidden') + '">' +
         getHeaderTransportLineContent(day) +
       '</div>';
 
-      // TAGESORT INPUT-FELD
+      // TAGESORT INPUT-FELD + KOPIERBUTTON FÜR FOLGETAG
       html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
           (hasLoc ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
           '<button type="button" onclick="openGoogleMaps(\'' + escapeHtml(day.location || '') + '\')" ' +
@@ -1418,11 +1464,14 @@
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
             'oninput="handleLocationInput(' + index + ', this.value)" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
-          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLoc ? '' : 'hidden') + '">📍 Festgelegt</span>' +
+          '<button type="button" onclick="copyLocationToNextDay(' + index + ')" title="Ort auf Folgetag kopieren" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 font-bold px-2 py-1 rounded bg-indigo-100 dark:bg-indigo-900/60 ml-1.5 shrink-0 no-print transition flex items-center gap-1">' +
+            '<i class="fa-solid fa-arrow-down"></i> <span class="hidden sm:inline">Folgetag</span>' +
+          '</button>' +
+          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-1.5 no-print ' + (hasLoc ? '' : 'hidden') + '">📍 Festgelegt</span>' +
         '</div>' +
       '</div>';
 
-      // Statusanzeige des Tages: "Übernachtung gebucht" / "Übernachtung reserviert" / "Übernachtung offen"
+      // Statusanzeige des Tages
       let statusLabel = 'Übernachtung offen';
       let statusIcon = 'fa-clock';
       if (day.lodging.costStatus === 'reserviert') { 
@@ -1438,18 +1487,18 @@
           '<i class="fa-solid fa-wallet text-violet-500"></i>' +
           '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
         '</div>' +
-        '<button onclick="toggleBookingStatus(' + index + ')" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
+        '<button onclick="toggleBookingStatus(' + index + ')" class="h-9 px-3 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' +
           (isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-amber-600 hover:bg-amber-500 text-white') + '">' +
           '<i class="fa-solid ' + statusIcon + '"></i> ' + statusLabel +
         '</button>' +
-        '<button onclick="insertDayAfter(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
-          '<i class="fa-solid fa-calendar-plus text-xs"></i>' +
+        '<button onclick="insertDayAfter(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
+          '<i class="fa-solid fa-calendar-plus text-sm"></i>' +
         '</button>' +
-        '<button onclick="deleteDay(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen">' +
-          '<i class="fa-solid fa-trash-can text-xs"></i>' +
+        '<button onclick="deleteDay(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print border-l-2" title="Diesen Tag löschen">' +
+          '<i class="fa-solid fa-trash-can text-sm"></i>' +
         '</button>' +
-        '<button onclick="toggleDayCollapse(' + index + ')" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
-          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs"></i>' +
+        '<button onclick="toggleDayCollapse(' + index + ')" class="w-9 h-9 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
+          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-sm"></i>' +
         '</button>' +
       '</div>';
       html += '</div>';
@@ -1472,11 +1521,11 @@
           day.transports.forEach((tr, trIdx) => {
             const trSafeUrl = formatSafeUrl(tr.link);
             html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2">' +
+              '<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">' +
                 '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
                 '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" oninput="updateTransportItem(' + index + ', ' + trIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
                 '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
-                  ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+                  SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
                 '</select>' +
                 getApproxEurHtml(tr.cost, tr.currency) +
                 '<select onchange="updateTransportItem(' + index + ', ' + trIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + '); refreshDayHeaderTransportBadge(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
@@ -1506,12 +1555,12 @@
           day.activities.forEach((act, actIdx) => {
             const actSafeUrl = formatSafeUrl(act.link);
             html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-              '<div class="flex items-center gap-2">' +
+              '<div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">' +
                 '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'done\', this.checked)" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
                 '<input type="text" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'title\', this.value)" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
                 '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" oninput="updateActivityItem(' + index + ', ' + actIdx + ', \'cost\', this.value); refreshDayHeaderCost(' + index + ');" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
                 '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
-                  ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+                  SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
                 '</select>' +
                 getApproxEurHtml(act.cost, act.currency) +
                 '<select onchange="updateActivityItem(' + index + ', ' + actIdx + ', \'costStatus\', this.value); updateSelectStyle(this); refreshDayHeaderCost(' + index + ');" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
@@ -1546,7 +1595,25 @@
         html += '</div>';
       }
 
-      // 2. Tagesnotizen & Screenshots
+      // 2. Tagesausgaben & Verpflegung (Neu)
+      const de = day.dailyExpenses || { amount: '', currency: 'EUR', notes: '' };
+      html += '<div class="bg-amber-50/50 dark:bg-slate-900/60 rounded-xl p-3 border border-amber-200 dark:border-slate-800 flex flex-wrap sm:flex-nowrap items-center gap-3 text-xs">' +
+        '<span class="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5 shrink-0">' +
+          '<i class="fa-solid fa-utensils"></i> Tagesbudget / Verpflegung:' +
+        '</span>' +
+        '<input type="text" placeholder="Betrag" value="' + escapeHtml(de.amount || '') + '" ' +
+          'oninput="updateDayField(' + index + ', \'dailyExpenses.amount\', this.value); refreshDayHeaderCost(' + index + ');" ' +
+          'class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 font-mono text-right text-slate-900 dark:text-white">' +
+        '<select onchange="updateDayField(' + index + ', \'dailyExpenses.currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
+          SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((de.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+        '</select>' +
+        getApproxEurHtml(de.amount, de.currency) +
+        '<input type="text" placeholder="Notiz (z. B. Street Food, Trinkgelder)" value="' + escapeHtml(de.notes || '') + '" ' +
+          'oninput="updateDayField(' + index + ', \'dailyExpenses.notes\', this.value)" ' +
+          'class="flex-1 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
+      '</div>';
+
+      // 3. Tagesnotizen & Screenshots
       html += '<div class="space-y-3">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
@@ -1580,7 +1647,7 @@
 
       html += '</div>';
 
-      // 3. Übernachtung
+      // 4. Übernachtung
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
@@ -1599,7 +1666,7 @@
             '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
               'oninput="updateDayField(' + index + ', \'lodging.price\', this.value); refreshDayHeaderCost(' + index + ');" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
             '<select onchange="updateDayField(' + index + ', \'lodging.currency\', this.value); refreshDayHeaderCost(' + index + ');" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
-              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
+              SUPPORTED_CURRENCIES.map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
             '</select>' +
             getApproxEurHtml(day.lodging.price, day.lodging.currency) +
           '</div>' +
@@ -1665,10 +1732,10 @@
 
     function updateDayField(dayIndex, fieldPath, value) {
       if (!tripData.days[dayIndex]) return;
-      if (fieldPath.startsWith('lodging.')) {
-        const field = fieldPath.split('.')[1];
-        if (!tripData.days[dayIndex].lodging) tripData.days[dayIndex].lodging = {};
-        tripData.days[dayIndex].lodging[field] = value;
+      if (fieldPath.includes('.')) {
+        const parts = fieldPath.split('.');
+        if (!tripData.days[dayIndex][parts[0]]) tripData.days[dayIndex][parts[0]] = {};
+        tripData.days[dayIndex][parts[0]][parts[1]] = value;
       } else {
         tripData.days[dayIndex][fieldPath] = value;
       }
@@ -1700,14 +1767,14 @@
       if (body && icon) {
         if (tripData.days[dayIndex].isCollapsed) {
           body.classList.add('hidden');
-          icon.className = "fa-solid fa-chevron-down text-xs";
+          icon.className = "fa-solid fa-chevron-down text-sm";
           if (trLine) {
             trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIndex]);
             trLine.classList.toggle('hidden', !(tripData.days[dayIndex].transports && tripData.days[dayIndex].transports.length > 0));
           }
         } else {
           body.classList.remove('hidden');
-          icon.className = "fa-solid fa-chevron-up text-xs";
+          icon.className = "fa-solid fa-chevron-up text-sm";
           if (trLine) {
             trLine.classList.add('hidden');
           }
@@ -1822,6 +1889,7 @@
     window.updateLodgingCostStatus = updateLodgingCostStatus;
     window.toggleDayCollapse = toggleDayCollapse;
     window.handleLocationInput = handleLocationInput;
+    window.copyLocationToNextDay = copyLocationToNextDay;
     window.updateDayField = updateDayField;
     window.updateSelectStyle = updateSelectStyle;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
