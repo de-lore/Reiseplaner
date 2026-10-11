@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.8</title>
+  <title>Reiseplaner Pro v1.7</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -64,32 +64,38 @@
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-20 transition-colors duration-200">
 
-  <!-- Header / Navigation mit Drei-Punkte-Menü -->
+  <!-- Header / Navigation mit präsenter Headline & Drei-Punkte-Menü -->
   <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
       
-      <!-- Linke Seite: Logo, Titel & Status -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-          <i class="fa-solid fa-map-location-dot text-base"></i>
+      <!-- Linke Seite: Logo, präsenter Reisetitel & Zeitraum in Headline -->
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
+          <i class="fa-solid fa-map-location-dot text-lg"></i>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <h1 class="text-base font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.8</span>
-          <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
-          <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1">
-            <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
-          </span>
-          <span id="storageBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> IndexedDB
-          </span>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 id="headerTripTitle" class="text-base sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">Reiseplaner</h1>
+            <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition" title="Reisedaten & Titel bearbeiten">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.7</span>
+            <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
+            <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 shrink-0">
+              <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
+            </span>
+          </div>
+          <div id="headerTripSubtitle" class="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-2 flex-wrap mt-0.5">
+            <span id="headerTripDates" class="truncate">Kein Reisezeitraum festgelegt</span>
+            <span id="headerTripDaysCount" class="hidden px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[10px] font-bold shrink-0"></span>
+          </div>
         </div>
       </div>
 
-      <!-- Rechte Seite: Nur Speichern, Theme-Icon & Drei-Punkte-Menü -->
-      <div class="flex items-center gap-2 no-print relative">
+      <!-- Rechte Seite: Speichern, Theme & Drei-Punkte-Menü -->
+      <div class="flex items-center gap-2 no-print relative shrink-0">
         <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
-          <i class="fa-solid fa-floppy-disk"></i> <span>Speichern</span>
+          <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
         </button>
 
         <button onclick="toggleTheme()" id="themeToggleBtn" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs transition flex items-center justify-center" title="Design wechseln (Hell / Dunkel)">
@@ -102,7 +108,11 @@
             <i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i>
           </button>
 
-          <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
+          <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
+            <button onclick="toggleConfigPanel(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
+              <i class="fa-solid fa-pen-to-square text-indigo-500 w-4"></i> Reisedaten & Titel bearbeiten
+            </button>
+            <div class="border-t border-slate-200 dark:border-slate-700/70 my-1"></div>
             <button onclick="saveToFile(true); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
               <i class="fa-solid fa-folder-plus text-indigo-500 w-4"></i> Speichern unter...
             </button>
@@ -126,13 +136,13 @@
       </div>
     </div>
 
-    <!-- 4 HAUPT-TABS (inkl. Timeline) -->
+    <!-- 4 HAUPT-TABS -->
     <div class="max-w-6xl mx-auto px-4 flex items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
       <button onclick="switchTab('plan')" id="tabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
       </button>
       <button onclick="switchTab('timeline')" id="tabBtn-timeline" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
-        <i class="fa-solid fa-timeline"></i> 📍 Timeline
+        <i class="fa-solid fa-route"></i> 📍 Timeline
       </button>
       <button onclick="switchTab('budget')" id="tabBtn-budget" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-wallet"></i> 💰 Budget & Kurse
@@ -177,8 +187,16 @@
     <!-- ==================== TAB 1: 📅 REISEPLAN ==================== -->
     <div id="tabContent-plan" class="tab-content space-y-4">
       
-      <!-- Konfigurations-Panel (Tage generieren & Reisedaten) -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm transition-colors duration-200 no-print">
+      <!-- Einklappbares Konfigurations-Panel (verschwindet nach Generierung / wird per Stift oder Menü ausgeklappt) -->
+      <section id="tripConfigSection" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 p-4 shadow-sm transition-colors duration-200 no-print">
+        <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-700/60">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+            <i class="fa-solid fa-calendar-plus"></i> Reisedaten & Titel bearbeiten
+          </h2>
+          <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs font-semibold px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+            <i class="fa-solid fa-xmark"></i> Schließen
+          </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3.5">
           <div>
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Reisetitel</label>
@@ -192,9 +210,12 @@
             <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1">Enddatum</label>
             <input type="date" id="endDate" onchange="saveMetaData(); updateStats();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">
           </div>
-          <div class="flex items-end">
-            <button onclick="generateOrUpdateDays()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-3 py-2 text-xs font-semibold transition shadow-xs flex items-center justify-center gap-1.5">
+          <div class="flex items-end gap-2">
+            <button onclick="generateOrUpdateDays()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-3 py-2 text-xs font-semibold transition shadow-xs flex items-center justify-center gap-1.5">
               <i class="fa-solid fa-calendar-days"></i> Tage generieren
+            </button>
+            <button onclick="toggleConfigPanel()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-300 transition" title="Fertig">
+              Fertig
             </button>
           </div>
         </div>
@@ -255,7 +276,7 @@
             </p>
           </div>
           <div class="text-xs font-bold text-slate-600 dark:text-slate-400">
-            Gesamtreise: <span id="verticalTimelineTotalNights" class="text-indigo-600 dark:text-indigo-400">0 Nächte</span>
+            Gesamtreise: <span id="verticalTimelineTotalNights" class="text-indigo-600 dark:text-indigo-400 font-mono">0 Nächte</span>
           </div>
         </div>
 
@@ -295,7 +316,7 @@
         </div>
       </section>
 
-      <!-- Kategorie-Kostenverteilung (Balkendiagramm) & Tagesdurchschnitt -->
+      <!-- Kategorie-Kostenverteilung & Tagesdurchschnitt -->
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/60 pb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -634,6 +655,55 @@
         menu.classList.add('hidden');
       }
     });
+
+    // --- EINKLAPPBARES KONFIGURATIONS-PANEL ---
+    function toggleConfigPanel() {
+      const panel = document.getElementById('tripConfigSection');
+      if (!panel) return;
+      const isHidden = panel.classList.contains('hidden');
+      if (isHidden) {
+        if (currentTab !== 'plan') {
+          switchTab('plan');
+        }
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        panel.classList.add('hidden');
+      }
+    }
+
+    // --- PRÄSENTE HEADLINE AKTUALISIERUNG ---
+    function updateHeadline() {
+      const titleEl = document.getElementById('headerTripTitle');
+      const datesEl = document.getElementById('headerTripDates');
+      const daysCountEl = document.getElementById('headerTripDaysCount');
+
+      const title = (tripData.title || '').trim();
+      if (titleEl) {
+        titleEl.innerText = title || 'Reiseplaner';
+      }
+
+      const daysCount = (tripData.days || []).length;
+
+      if (datesEl) {
+        if (tripData.startDate && tripData.endDate) {
+          const { dayFormatted: sDate } = formatISODate(tripData.startDate);
+          const { dayFormatted: eDate } = formatISODate(tripData.endDate);
+          datesEl.innerText = `${sDate} – ${eDate}`;
+        } else {
+          datesEl.innerText = 'Kein Reisezeitraum festgelegt';
+        }
+      }
+
+      if (daysCountEl) {
+        if (daysCount > 0) {
+          daysCountEl.innerText = `${daysCount} Nächte`;
+          daysCountEl.classList.remove('hidden');
+        } else {
+          daysCountEl.classList.add('hidden');
+        }
+      }
+    }
 
     // --- INDEXEDDB SPEICHER-LAYER ---
     function openDB() {
@@ -1180,7 +1250,7 @@
       showToast("CSV-Export heruntergeladen");
     }
 
-    // --- ETAPPEN BERECHNUNG & VERTIKALE TIMELINE RENDERING ---
+    // --- ETAPPEN BERECHNUNG & VERTIKALE TIMELINE ---
     function getTripStops() {
       const days = tripData.days || [];
       const stops = [];
@@ -1210,12 +1280,10 @@
       return stops;
     }
 
-    // Horizontale Minimap (wird in Timeline-Logik mitgepflegt)
     function renderRouteTimeline() {
       renderVerticalTimeline();
     }
 
-    // Vertikaler Timeline-Tab mit Nächte-Eingabe und Direktleitung
     function renderVerticalTimeline() {
       const container = document.getElementById('verticalTimelineContainer');
       const totalNightsEl = document.getElementById('verticalTimelineTotalNights');
@@ -1248,7 +1316,6 @@
 
         html += `
           <div class="relative flex items-start gap-4">
-            <!-- Vertikale Verbindungslinie -->
             <div class="flex flex-col items-center">
               <div class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md shrink-0 z-10">
                 ${i + 1}
@@ -1256,10 +1323,7 @@
               ${!isLast ? '<div class="w-0.5 bg-indigo-200 dark:bg-indigo-900/80 my-1 h-14"></div>' : ''}
             </div>
 
-            <!-- Etappen-Karte mit Klick-Leitung in den Reiseplan -->
             <div class="flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-indigo-400 transition">
-              
-              <!-- Klickbarer Bereich: Springt direkt in Reiseplan -->
               <div onclick="scrollToDay(${stop.targetIndex})" class="cursor-pointer flex-1 space-y-1">
                 <div class="flex items-center gap-2">
                   <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}">
@@ -1273,7 +1337,6 @@
                 <p class="text-[11px] text-slate-500 dark:text-slate-400">Klicken, um direkt im Reiseplan zu öffnen &rarr;</p>
               </div>
 
-              <!-- Eingabe Nächte -->
               <div class="flex items-center gap-2 self-start sm:self-auto shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-400"><i class="fa-solid fa-bed text-indigo-500"></i> Nächte:</span>
                 <input 
@@ -1289,7 +1352,6 @@
                   Öffnen <i class="fa-solid fa-arrow-right text-[10px]"></i>
                 </button>
               </div>
-
             </div>
           </div>
         `;
@@ -1298,7 +1360,6 @@
       container.innerHTML = html;
     }
 
-    // Passt die Anzahl der Nächte einer Etappe an (fügt Tage hinzu oder entfernt sie mit Modus A Schutz)
     function updateStopNights(stopIndex, newNightsVal) {
       const stops = getTripStops();
       const stop = stops[stopIndex];
@@ -1316,7 +1377,6 @@
       if (diff === 0) return;
 
       if (diff > 0) {
-        // Nächte hinzufügen: Klone den letzten Tag der Etappe
         const lastDayIdx = stop.dayIndices[stop.dayIndices.length - 1];
         for (let k = 0; k < diff; k++) {
           const srcDay = tripData.days[lastDayIdx + k];
@@ -1330,7 +1390,6 @@
           tripData.days.splice(lastDayIdx + k + 1, 0, clone);
         }
 
-        // Alle Folgetage um +diff nach hinten schieben
         for (let i = lastDayIdx + diff + 1; i < tripData.days.length; i++) {
           tripData.days[i].date = addDaysISO(tripData.days[i].date, diff);
         }
@@ -1342,14 +1401,11 @@
 
         showToast(`${diff} Nacht/Nächte zu "${stop.location}" hinzugefügt`);
       } else {
-        // Nächte reduzieren: Prüfe, ob Folgetage feste Buchungen haben
         const removeCount = Math.abs(diff);
         const lastDayIdx = stop.dayIndices[stop.dayIndices.length - 1];
         
-        // Entferne die überzähligen Tage der Etappe
         tripData.days.splice(lastDayIdx - removeCount + 1, removeCount);
 
-        // Folgetage vorrücken
         for (let i = lastDayIdx - removeCount + 1; i < tripData.days.length; i++) {
           tripData.days[i].date = addDaysISO(tripData.days[i].date, -removeCount);
         }
@@ -1588,6 +1644,44 @@
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
     }
 
+    // --- TAG DUPLIZIEREN ---
+    function duplicateDay(dayIndex) {
+      const src = tripData.days[dayIndex];
+      if (!src) return;
+
+      const clone = JSON.parse(JSON.stringify(src));
+      clone.date = addDaysISO(src.date, 1);
+      clone.isCollapsed = false;
+      if (clone.lodging) {
+        clone.lodging.costStatus = 'geplant';
+        clone.lodging.isBooked = false;
+      }
+      if (Array.isArray(clone.transports)) {
+        clone.transports.forEach(t => t.costStatus = 'geplant');
+      }
+      if (Array.isArray(clone.activities)) {
+        clone.activities.forEach(a => { a.costStatus = 'geplant'; a.done = false; });
+      }
+
+      tripData.days.splice(dayIndex + 1, 0, clone);
+
+      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
+        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
+      }
+      if (tripData.endDate) {
+        tripData.endDate = addDaysISO(tripData.endDate, 1);
+        const endEl = document.getElementById('endDate');
+        if (endEl) endEl.value = tripData.endDate;
+      }
+
+      normalizeDataModel();
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+      renderRouteTimeline();
+      showToast(`Tag ${dayIndex + 1} dupliziert & als Tag ${dayIndex + 2} eingefügt`);
+    }
+
     // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
     function moveTransportItem(dayIndex, itemIndex, direction) {
       const day = tripData.days[dayIndex];
@@ -1617,6 +1711,54 @@
       showToast("Aktivitätsreihenfolge verschoben");
     }
 
+    // --- OFFLINE-KARTEN HELFER ---
+    function openOfflineMaps(locationStr) {
+      if (!locationStr || !locationStr.trim()) {
+        showToast("Bitte zuerst einen Tagesort eingeben", true);
+        return;
+      }
+      const q = encodeURIComponent(locationStr.trim());
+      window.location.href = `geo:0,0?q=${q}`;
+    }
+
+    // --- SCHNELL-WÄHRUNGSRECHNER WIDGET ---
+    function toggleQuickCalc() {
+      const popup = document.getElementById('quickCalcPopup');
+      if (popup) popup.classList.toggle('hidden');
+    }
+
+    function runQuickCalc() {
+      const amt = parseFloat(document.getElementById('quickCalcAmount').value);
+      const curr = document.getElementById('quickCalcCurr').value;
+      const resEl = document.getElementById('quickCalcResult');
+      const labelEl = document.getElementById('quickCalcResultLabel');
+      if (!resEl) return;
+
+      if (isNaN(amt) || amt <= 0) {
+        resEl.innerText = '0,00 €';
+        return;
+      }
+
+      if (curr === 'EUR') {
+        const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
+        labelEl.innerText = "Lokale Währungen für " + formatEuro(amt);
+        const thb = (amt * (rates.THB || 38)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
+        const lak = (amt * (rates.LAK || 24000)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
+        const usd = (amt * (rates.USD || 1.08)).toFixed(2);
+        resEl.innerHTML = `<span class="text-xs font-mono font-bold">${thb} THB &bull; ${lak} LAK &bull; $${usd}</span>`;
+      } else {
+        labelEl.innerText = "Euro-Gegenwert (ca.)";
+        const eur = convertToEur(amt, curr);
+        resEl.innerText = formatEuro(eur);
+      }
+    }
+
+    function saveEmergencyNotes(val) {
+      tripData.emergencyNotes = val;
+      recordChangeForReminder();
+      saveToStorage();
+    }
+
     // --- WECHSELKURSE & UMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
@@ -1626,6 +1768,7 @@
         recordChangeForReminder();
         saveToStorage();
         updateAllCostDisplays();
+        runQuickCalc();
       }
     }
 
@@ -2125,6 +2268,7 @@
           console.error("Speicherfehler:", e);
         }
         updateStats();
+        updateHeadline();
       }, 250);
     }
 
@@ -2239,6 +2383,7 @@
             resetBackupReminder();
             saveToStorage();
             syncUI();
+            updateHeadline();
             showToast('Datei geladen');
           }
         } catch (err) {
@@ -2264,6 +2409,17 @@
       if (elUSD) elUSD.value = rates.USD || 1.08;
       if (elLAK) elLAK.value = rates.LAK || 24000;
 
+      // Panel sichtbar wenn noch keine Tage generiert wurden, sonst ausgeblendet
+      const panel = document.getElementById('tripConfigSection');
+      if (panel) {
+        if (!tripData.days || tripData.days.length === 0) {
+          panel.classList.remove('hidden');
+        } else {
+          panel.classList.add('hidden');
+        }
+      }
+
+      updateHeadline();
       renderChecklist();
       renderDays();
       renderRouteTimeline();
@@ -2276,6 +2432,7 @@
       tripData.endDate = document.getElementById('endDate').value;
       recordChangeForReminder();
       saveToStorage();
+      updateHeadline();
       renderRouteTimeline();
     }
 
@@ -2338,8 +2495,15 @@
       normalizeDataModel();
       recordChangeForReminder();
       saveToStorage();
+
+      // Nach erfolgreicher Generierung: Panel einklappen & Headline präsent aktualisieren
+      const panel = document.getElementById('tripConfigSection');
+      if (panel) panel.classList.add('hidden');
+      updateHeadline();
+
       renderDays();
       renderRouteTimeline();
+      showToast("Tage generiert & Reiseplan aktualisiert");
     }
 
     // --- RENDERING TAGE ---
@@ -2350,7 +2514,7 @@
 
       if (!tripData.days || tripData.days.length === 0) {
         container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400 no-print">' +
-          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden. Wähle oben Start- und Enddatum und klicke auf "Tage generieren".</p></div>';
+          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden. Klicke im Menü oder oben auf den Stift, um den Reisezeitraum festzulegen und Tage zu generieren.</p></div>';
         updateStats();
         return;
       }
@@ -2591,6 +2755,7 @@
 
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
           '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
+            // Hoch/Runter Buttons
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
@@ -2629,7 +2794,7 @@
       return html;
     }
 
-    // Aktivitäten Modul
+    // Aktivitäten Modul mit Up/Down-Pfeilen
     function renderActivityModuleHTML(day, index) {
       let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
         '<div class="flex items-center justify-between mb-3">' +
@@ -2970,7 +3135,6 @@
         }
       });
 
-      // Delegation Checkliste
       if (checklistCont) {
         checklistCont.addEventListener('change', (e) => {
           if (e.target.getAttribute('data-action') === 'toggle-checklist-item') {
@@ -3101,7 +3265,7 @@
     }
 
     function removeTransportItem(dayIndex, itemIndex) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports) return;
+      if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].transports)) return;
       tripData.days[dayIndex].transports.splice(itemIndex, 1);
       recordChangeForReminder();
       saveToStorage();
@@ -3125,7 +3289,7 @@
       renderDays();
     }
 
-    // --- STATISTIKEN & GESAMTSUMMEN ---
+    // --- STATISTIKEN, BUDGET-VERTEILUNG & DURCHSCHNITT ---
     function updateStats() {
       const days = Array.isArray(tripData.days) ? tripData.days : [];
       const total = days.length;
@@ -3206,6 +3370,7 @@
     window.importJSONFallback = importJSONFallback;
     window.toggleAllDays = toggleAllDays;
     window.toggleBookingStatus = toggleBookingStatus;
+    window.duplicateDay = duplicateDay;
     window.toggleDayCollapse = toggleDayCollapse;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
@@ -3223,6 +3388,7 @@
     window.clearSearch = clearSearch;
     window.jumpToToday = jumpToToday;
     window.openGoogleMaps = openGoogleMaps;
+    window.openOfflineMaps = openOfflineMaps;
     window.showRestoreModal = showRestoreModal;
     window.closeRestoreModal = closeRestoreModal;
     window.restoreBackup = restoreBackup;
@@ -3243,6 +3409,7 @@
     window.executeDayAction = executeDayAction;
     window.dismissBackupReminder = dismissBackupReminder;
     window.toggleMoreMenu = toggleMoreMenu;
+    window.toggleConfigPanel = toggleConfigPanel;
     window.switchTab = switchTab;
     window.toggleQuickCalc = toggleQuickCalc;
     window.runQuickCalc = runQuickCalc;
