@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.61</title>
+  <title>Reiseplaner Pro v1.62</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -63,17 +63,19 @@
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-16 transition-colors duration-200">
 
-  <!-- Header / Navigation -->
+  <!-- Header / Navigation (Aufgeräumt mit Drei-Punkte-Menü) -->
   <header class="bg-white/90 dark:bg-slate-800/80 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm dark:shadow-md transition-colors duration-200">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      
+      <!-- Linke Seite: Logo, Titel & Badges -->
       <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 shrink-0">
           <i class="fa-solid fa-map-location-dot text-lg"></i>
         </div>
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.61</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.62</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -83,32 +85,46 @@
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div class="flex items-center gap-2 no-print">
-        <button onclick="toggleTheme()" id="themeToggleBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Design wechseln (Hell / Dunkel)">
-          <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
-          <span id="themeToggleText" class="hidden sm:inline">Hell</span>
+      <!-- Rechte Seite: Nur Speichern, Theme-Icon & Drei-Punkte-Menü -->
+      <div class="flex items-center gap-2 no-print relative">
+        <!-- Hauptaktion: Speichern -->
+        <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30" title="Direkt in Datei sichern (Strg + S)">
+          <i class="fa-solid fa-floppy-disk"></i> <span>Speichern</span>
         </button>
 
-        <button onclick="showRestoreModal()" id="restoreBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-amber-600 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Vorherigen Speicherstand wiederherstellen">
-          <i class="fa-solid fa-rotate-left"></i> Rückgängig
+        <!-- Theme Toggle -->
+        <button onclick="toggleTheme()" id="themeToggleBtn" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs transition flex items-center justify-center" title="Design wechseln (Hell / Dunkel)">
+          <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
         </button>
-        <button onclick="exportToCSV()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-emerald-700 dark:text-emerald-300 text-xs font-semibold transition flex items-center gap-1.5" title="Kostenaufstellung als CSV (Excel) herunterladen">
-          <i class="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i> CSV
-        </button>
-        <button onclick="saveToFile(false)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30" title="Direkt in Datei sichern (Strg + S)">
-          <i class="fa-solid fa-floppy-disk"></i> Speichern
-        </button>
-        <button onclick="saveToFile(true)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Neuen Speicherort wählen">
-          <i class="fa-solid fa-folder-plus"></i> Speichern unter...
-        </button>
-        <button onclick="openFile()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="JSON-Datei laden">
-          <i class="fa-solid fa-folder-open"></i> Öffnen
-        </button>
+
+        <!-- Drei-Punkte-Menü Button (⋮ Mehr) -->
+        <div class="relative">
+          <button onclick="toggleMoreMenu()" id="moreMenuBtn" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm transition flex items-center justify-center" title="Weitere Optionen">
+            <i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i>
+          </button>
+
+          <!-- Aufklappbares Dropdown-Menü -->
+          <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
+            <button onclick="saveToFile(true); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+              <i class="fa-solid fa-folder-plus text-indigo-500 w-4"></i> Speichern unter...
+            </button>
+            <button onclick="openFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+              <i class="fa-solid fa-folder-open text-indigo-500 w-4"></i> JSON öffnen...
+            </button>
+            <button onclick="exportToCSV(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-semibold transition">
+              <i class="fa-solid fa-file-csv text-emerald-500 w-4"></i> Als CSV exportieren
+            </button>
+            <button onclick="window.print(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+              <i class="fa-solid fa-print text-indigo-500 w-4"></i> Drucken
+            </button>
+            <div class="border-t border-slate-200 dark:border-slate-700/70 my-1"></div>
+            <button onclick="showRestoreModal(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-amber-600 dark:text-amber-400 transition">
+              <i class="fa-solid fa-rotate-left text-amber-500 w-4"></i> Wiederherstellen (Rückgängig)
+            </button>
+          </div>
+        </div>
+
         <input type="file" id="importInput" accept=".json" class="hidden" onchange="importJSONFallback(event)">
-        <button onclick="window.print()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Kompakten Reise-Spickzettel drucken">
-          <i class="fa-solid fa-print"></i> Drucken
-        </button>
       </div>
     </div>
   </header>
@@ -418,6 +434,21 @@
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
     const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
 
+    // --- DREI-PUNKTE MENÜ LOGIK ---
+    function toggleMoreMenu() {
+      const menu = document.getElementById('moreMenuDropdown');
+      if (menu) menu.classList.toggle('hidden');
+    }
+
+    // Klick außerhalb schließt das Dropdown
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('moreMenuDropdown');
+      const btn = document.getElementById('moreMenuBtn');
+      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
     // --- INDEXEDDB SPEICHER-LAYER ---
     function openDB() {
       return new Promise((resolve, reject) => {
@@ -619,20 +650,17 @@
     function setTheme(theme) {
       const html = document.documentElement;
       const icon = document.getElementById('themeToggleIcon');
-      const text = document.getElementById('themeToggleText');
       const metaTheme = document.querySelector('meta[name="theme-color"]');
 
       if (theme === 'light') {
         html.classList.remove('dark');
         localStorage.setItem(THEME_KEY, 'light');
         if (icon) icon.className = 'fa-solid fa-moon text-indigo-600';
-        if (text) text.innerText = 'Dunkel';
         if (metaTheme) metaTheme.setAttribute('content', '#f8fafc');
       } else {
         html.classList.add('dark');
         localStorage.setItem(THEME_KEY, 'dark');
         if (icon) icon.className = 'fa-solid fa-sun text-amber-300';
-        if (text) text.innerText = 'Hell';
         if (metaTheme) metaTheme.setAttribute('content', '#0f172a');
       }
     }
@@ -1471,7 +1499,7 @@
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
     }
 
-    // Transport-Icon Ermittlung inklusive expliziter Kategorie (Flugzeug, Mietwagen, Roller, Taxi)
+    // Transport-Icon Ermittlung inklusive Kategorie (Flugzeug, Mietwagen, Roller, Taxi)
     function getTransportIcon(title, explicitCategory) {
       if (explicitCategory) {
         if (explicitCategory === 'flugzeug') return 'fa-plane';
@@ -1765,7 +1793,6 @@
             saved = JSON.parse(legacy);
             await idbSet('trip_data', saved);
             localStorage.removeItem('reiseplaner_pro_pwa_data');
-            console.log("Migration von localStorage zu IndexedDB erfolgreich abgeschlossen.");
           } catch (e) {}
         }
       }
@@ -2447,7 +2474,6 @@
             if (trField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
             }
-            // Wenn Kategorie oder Titel geändert wurde, aktualisiere die Header-Transportzeile
             if (trField === 'category' || trField === 'title') {
               const trLine = document.getElementById('day-header-transport-' + dayIdx);
               if (trLine) {
@@ -2847,6 +2873,7 @@
     window.closeDayActionModal = closeDayActionModal;
     window.executeDayAction = executeDayAction;
     window.dismissBackupReminder = dismissBackupReminder;
+    window.toggleMoreMenu = toggleMoreMenu;
   </script>
 </body>
 </html>
