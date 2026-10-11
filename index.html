@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.3</title>
+  <title>Reiseplaner Pro v1.5</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -73,7 +73,7 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.3</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.5</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
@@ -112,6 +112,34 @@
       </div>
     </div>
   </header>
+
+  <!-- AUTO-EXPORT ERINNERUNGS-BANNER -->
+  <aside id="backupReminderBanner" class="hidden max-w-6xl mx-auto px-4 mt-4 no-print w-full">
+    <div class="bg-gradient-to-r from-amber-500/15 via-indigo-500/10 to-transparent border border-amber-400/60 dark:border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm backdrop-blur">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-base">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
+        <div>
+          <h2 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            Backup-Erinnerung
+            <span id="backupReminderCounter" class="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-mono font-semibold">10 Änderungen</span>
+          </h2>
+          <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+            Du hast neue Änderungen im Plan. Neues JSON-Backup auf OneDrive/Festplatte sichern?
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
+        <button onclick="dismissBackupReminder()" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
+          Später
+        </button>
+        <button onclick="saveToFile(false); dismissBackupReminder();" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
+          <i class="fa-solid fa-floppy-disk"></i> Jetzt sichern
+        </button>
+      </div>
+    </div>
+  </aside>
 
   <!-- Hauptinhalt -->
   <main class="max-w-6xl w-full mx-auto px-4 mt-6 flex-1 space-y-6">
@@ -380,9 +408,15 @@
     let saveDebounceTimer = null;
     let pendingModalAction = null; // { type: 'delete' | 'insert', dayIndex: number }
 
+    // Backup-Zähler & Intervall-Tracking
+    let unsavedChangesCount = 0;
+    let lastExportTimestamp = Date.now();
+
     const THEME_KEY = 'reiseplaner_pro_theme';
     const DB_NAME = 'ReiseplanerPro_DB_v1';
     const DB_STORE = 'app_state';
+    const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
+    const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
 
     // --- INDEXEDDB SPEICHER-LAYER ---
     function openDB() {
@@ -429,7 +463,7 @@
       }
     }
 
-    // --- FARB- & DESIGN-HIERARCHIE (v1.3) ---
+    // --- FARB- & DESIGN-HIERARCHIE ---
     function getDayVisualClasses(day, isToday) {
       const isBooked = isDayBooked(day);
       const hasLocation = (day.location || '').trim() !== '';
@@ -442,7 +476,6 @@
         };
       }
 
-      // 1. Gebuchte Tage: Intensivere grüne Farbe
       if (isBooked) {
         return {
           cardClass: 'bg-emerald-100/80 border-emerald-500 dark:bg-emerald-950/50 dark:border-emerald-500/70',
@@ -451,7 +484,6 @@
         };
       }
 
-      // 2. Geplante Tage: Intensivere gelbe / amber Farbe
       if (hasLocation) {
         return {
           cardClass: 'bg-amber-100/80 border-amber-500 dark:bg-amber-950/50 dark:border-amber-500/70',
@@ -460,7 +492,6 @@
         };
       }
 
-      // 3. Nicht geplante & nicht gebuchte Tage (noch kein Ort): Leicht rote Farbe
       return {
         cardClass: 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50',
         headerClass: 'border-rose-200 bg-rose-100/80 dark:border-rose-900/40 dark:bg-rose-950/50',
@@ -472,11 +503,13 @@
     window.addEventListener('DOMContentLoaded', async () => {
       try {
         initTheme();
+        initBackupReminderState();
         await loadFromStorage();
         initServiceWorker();
         initPersistentStorage();
         setupKeyboardShortcuts();
         setupEventDelegation();
+        checkBackupReminder();
       } catch (e) {
         console.error("Initialisierungsfehler:", e);
       }
@@ -491,6 +524,60 @@
           saveToFile(false);
         }
       });
+    }
+
+    // --- AUTO-EXPORT ERINNERUNG ---
+    function initBackupReminderState() {
+      const storedTime = localStorage.getItem(LAST_EXPORT_KEY);
+      if (storedTime) {
+        lastExportTimestamp = parseInt(storedTime, 10);
+      } else {
+        lastExportTimestamp = Date.now();
+        localStorage.setItem(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      }
+
+      const storedCount = localStorage.getItem(CHANGES_COUNT_KEY);
+      if (storedCount) {
+        unsavedChangesCount = parseInt(storedCount, 10);
+      }
+    }
+
+    function recordChangeForReminder() {
+      unsavedChangesCount++;
+      localStorage.setItem(CHANGES_COUNT_KEY, String(unsavedChangesCount));
+      checkBackupReminder();
+    }
+
+    function resetBackupReminder() {
+      unsavedChangesCount = 0;
+      lastExportTimestamp = Date.now();
+      localStorage.setItem(CHANGES_COUNT_KEY, '0');
+      localStorage.setItem(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      dismissBackupReminder();
+    }
+
+    function checkBackupReminder() {
+      const banner = document.getElementById('backupReminderBanner');
+      const counterEl = document.getElementById('backupReminderCounter');
+      if (!banner) return;
+
+      const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+      const isOverOneWeek = (Date.now() - lastExportTimestamp) > oneWeekMs;
+      const isOverTenChanges = unsavedChangesCount >= 10;
+
+      if (isOverTenChanges || (isOverOneWeek && unsavedChangesCount > 0)) {
+        if (counterEl) {
+          counterEl.innerText = isOverTenChanges 
+            ? `${unsavedChangesCount} Änderungen` 
+            : `Seit 7 Tagen kein Export`;
+        }
+        banner.classList.remove('hidden');
+      }
+    }
+
+    function dismissBackupReminder() {
+      const banner = document.getElementById('backupReminderBanner');
+      if (banner) banner.classList.add('hidden');
     }
 
     // --- UTC-SICHERE DATUMS-HELFER ---
@@ -658,6 +745,7 @@
             name: file.name || 'Dokument.pdf',
             data: e.target.result
           });
+          recordChangeForReminder();
           saveToStorage();
           updateImagesDOM(dayIndex);
           showToast("PDF-Beleg angehängt");
@@ -691,6 +779,7 @@
               name: file.name || 'Screenshot.jpg',
               data: dataUrl
             });
+            recordChangeForReminder();
             saveToStorage();
             updateImagesDOM(dayIndex);
             showToast("Screenshot hinzugefügt");
@@ -706,6 +795,7 @@
     function deleteDayAttachment(dayIndex, itemIdx) {
       if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].images)) return;
       tripData.days[dayIndex].images.splice(itemIdx, 1);
+      recordChangeForReminder();
       saveToStorage();
       updateImagesDOM(dayIndex);
       showToast("Beleg entfernt");
@@ -980,7 +1070,6 @@
         btnB.innerHTML = `<i class="fa-solid fa-calendar-minus"></i> Reise verkürzen (Modus B)`;
         btnB.className = "w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
       } else {
-        // insert
         titleEl.innerHTML = `<i class="fa-solid fa-calendar-plus text-indigo-500"></i> Neuen Tag nach Tag ${dayNum} einfügen`;
         descEl.innerHTML = `Neuer Tag zwischen Tag ${dayNum} (${dayFormatted}) und Folgetag.`;
 
@@ -1021,7 +1110,6 @@
 
       if (type === 'delete') {
         if (mode === 'A') {
-          // Modus A: Freier Tag / Puffer am selben Kalendertag
           const day = tripData.days[dayIndex];
           day.location = 'Freier Tag / Puffer';
           day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
@@ -1029,12 +1117,12 @@
           day.activities = [];
           day.notes = '';
           day.images = [];
+          recordChangeForReminder();
           saveToStorage();
           renderDays();
           renderRouteTimeline();
           showToast(`Tag ${dayIndex + 1} geleert & als Puffer erhalten (Modus A)`);
         } else {
-          // Modus B: Echtes Verkürzen (-1 Tag)
           tripData.days.splice(dayIndex, 1);
           for (let i = dayIndex; i < tripData.days.length; i++) {
             tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
@@ -1045,6 +1133,7 @@
             if (endEl) endEl.value = tripData.endDate;
           }
           normalizeDataModel();
+          recordChangeForReminder();
           saveToStorage();
           renderDays();
           renderRouteTimeline();
@@ -1052,7 +1141,6 @@
         }
       } else if (type === 'insert') {
         if (mode === 'A') {
-          // Modus A: Nachfolgende Buchungen schützen
           const laterDays = tripData.days.slice(dayIndex + 1);
           const firstBookedRelative = laterDays.findIndex(d => isDayBooked(d) || (d.transports && d.transports.some(t => t.costStatus === 'gebucht' || t.costStatus === 'bezahlt' || t.costStatus === 'reserviert')));
 
@@ -1088,6 +1176,7 @@
                 tripData.days[i].date = addDaysISO(tripData.days[i-1].date, 1);
               }
               normalizeDataModel();
+              recordChangeForReminder();
               saveToStorage();
               renderDays();
               renderRouteTimeline();
@@ -1099,7 +1188,6 @@
             executeInsertModeB(dayIndex);
           }
         } else {
-          // Modus B: Echtes Verlängern
           executeInsertModeB(dayIndex);
         }
       }
@@ -1130,10 +1218,40 @@
         if (endEl) endEl.value = tripData.endDate;
       }
       normalizeDataModel();
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
       renderRouteTimeline();
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
+    }
+
+    // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
+    function moveTransportItem(dayIndex, itemIndex, direction) {
+      const day = tripData.days[dayIndex];
+      if (!day || !Array.isArray(day.transports)) return;
+      const targetIndex = itemIndex + direction;
+      if (targetIndex < 0 || targetIndex >= day.transports.length) return;
+
+      const item = day.transports.splice(itemIndex, 1)[0];
+      day.transports.splice(targetIndex, 0, item);
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+      showToast("Transportreihenfolge verschoben");
+    }
+
+    function moveActivityItem(dayIndex, itemIndex, direction) {
+      const day = tripData.days[dayIndex];
+      if (!day || !Array.isArray(day.activities)) return;
+      const targetIndex = itemIndex + direction;
+      if (targetIndex < 0 || targetIndex >= day.activities.length) return;
+
+      const item = day.activities.splice(itemIndex, 1)[0];
+      day.activities.splice(targetIndex, 0, item);
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+      showToast("Aktivitätsreihenfolge verschoben");
     }
 
     // --- WECHSELKURSE & UMRECHNUNG ---
@@ -1142,6 +1260,7 @@
       if (!isNaN(num) && num > 0) {
         if (!tripData.exchangeRates) tripData.exchangeRates = {};
         tripData.exchangeRates[curr] = num;
+        recordChangeForReminder();
         saveToStorage();
         updateAllCostDisplays();
       }
@@ -1209,6 +1328,7 @@
     function toggleChecklistItem(idx) {
       if (tripData.checklist && tripData.checklist[idx]) {
         tripData.checklist[idx].done = !tripData.checklist[idx].done;
+        recordChangeForReminder();
         saveToStorage();
         renderChecklist();
       }
@@ -1220,6 +1340,7 @@
       if (!Array.isArray(tripData.checklist)) tripData.checklist = [];
       tripData.checklist.push({ text: input.value.trim(), done: false });
       input.value = '';
+      recordChangeForReminder();
       saveToStorage();
       renderChecklist();
     }
@@ -1227,6 +1348,7 @@
     function removeChecklistItem(idx) {
       if (tripData.checklist) {
         tripData.checklist.splice(idx, 1);
+        recordChangeForReminder();
         saveToStorage();
         renderChecklist();
       }
@@ -1523,6 +1645,7 @@
           if (!confirm("Möchtest du den Stand vom " + backups[idx].timestamp + " laden?")) return;
           tripData = backups[idx].data;
           normalizeDataModel();
+          recordChangeForReminder();
           saveToStorage();
           syncUI();
           closeRestoreModal();
@@ -1671,6 +1794,7 @@
           await writableStream.write(jsonContent);
           await writableStream.close();
           updateFileStatus(activeFileHandle.name);
+          resetBackupReminder();
           showToast('Gespeichert in: ' + activeFileHandle.name);
           return;
         } catch (err) {
@@ -1687,6 +1811,7 @@
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
+      resetBackupReminder();
       showToast("Download gestartet");
     }
 
@@ -1705,6 +1830,7 @@
             tripData = parsed;
             normalizeDataModel();
             await createRollingBackup();
+            resetBackupReminder();
             saveToStorage();
             syncUI();
             updateFileStatus(handle.name);
@@ -1730,6 +1856,7 @@
             tripData = parsed;
             normalizeDataModel();
             await createRollingBackup();
+            resetBackupReminder();
             saveToStorage();
             syncUI();
             updateFileStatus(file.name);
@@ -1765,12 +1892,14 @@
       tripData.title = document.getElementById('tripTitle').value;
       tripData.startDate = document.getElementById('startDate').value;
       tripData.endDate = document.getElementById('endDate').value;
+      recordChangeForReminder();
       saveToStorage();
       renderRouteTimeline();
     }
 
     function saveGeneralNotes(val) {
       tripData.generalNotes = val;
+      recordChangeForReminder();
       saveToStorage();
     }
 
@@ -1825,6 +1954,7 @@
 
       tripData.days = newDays;
       normalizeDataModel();
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
       renderRouteTimeline();
@@ -2070,10 +2200,20 @@
           '<button data-action="add-transport" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
         '</div><div class="space-y-2.5">';
 
+      const totalTr = day.transports.length;
+
       day.transports.forEach((tr, trIdx) => {
         const trSafeUrl = formatSafeUrl(tr.link);
+        const isFirst = trIdx === 0;
+        const isLast = trIdx === totalTr - 1;
+
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-          '<div class="flex items-center gap-2">' +
+          '<div class="flex items-center gap-1.5">' +
+            // Hoch/Runter Buttons
+            '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
+              `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
+              `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
+            '</div>' +
             '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
@@ -2105,10 +2245,20 @@
           '<button data-action="add-activity" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
         '</div><div class="space-y-2.5">';
 
+      const totalAct = day.activities.length;
+
       day.activities.forEach((act, actIdx) => {
         const actSafeUrl = formatSafeUrl(act.link);
+        const isFirst = actIdx === 0;
+        const isLast = actIdx === totalAct - 1;
+
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-          '<div class="flex items-center gap-2">' +
+          '<div class="flex items-center gap-1.5">' +
+            // Hoch/Runter Buttons
+            '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
+              `<button data-action="move-activity-up" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
+              `<button data-action="move-activity-down" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
+            '</div>' +
             '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
             '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
@@ -2177,6 +2327,16 @@
             removeTransportItem(dayIdx, trIdx);
             break;
           }
+          case 'move-transport-up': {
+            const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
+            moveTransportItem(dayIdx, trIdx, -1);
+            break;
+          }
+          case 'move-transport-down': {
+            const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
+            moveTransportItem(dayIdx, trIdx, 1);
+            break;
+          }
           case 'add-activity': {
             addActivityRow(dayIdx);
             break;
@@ -2184,6 +2344,16 @@
           case 'remove-activity': {
             const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
             removeActivityItem(dayIdx, actIdx);
+            break;
+          }
+          case 'move-activity-up': {
+            const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+            moveActivityItem(dayIdx, actIdx, -1);
+            break;
+          }
+          case 'move-activity-down': {
+            const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
+            moveActivityItem(dayIdx, actIdx, 1);
             break;
           }
           case 'trigger-file-upload': {
@@ -2224,6 +2394,7 @@
               titleInput.classList.toggle('line-through', target.checked);
               titleInput.classList.toggle('text-slate-400', target.checked);
             }
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2241,6 +2412,7 @@
               updateDayCardVisualStatus(dayIdx);
             }
             refreshDayHeaderCost(dayIdx);
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2255,6 +2427,7 @@
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
             }
             refreshDayHeaderCost(dayIdx);
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2269,6 +2442,7 @@
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
             }
             refreshDayHeaderCost(dayIdx);
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2311,10 +2485,12 @@
               }
             }
             updateDayCardVisualStatus(dayIdx);
+            recordChangeForReminder();
             saveToStorage();
             renderRouteTimeline();
           } else if (field === 'notes') {
             tripData.days[dayIdx].notes = target.value;
+            recordChangeForReminder();
             saveToStorage();
           } else if (field.startsWith('lodging.')) {
             const sub = field.split('.')[1];
@@ -2337,6 +2513,7 @@
                 }
               }
             }
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2364,6 +2541,7 @@
                 }
               }
             }
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2391,6 +2569,7 @@
                 }
               }
             }
+            recordChangeForReminder();
             saveToStorage();
           }
           return;
@@ -2420,6 +2599,7 @@
       const currentBooked = isDayBooked(tripData.days[dayIndex]);
       tripData.days[dayIndex].lodging.costStatus = currentBooked ? 'geplant' : 'gebucht';
       tripData.days[dayIndex].lodging.isBooked = !currentBooked;
+      recordChangeForReminder();
       saveToStorage();
       updateDayCardVisualStatus(dayIndex);
     }
@@ -2521,6 +2701,7 @@
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].transports)) tripData.days[dayIndex].transports = [];
       tripData.days[dayIndex].transports.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
     }
@@ -2528,6 +2709,7 @@
     function removeTransportItem(dayIndex, itemIndex) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].transports) return;
       tripData.days[dayIndex].transports.splice(itemIndex, 1);
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
     }
@@ -2536,6 +2718,7 @@
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].activities)) tripData.days[dayIndex].activities = [];
       tripData.days[dayIndex].activities.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', done: false });
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
     }
@@ -2543,6 +2726,7 @@
     function removeActivityItem(dayIndex, itemIndex) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].activities) return;
       tripData.days[dayIndex].activities.splice(itemIndex, 1);
+      recordChangeForReminder();
       saveToStorage();
       renderDays();
     }
@@ -2604,8 +2788,10 @@
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
     window.removeTransportItem = removeTransportItem;
+    window.moveTransportItem = moveTransportItem;
     window.addActivityRow = addActivityRow;
     window.removeActivityItem = removeActivityItem;
+    window.moveActivityItem = moveActivityItem;
     window.saveMetaData = saveMetaData;
     window.saveGeneralNotes = saveGeneralNotes;
     window.autoResizeTextarea = autoResizeTextarea;
@@ -2632,6 +2818,7 @@
     window.openDayActionModal = openDayActionModal;
     window.closeDayActionModal = closeDayActionModal;
     window.executeDayAction = executeDayAction;
+    window.dismissBackupReminder = dismissBackupReminder;
   </script>
 </body>
 </html>
