@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.7</title>
+  <title>Reiseplaner Pro v1.72</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -79,7 +79,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.7</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.72</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -92,8 +92,13 @@
         </div>
       </div>
 
-      <!-- Rechte Seite: Speichern, Theme & Drei-Punkte-Menü -->
+      <!-- Rechte Seite: Neue Reise, Speichern, Theme & Drei-Punkte-Menü -->
       <div class="flex items-center gap-2 no-print relative shrink-0">
+        <!-- Neuer Button: Neue Reise -->
+        <button onclick="createNewTrip()" class="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Neue Reise von Grund auf planen">
+          <i class="fa-solid fa-plus text-indigo-500"></i> <span class="hidden sm:inline">Neue Reise</span>
+        </button>
+
         <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
         </button>
@@ -109,7 +114,10 @@
           </button>
 
           <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
-            <button onclick="toggleConfigPanel(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
+            <button onclick="createNewTrip(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
+              <i class="fa-solid fa-circle-plus text-indigo-500 w-4"></i> Neue Reise beginnen...
+            </button>
+            <button onclick="toggleConfigPanel(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
               <i class="fa-solid fa-pen-to-square text-indigo-500 w-4"></i> Reisedaten & Titel bearbeiten
             </button>
             <div class="border-t border-slate-200 dark:border-slate-700/70 my-1"></div>
@@ -620,6 +628,63 @@
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
     const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
 
+    // --- NEUE REISE VON ANFANG AN PLANEN ---
+    async function createNewTrip() {
+      const hasExistingDays = Array.isArray(tripData.days) && tripData.days.length > 0;
+      if (hasExistingDays) {
+        const confirmed = confirm("Möchtest du wirklich eine neue Reise anlegen? Der aktuelle Stand wird automatisch in den Backups gesichert, bevor der Plan zurückgesetzt wird.");
+        if (!confirmed) return;
+        await createRollingBackup();
+      }
+
+      // State komplett auf leere Standard-Reise zurücksetzen
+      tripData = {
+        title: "",
+        startDate: "",
+        endDate: "",
+        generalNotes: "",
+        emergencyNotes: "",
+        exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
+        checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
+        days: []
+      };
+
+      activeFileHandle = null;
+      unsavedChangesCount = 0;
+      saveToStorage();
+      updateFileStatus(null);
+
+      // Formular-Inputs leeren
+      document.getElementById('tripTitle').value = "";
+      document.getElementById('startDate').value = "";
+      document.getElementById('endDate').value = "";
+      document.getElementById('generalNotes').value = "";
+      const emNotes = document.getElementById('emergencyNotesInput');
+      if (emNotes) emNotes.value = "";
+
+      // In Reiseplan-Tab wechseln und Konfigurations-Panel direkt öffnen
+      switchTab('plan');
+      const panel = document.getElementById('tripConfigSection');
+      if (panel) {
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+
+      updateHeadline();
+      renderDays();
+      renderRouteTimeline();
+      renderChecklist();
+      updateStats();
+
+      // Fokus direkt ins Titelfeld setzen
+      setTimeout(() => {
+        const titleInput = document.getElementById('tripTitle');
+        if (titleInput) titleInput.focus();
+      }, 150);
+
+      showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
+    }
+
     // --- TAB NAVIGATION (4 TABS) ---
     function switchTab(tabId) {
       currentTab = tabId;
@@ -938,13 +1003,11 @@
         html.classList.remove('dark');
         localStorage.setItem(THEME_KEY, 'light');
         if (icon) icon.className = 'fa-solid fa-moon text-indigo-600';
-        if (text) text.innerText = 'Dunkel';
         if (metaTheme) metaTheme.setAttribute('content', '#f8fafc');
       } else {
         html.classList.add('dark');
         localStorage.setItem(THEME_KEY, 'dark');
         if (icon) icon.className = 'fa-solid fa-sun text-amber-300';
-        if (text) text.innerText = 'Hell';
         if (metaTheme) metaTheme.setAttribute('content', '#0f172a');
       }
     }
@@ -986,6 +1049,18 @@
       } else {
         badge.className = "text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5";
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400"></span> Temporärer Speicher';
+      }
+    }
+
+    function updateFileStatus(name) {
+      const el = document.getElementById('fileStatusText');
+      if (!el) return;
+      if (name) {
+        el.className = "text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5";
+        el.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Datei: <b>' + escapeHtml(name) + '</b>';
+      } else {
+        el.className = "text-xs text-slate-500 dark:text-slate-400";
+        el.innerText = "Keine Datei verknüpft (Speichert in IndexedDB)";
       }
     }
 
@@ -1425,7 +1500,6 @@
       renderVerticalTimeline();
     }
 
-    // Leitet direkt in den Tab Reiseplan und scrollt zum Tag
     function scrollToDay(index) {
       if (currentTab !== 'plan') {
         switchTab('plan');
@@ -1894,7 +1968,7 @@
         const currentDayNum = Math.floor((tNow - tStart) / msPerDay) + 1;
         const totalDays = Math.floor((tEnd - tStart) / msPerDay) + 1;
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Reisetag ' + currentDayNum + ' von ' + totalDays + ' (Heute)';
-        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
         badge.classList.remove('hidden');
       } else {
         badge.innerHTML = '<i class="fa-solid fa-flag-checkered text-slate-400"></i> Reise beendet';
@@ -1980,7 +2054,6 @@
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
     }
 
-    // Transport-Icon Ermittlung mit Kategorie-Icons: Flugzeug, Mietwagen, Roller, Taxi
     function getTransportIcon(title, explicitCategory) {
       if (explicitCategory) {
         if (explicitCategory === 'flugzeug') return 'fa-plane';
@@ -2319,6 +2392,7 @@
           const writableStream = await activeFileHandle.createWritable();
           await writableStream.write(jsonContent);
           await writableStream.close();
+          updateFileStatus(activeFileHandle.name);
           resetBackupReminder();
           showToast('Gespeichert in: ' + activeFileHandle.name);
           return;
@@ -2358,6 +2432,7 @@
             resetBackupReminder();
             saveToStorage();
             syncUI();
+            updateFileStatus(handle.name);
             showToast('Datei geöffnet');
           }
           return;
@@ -2384,6 +2459,7 @@
             saveToStorage();
             syncUI();
             updateHeadline();
+            updateFileStatus(file.name);
             showToast('Datei geladen');
           }
         } catch (err) {
@@ -3282,14 +3358,14 @@
     }
 
     function removeActivityItem(dayIndex, itemIndex) {
-      if (!tripData.days[dayIndex] || !tripData.days[dayIndex].activities) return;
+      if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].activities)) return;
       tripData.days[dayIndex].activities.splice(itemIndex, 1);
       recordChangeForReminder();
       saveToStorage();
       renderDays();
     }
 
-    // --- STATISTIKEN, BUDGET-VERTEILUNG & DURCHSCHNITT ---
+    // --- STATISTIKEN & GESAMTSUMMEN ---
     function updateStats() {
       const days = Array.isArray(tripData.days) ? tripData.days : [];
       const total = days.length;
@@ -3370,7 +3446,6 @@
     window.importJSONFallback = importJSONFallback;
     window.toggleAllDays = toggleAllDays;
     window.toggleBookingStatus = toggleBookingStatus;
-    window.duplicateDay = duplicateDay;
     window.toggleDayCollapse = toggleDayCollapse;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
@@ -3415,6 +3490,7 @@
     window.runQuickCalc = runQuickCalc;
     window.renderVerticalTimeline = renderVerticalTimeline;
     window.updateStopNights = updateStopNights;
+    window.createNewTrip = createNewTrip;
   </script>
 </body>
 </html>
