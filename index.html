@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.72</title>
+  <title>Reiseplaner Pro v1.8</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -79,7 +79,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.72</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.8</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -92,13 +92,8 @@
         </div>
       </div>
 
-      <!-- Rechte Seite: Neue Reise, Speichern, Theme & Drei-Punkte-Menü -->
+      <!-- Rechte Seite: Nur Speichern, Theme-Icon & Drei-Punkte-Menü -->
       <div class="flex items-center gap-2 no-print relative shrink-0">
-        <!-- Neuer Button: Neue Reise -->
-        <button onclick="createNewTrip()" class="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Neue Reise von Grund auf planen">
-          <i class="fa-solid fa-plus text-indigo-500"></i> <span class="hidden sm:inline">Neue Reise</span>
-        </button>
-
         <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
         </button>
@@ -113,9 +108,13 @@
             <i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i>
           </button>
 
+          <!-- Dropdown Menü (Inklusive "Neue Reise" & "Reise laden") -->
           <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
             <button onclick="createNewTrip(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
-              <i class="fa-solid fa-circle-plus text-indigo-500 w-4"></i> Neue Reise beginnen...
+              <i class="fa-solid fa-circle-plus text-indigo-500 w-4"></i> Neue Reise
+            </button>
+            <button onclick="openFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+              <i class="fa-solid fa-folder-open text-indigo-500 w-4"></i> Reise laden
             </button>
             <button onclick="toggleConfigPanel(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
               <i class="fa-solid fa-pen-to-square text-indigo-500 w-4"></i> Reisedaten & Titel bearbeiten
@@ -123,9 +122,6 @@
             <div class="border-t border-slate-200 dark:border-slate-700/70 my-1"></div>
             <button onclick="saveToFile(true); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
               <i class="fa-solid fa-folder-plus text-indigo-500 w-4"></i> Speichern unter...
-            </button>
-            <button onclick="openFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
-              <i class="fa-solid fa-folder-open text-indigo-500 w-4"></i> JSON öffnen...
             </button>
             <button onclick="exportToCSV(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-semibold transition">
               <i class="fa-solid fa-file-csv text-emerald-500 w-4"></i> Als CSV exportieren
@@ -195,7 +191,7 @@
     <!-- ==================== TAB 1: 📅 REISEPLAN ==================== -->
     <div id="tabContent-plan" class="tab-content space-y-4">
       
-      <!-- Einklappbares Konfigurations-Panel (verschwindet nach Generierung / wird per Stift oder Menü ausgeklappt) -->
+      <!-- Einklappbares Konfigurations-Panel -->
       <section id="tripConfigSection" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 p-4 shadow-sm transition-colors duration-200 no-print">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-700/60">
           <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
@@ -267,8 +263,8 @@
         </div>
       </section>
 
-      <!-- Liste der Reisetage -->
-      <div id="daysContainer" class="space-y-4"></div>
+      <!-- Liste der Reisetage (Kompakte Reading-Bars / Detail-Editing) -->
+      <div id="daysContainer" class="space-y-2.5"></div>
     </div>
 
     <!-- ==================== TAB 2: 📍 TIMELINE (VERTIKALE ETAPPEN-MINIMAP) ==================== -->
@@ -632,12 +628,11 @@
     async function createNewTrip() {
       const hasExistingDays = Array.isArray(tripData.days) && tripData.days.length > 0;
       if (hasExistingDays) {
-        const confirmed = confirm("Möchtest du wirklich eine neue Reise anlegen? Der aktuelle Stand wird automatisch in den Backups gesichert, bevor der Plan zurückgesetzt wird.");
+        const confirmed = confirm("Möchtest du wirklich eine neue Reise anlegen? Der aktuelle Stand wird automatisch gesichert, bevor der Plan zurückgesetzt wird.");
         if (!confirmed) return;
         await createRollingBackup();
       }
 
-      // State komplett auf leere Standard-Reise zurücksetzen
       tripData = {
         title: "",
         startDate: "",
@@ -654,7 +649,6 @@
       saveToStorage();
       updateFileStatus(null);
 
-      // Formular-Inputs leeren
       document.getElementById('tripTitle').value = "";
       document.getElementById('startDate').value = "";
       document.getElementById('endDate').value = "";
@@ -662,7 +656,6 @@
       const emNotes = document.getElementById('emergencyNotesInput');
       if (emNotes) emNotes.value = "";
 
-      // In Reiseplan-Tab wechseln und Konfigurations-Panel direkt öffnen
       switchTab('plan');
       const panel = document.getElementById('tripConfigSection');
       if (panel) {
@@ -676,7 +669,6 @@
       renderChecklist();
       updateStats();
 
-      // Fokus direkt ins Titelfeld setzen
       setTimeout(() => {
         const titleInput = document.getElementById('tripTitle');
         if (titleInput) titleInput.focus();
@@ -1457,7 +1449,7 @@
           const srcDay = tripData.days[lastDayIdx + k];
           const clone = JSON.parse(JSON.stringify(srcDay));
           clone.date = addDaysISO(srcDay.date, 1);
-          clone.isCollapsed = false;
+          clone.isCollapsed = true;
           if (clone.lodging) {
             clone.lodging.costStatus = 'geplant';
             clone.lodging.isBooked = false;
@@ -1655,7 +1647,7 @@
               const newDay = {
                 date: isoNew,
                 location: '',
-                isCollapsed: false,
+                isCollapsed: true,
                 lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
                 transports: [],
                 activities: [],
@@ -1693,7 +1685,7 @@
       const newDay = {
         date: isoNew,
         location: '',
-        isCollapsed: false,
+        isCollapsed: true,
         lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
         transports: [],
         activities: [],
@@ -1716,44 +1708,6 @@
       renderDays();
       renderRouteTimeline();
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
-    }
-
-    // --- TAG DUPLIZIEREN ---
-    function duplicateDay(dayIndex) {
-      const src = tripData.days[dayIndex];
-      if (!src) return;
-
-      const clone = JSON.parse(JSON.stringify(src));
-      clone.date = addDaysISO(src.date, 1);
-      clone.isCollapsed = false;
-      if (clone.lodging) {
-        clone.lodging.costStatus = 'geplant';
-        clone.lodging.isBooked = false;
-      }
-      if (Array.isArray(clone.transports)) {
-        clone.transports.forEach(t => t.costStatus = 'geplant');
-      }
-      if (Array.isArray(clone.activities)) {
-        clone.activities.forEach(a => { a.costStatus = 'geplant'; a.done = false; });
-      }
-
-      tripData.days.splice(dayIndex + 1, 0, clone);
-
-      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
-      }
-      if (tripData.endDate) {
-        tripData.endDate = addDaysISO(tripData.endDate, 1);
-        const endEl = document.getElementById('endDate');
-        if (endEl) endEl.value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
-      renderRouteTimeline();
-      showToast(`Tag ${dayIndex + 1} dupliziert & als Tag ${dayIndex + 2} eingefügt`);
     }
 
     // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
@@ -1968,7 +1922,7 @@
         const currentDayNum = Math.floor((tNow - tStart) / msPerDay) + 1;
         const totalDays = Math.floor((tEnd - tStart) / msPerDay) + 1;
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Reisetag ' + currentDayNum + ' von ' + totalDays + ' (Heute)';
-        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
         badge.classList.remove('hidden');
       } else {
         badge.innerHTML = '<i class="fa-solid fa-flag-checkered text-slate-400"></i> Reise beendet';
@@ -2054,6 +2008,7 @@
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
     }
 
+    // Transport-Icon Ermittlung mit Kategorie-Icons: Flugzeug, Mietwagen, Roller, Taxi
     function getTransportIcon(title, explicitCategory) {
       if (explicitCategory) {
         if (explicitCategory === 'flugzeug') return 'fa-plane';
@@ -2072,43 +2027,38 @@
       return 'fa-route';
     }
 
-    function getHeaderTransportLineContent(day) {
-      if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
-
-      let html = '<div class="flex flex-wrap items-center gap-1.5 pb-1">';
-      html += '<span class="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 shrink-0 mr-0.5">' +
-        '<i class="fa-solid fa-route"></i> Transport:' +
-      '</span>';
-
-      day.transports.forEach(tr => {
+    // Kompakte Transport-Zusammenfassung für den Reading Mode
+    function getCollapsedTransportSummary(day) {
+      if (!day.transports || day.transports.length === 0) return '';
+      const items = day.transports.map(tr => {
         const icon = getTransportIcon(tr.title, tr.category);
-        const titleText = (tr.title || 'Transport').trim();
-        const status = (tr.costStatus || 'geplant').toLowerCase();
-        
-        let badgeClass = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700/80';
-        let statusText = '⏳ Geplant';
-        if (status === 'bezahlt' || status === 'gebucht') {
-          badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700/80';
-          statusText = '✅ Gebucht';
-        } else if (status === 'reserviert') {
-          badgeClass = 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-700/80';
-          statusText = '📌 Reserviert';
-        }
+        const title = (tr.title || 'Transport').trim();
+        return `<span class="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-800 dark:text-cyan-300 bg-cyan-100/70 dark:bg-cyan-950/60 px-2 py-0.5 rounded-lg border border-cyan-200 dark:border-cyan-800/80"><i class="fa-solid ${icon} text-[10px]"></i> <span class="truncate max-w-[90px] sm:max-w-[120px]">${escapeHtml(title)}</span></span>`;
+      }).join(' ');
+      return `<span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span> <div class="flex items-center gap-1 flex-wrap">${items}</div>`;
+    }
 
-        html += '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium shadow-xs transition ' + badgeClass + '">' +
-          '<i class="fa-solid ' + icon + ' text-cyan-600 dark:text-cyan-400"></i>' +
-          '<span class="font-bold text-slate-800 dark:text-white">' + escapeHtml(titleText) + '</span>';
+    // Kompakte Unterkunfts-Zusammenfassung für den Reading Mode
+    function getCollapsedLodgingSummary(day) {
+      const isBooked = isDayBooked(day);
+      const name = (day.lodging && day.lodging.name ? day.lodging.name.trim() : '');
+      const status = (day.lodging && day.lodging.costStatus ? day.lodging.costStatus : 'geplant');
+      
+      let label = 'offen';
+      let badgeClass = 'text-amber-800 dark:text-amber-300 bg-amber-100/70 dark:bg-amber-950/60 border-amber-200 dark:border-amber-800/80';
+      if (isBooked) {
+        label = (status === 'bezahlt' || status === 'gebucht') ? 'gebucht' : 'reserviert';
+        badgeClass = 'text-emerald-800 dark:text-emerald-300 bg-emerald-100/70 dark:bg-emerald-950/60 border-emerald-200 dark:border-emerald-800/80';
+      } else if (status === 'reserviert') {
+        label = 'reserviert';
+        badgeClass = 'text-sky-800 dark:text-sky-300 bg-sky-100/70 dark:bg-sky-950/60 border-sky-200 dark:border-sky-800/80';
+      }
 
-        if (tr.hint && tr.hint.trim()) {
-          html += '<span class="text-[10px] opacity-80 border-l border-slate-300 dark:border-slate-700 pl-1.5 italic">' + escapeHtml(tr.hint.trim()) + '</span>';
-        }
+      if (!name && !isBooked) {
+        return `<span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span> <span class="inline-flex items-center gap-1 text-[11px] text-slate-400 italic"><i class="fa-solid fa-bed text-[10px]"></i> Keine Unterkunft</span>`;
+      }
 
-        html += '<span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-white/60 dark:bg-slate-900/60 border border-black/5 dark:border-white/10">' + statusText + '</span>';
-        html += '</span>';
-      });
-
-      html += '</div>';
-      return html;
+      return `<span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span> <span class="inline-flex items-center gap-1 text-[11px] font-semibold ${badgeClass} px-2 py-0.5 rounded-lg border"><i class="fa-solid fa-bed text-[10px]"></i> <span class="truncate max-w-[100px] sm:max-w-[150px]">${escapeHtml(name || 'Unterkunft')}</span> <span class="text-[9px] uppercase opacity-80">(${label})</span></span>`;
     }
 
     function getDayCostBreakdown(day) {
@@ -2183,455 +2133,7 @@
       });
     }
 
-    // --- ROLLIERENDES BACKUP-SYSTEM (INDEXEDDB) ---
-    async function createRollingBackup() {
-      try {
-        let backups = (await idbGet('backups')) || [];
-        if (!Array.isArray(backups)) backups = [];
-        const currentSnapshot = JSON.stringify(tripData);
-        if (backups.length > 0 && JSON.stringify(backups[0].data) === currentSnapshot) return;
-
-        const now = new Date();
-        backups.unshift({
-          timestamp: now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) + ' um ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
-          title: tripData.title || 'Unbenannte Reise',
-          daysCount: (tripData.days || []).length,
-          data: JSON.parse(currentSnapshot)
-        });
-
-        if (backups.length > 3) backups = backups.slice(0, 3);
-        await idbSet('backups', backups);
-      } catch (e) {
-        console.warn("Backup-Fehler:", e);
-      }
-    }
-
-    async function showRestoreModal() {
-      const modal = document.getElementById('restoreModal');
-      const list = document.getElementById('backupList');
-      if (!modal || !list) return;
-
-      let backups = (await idbGet('backups')) || [];
-      list.innerHTML = '';
-      if (!Array.isArray(backups) || backups.length === 0) {
-        list.innerHTML = '<p class="text-xs text-slate-500 italic p-3 text-center">Noch keine Sicherungsstände vorhanden.</p>';
-      } else {
-        backups.forEach((b, idx) => {
-          const item = document.createElement('div');
-          item.className = "p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs";
-          item.innerHTML = 
-            '<div><div class="font-bold text-slate-800 dark:text-white flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Stand ' + (idx + 1) + ': ' + escapeHtml(b.timestamp) + '</div>' +
-            '<div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">' + escapeHtml(b.title) + ' (' + b.daysCount + ' Tage)</div></div>' +
-            '<button onclick="restoreBackup(' + idx + ')" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shrink-0 shadow">Laden</button>';
-          list.appendChild(item);
-        });
-      }
-      modal.classList.remove('hidden');
-    }
-
-    function closeRestoreModal() {
-      const modal = document.getElementById('restoreModal');
-      if (modal) modal.classList.add('hidden');
-    }
-
-    async function restoreBackup(idx) {
-      try {
-        const backups = (await idbGet('backups')) || [];
-        if (backups[idx] && backups[idx].data) {
-          if (!confirm("Möchtest du den Stand vom " + backups[idx].timestamp + " laden?")) return;
-          tripData = backups[idx].data;
-          normalizeDataModel();
-          recordChangeForReminder();
-          saveToStorage();
-          syncUI();
-          closeRestoreModal();
-          showToast("Stand geladen");
-        }
-      } catch (e) {
-        showToast("Fehler beim Wiederherstellen", true);
-      }
-    }
-
-    // --- NORMALISIERUNG & SPEICHERUNG ---
-    function normalizeDataModel() {
-      if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
-      }
-      if (tripData.generalNotes === undefined) tripData.generalNotes = "";
-      if (tripData.emergencyNotes === undefined) tripData.emergencyNotes = "";
-      if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000 };
-      if (!Array.isArray(tripData.checklist) || tripData.checklist.length === 0) {
-        tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
-      }
-      if (!Array.isArray(tripData.days)) {
-        tripData.days = [];
-        return;
-      }
-
-      tripData.days.forEach(day => {
-        if (!day || typeof day !== 'object') return;
-        if (day.location === undefined) day.location = '';
-        if (day.notes === undefined) day.notes = '';
-        if (day.isCollapsed === undefined) day.isCollapsed = false;
-        if (!Array.isArray(day.images)) day.images = [];
-
-        day.images = day.images.map(img => {
-          if (typeof img === 'string') {
-            const isPdf = img.startsWith('data:application/pdf');
-            return {
-              type: isPdf ? 'pdf' : 'image',
-              name: isPdf ? 'Dokument.pdf' : 'Screenshot.jpg',
-              data: img
-            };
-          }
-          return img;
-        });
-
-        if (!day.lodging || typeof day.lodging !== 'object') {
-          day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
-        } else {
-          if (day.lodging.name === undefined) day.lodging.name = '';
-          if (day.lodging.price === undefined) day.lodging.price = '';
-          if (!day.lodging.currency) day.lodging.currency = 'EUR';
-          if (day.lodging.hint === undefined) day.lodging.hint = '';
-          if (day.lodging.link === undefined) day.lodging.link = '';
-          if (day.lodging.notes === undefined) day.lodging.notes = '';
-          if (!day.lodging.costStatus) day.lodging.costStatus = day.lodging.isBooked ? 'gebucht' : 'geplant';
-          day.lodging.isBooked = isDayBooked(day);
-        }
-
-        if (!Array.isArray(day.transports)) {
-          day.transports = [];
-        } else {
-          day.transports.forEach(t => {
-            if (!t) return;
-            if (t.title === undefined) t.title = '';
-            if (t.category === undefined) t.category = '';
-            if (t.cost === undefined) t.cost = '';
-            if (!t.currency) t.currency = 'EUR';
-            if (!t.costStatus) t.costStatus = 'geplant';
-            if (t.hint === undefined) t.hint = '';
-            if (t.link === undefined) t.link = '';
-          });
-        }
-
-        if (!Array.isArray(day.activities)) {
-          day.activities = [];
-        } else {
-          day.activities.forEach(a => {
-            if (!a) return;
-            if (a.title === undefined) a.title = '';
-            if (a.cost === undefined) a.cost = '';
-            if (!a.currency) a.currency = 'EUR';
-            if (!a.costStatus) a.costStatus = 'geplant';
-            if (a.hint === undefined) a.hint = '';
-            if (a.link === undefined) a.link = '';
-            if (a.done === undefined) a.done = false;
-          });
-        }
-      });
-    }
-
-    function saveToStorage() {
-      clearTimeout(saveDebounceTimer);
-      saveDebounceTimer = setTimeout(async () => {
-        try {
-          await idbSet('trip_data', tripData);
-        } catch (e) {
-          console.error("Speicherfehler:", e);
-        }
-        updateStats();
-        updateHeadline();
-      }, 250);
-    }
-
-    async function loadFromStorage() {
-      let saved = await idbGet('trip_data');
-      
-      if (!saved) {
-        const legacy = localStorage.getItem('reiseplaner_pro_pwa_data');
-        if (legacy) {
-          try {
-            saved = JSON.parse(legacy);
-            await idbSet('trip_data', saved);
-            localStorage.removeItem('reiseplaner_pro_pwa_data');
-            console.log("Migration von localStorage zu IndexedDB erfolgreich abgeschlossen.");
-          } catch (e) {}
-        }
-      }
-
-      if (saved) {
-        try {
-          tripData = saved;
-          normalizeDataModel();
-          syncUI();
-        } catch (e) {
-          updateStats();
-        }
-      } else {
-        normalizeDataModel();
-        syncUI();
-      }
-    }
-
-    async function saveToFile(forceSaveAs) {
-      await createRollingBackup();
-      await idbSet('trip_data', tripData);
-      const jsonContent = JSON.stringify(tripData, null, 2);
-      const safeTitle = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
-      const fileName = 'Reiseplan_' + safeTitle + '.json';
-
-      if ('showSaveFilePicker' in window) {
-        try {
-          if (!activeFileHandle || forceSaveAs) {
-            activeFileHandle = await window.showSaveFilePicker({
-              suggestedName: fileName,
-              types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }]
-            });
-          }
-          const writableStream = await activeFileHandle.createWritable();
-          await writableStream.write(jsonContent);
-          await writableStream.close();
-          updateFileStatus(activeFileHandle.name);
-          resetBackupReminder();
-          showToast('Gespeichert in: ' + activeFileHandle.name);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      const blob = new Blob([jsonContent], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-      resetBackupReminder();
-      showToast("Download gestartet");
-    }
-
-    async function openFile() {
-      if ('showOpenFilePicker' in window) {
-        try {
-          const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }],
-            multiple: false
-          });
-          const file = await handle.getFile();
-          const parsed = JSON.parse(await file.text());
-
-          if (parsed && Array.isArray(parsed.days)) {
-            activeFileHandle = handle;
-            tripData = parsed;
-            normalizeDataModel();
-            await createRollingBackup();
-            resetBackupReminder();
-            saveToStorage();
-            syncUI();
-            updateFileStatus(handle.name);
-            showToast('Datei geöffnet');
-          }
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-      document.getElementById('importInput').click();
-    }
-
-    function importJSONFallback(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        try {
-          const parsed = JSON.parse(e.target.result);
-          if (parsed && Array.isArray(parsed.days)) {
-            activeFileHandle = null;
-            tripData = parsed;
-            normalizeDataModel();
-            await createRollingBackup();
-            resetBackupReminder();
-            saveToStorage();
-            syncUI();
-            updateHeadline();
-            updateFileStatus(file.name);
-            showToast('Datei geladen');
-          }
-        } catch (err) {
-          showToast("Fehler beim Lesen", true);
-        }
-      };
-      reader.readAsText(file);
-    }
-
-    function syncUI() {
-      document.getElementById('tripTitle').value = tripData.title || '';
-      document.getElementById('startDate').value = tripData.startDate || '';
-      document.getElementById('endDate').value = tripData.endDate || '';
-      document.getElementById('generalNotes').value = tripData.generalNotes || '';
-      const emInput = document.getElementById('emergencyNotesInput');
-      if (emInput) emInput.value = tripData.emergencyNotes || '';
-      
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
-      const elTHB = document.getElementById('rateTHB');
-      const elUSD = document.getElementById('rateUSD');
-      const elLAK = document.getElementById('rateLAK');
-      if (elTHB) elTHB.value = rates.THB || 38;
-      if (elUSD) elUSD.value = rates.USD || 1.08;
-      if (elLAK) elLAK.value = rates.LAK || 24000;
-
-      // Panel sichtbar wenn noch keine Tage generiert wurden, sonst ausgeblendet
-      const panel = document.getElementById('tripConfigSection');
-      if (panel) {
-        if (!tripData.days || tripData.days.length === 0) {
-          panel.classList.remove('hidden');
-        } else {
-          panel.classList.add('hidden');
-        }
-      }
-
-      updateHeadline();
-      renderChecklist();
-      renderDays();
-      renderRouteTimeline();
-      runQuickCalc();
-    }
-
-    function saveMetaData() {
-      tripData.title = document.getElementById('tripTitle').value;
-      tripData.startDate = document.getElementById('startDate').value;
-      tripData.endDate = document.getElementById('endDate').value;
-      recordChangeForReminder();
-      saveToStorage();
-      updateHeadline();
-      renderRouteTimeline();
-    }
-
-    function saveGeneralNotes(val) {
-      tripData.generalNotes = val;
-      recordChangeForReminder();
-      saveToStorage();
-    }
-
-    // --- TAGE GENERIEREN (UTC-BASIERT) ---
-    function generateOrUpdateDays() {
-      const start = document.getElementById('startDate').value;
-      const end = document.getElementById('endDate').value;
-      if (!start || !end) {
-        alert("Bitte Start- und Enddatum auswählen.");
-        return;
-      }
-      const pStart = parseISOParts(start);
-      const pEnd = parseISOParts(end);
-
-      if (!pStart || !pEnd) return;
-
-      const dStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d);
-      const dEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
-
-      if (dStart > dEnd) {
-        alert("Startdatum darf nicht nach dem Enddatum liegen.");
-        return;
-      }
-
-      normalizeDataModel();
-      const existingMap = new Map();
-      tripData.days.forEach(d => { if (d && d.date) existingMap.set(d.date, d); });
-
-      const newDays = [];
-      let cur = dStart;
-      const msPerDay = 1000 * 60 * 60 * 24;
-
-      while (cur <= dEnd) {
-        const dObj = new Date(cur);
-        const iso = dObj.toISOString().split('T')[0];
-        if (existingMap.has(iso)) {
-          newDays.push(existingMap.get(iso));
-        } else {
-          newDays.push({
-            date: iso,
-            location: '',
-            isCollapsed: false,
-            lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
-            transports: [],
-            activities: [],
-            images: [],
-            notes: ''
-          });
-        }
-        cur += msPerDay;
-      }
-
-      tripData.days = newDays;
-      normalizeDataModel();
-      recordChangeForReminder();
-      saveToStorage();
-
-      // Nach erfolgreicher Generierung: Panel einklappen & Headline präsent aktualisieren
-      const panel = document.getElementById('tripConfigSection');
-      if (panel) panel.classList.add('hidden');
-      updateHeadline();
-
-      renderDays();
-      renderRouteTimeline();
-      showToast("Tage generiert & Reiseplan aktualisiert");
-    }
-
-    // --- RENDERING TAGE ---
-    function renderDays() {
-      const container = document.getElementById('daysContainer');
-      if (!container) return;
-      container.innerHTML = '';
-
-      if (!tripData.days || tripData.days.length === 0) {
-        container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400 no-print">' +
-          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden. Klicke im Menü oder oben auf den Stift, um den Reisezeitraum festzulegen und Tage zu generieren.</p></div>';
-        updateStats();
-        return;
-      }
-
-      const todayIso = getTodayIso();
-      let matchCount = 0;
-
-      tripData.days.forEach((day, index) => {
-        let matchesFilter = true;
-        if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
-        else if (currentFilter === 'travel_days') matchesFilter = Array.isArray(day.transports) && day.transports.length > 0;
-        else if (currentFilter === 'pending_costs') matchesFilter = getDayCostBreakdown(day).pending > 0;
-        else if (currentFilter === 'with_attachments') matchesFilter = Array.isArray(day.images) && day.images.length > 0;
-
-        let matchesSearch = true;
-        if (searchQuery) {
-          const loc = (day.location || '').toLowerCase();
-          const hotel = (day.lodging && day.lodging.name ? day.lodging.name : '').toLowerCase();
-          const notes = (day.notes || '').toLowerCase();
-          const hint = (day.lodging && day.lodging.hint ? day.lodging.hint : '').toLowerCase();
-          const trs = (day.transports || []).map(t => (t.title || '') + ' ' + (t.hint || '')).join(' ').toLowerCase();
-          const acts = (day.activities || []).map(a => (a.title || '') + ' ' + (a.hint || '')).join(' ').toLowerCase();
-          matchesSearch = (loc + ' ' + hotel + ' ' + notes + ' ' + hint + ' ' + trs + ' ' + acts).includes(searchQuery);
-        }
-
-        if (matchesFilter && matchesSearch) {
-          matchCount++;
-          container.appendChild(createDayElement(day, index, day.date === todayIso));
-        }
-      });
-
-      if (matchCount === 0) {
-        container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 text-center text-slate-600 dark:text-slate-400 no-print">' +
-          '<p class="text-sm font-semibold">Keine Tage gefunden</p>' +
-          '<button onclick="setFilter(\'all\'); clearSearch();" class="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Filter zurücksetzen</button></div>';
-      }
-
-      updateStats();
-      autoResizeAllTextareas();
-    }
-
+    // --- READING MODE vs. EDITING MODE TAGESKARTEN RENDERING ---
     function createDayElement(day, index, isToday) {
       const isBooked = isDayBooked(day);
       const hasLocation = (day.location || '').trim() !== '';
@@ -2640,48 +2142,41 @@
       const dayCosts = getDayCostBreakdown(day);
       const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
       const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
-      const images = Array.isArray(day.images) ? day.images : [];
+      const isCollapsed = day.isCollapsed !== false; // Standard ist kompakt eingeklappt
 
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
-      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ' + visual.cardClass;
 
-      let html = '';
+      // ================= 1. READING MODE (Eingeklappte schlanke Leiste) =================
+      if (isCollapsed) {
+        card.innerHTML = `
+          <div class="px-3.5 sm:px-4 py-2.5 flex items-center justify-between gap-3 cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 transition" onclick="toggleDayCollapse(${index})">
+            <div class="flex items-center gap-2 flex-wrap min-w-0">
+              <span class="font-black text-xs shrink-0 text-slate-900 dark:text-white">Tag ${index + 1}</span>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400 font-mono shrink-0">${dayFormatted} (${dayName})</span>
+              <span class="text-slate-300 dark:text-slate-600">|</span>
+              <span class="text-xs font-bold ${hasLocation ? 'text-indigo-900 dark:text-indigo-200' : 'text-slate-400 italic'} truncate max-w-[110px] sm:max-w-[170px]">
+                📍 ${escapeHtml(day.location || 'Ohne Ort')}
+              </span>
+              ${getCollapsedTransportSummary(day)}
+              ${getCollapsedLodgingSummary(day)}
+            </div>
+            
+            <div class="flex items-center gap-2 shrink-0" onclick="event.stopPropagation()">
+              <span class="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 bg-white/80 dark:bg-slate-900/80 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                ${formatEuro(dayCosts.total)}
+              </span>
+              <button onclick="toggleDayCollapse(${index})" class="w-7 h-7 rounded-xl bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition shadow-xs" title="Details öffnen">
+                <i class="fa-solid fa-chevron-down text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `;
+        return card;
+      }
 
-      // --- HEADER ---
-      html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass + '">';
-      
-      html += '<div class="flex items-center gap-3">' +
-        '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
-          '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
-          '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
-        '</div>' +
-        '<div><div class="flex items-center gap-1.5">' +
-          '<span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
-          (isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
-        '</div></div>' +
-      '</div>';
-
-      // Tagesort & Zeile vor Tagesort für Transport im eingeklappten Zustand
-      html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
-      
-      html += '<div id="day-header-transport-' + index + '" class="' + (day.isCollapsed && hasTransports ? '' : 'hidden') + '">' +
-        getHeaderTransportLineContent(day) +
-      '</div>';
-
-      html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
-          (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
-          '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
-            'class="mr-2.5 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
-            'title="' + (hasLocation ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
-            '<i class="fa-solid fa-map-location-dot text-lg pointer-events-none"></i>' +
-          '</button>' +
-          '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
-            'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
-          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLocation ? '' : 'hidden') + '">📍 Festgelegt</span>' +
-        '</div>' +
-      '</div>';
-
+      // ================= 2. EDITING MODE (Ausgeklappt mit detaillierten Eingabefeldern) =================
       let statusLabel = 'Übernachtung offen';
       let statusIcon = 'fa-clock';
       if (day.lodging.costStatus === 'reserviert') { 
@@ -2692,134 +2187,184 @@
         statusIcon = 'fa-check'; 
       }
 
-      html += '<div class="flex flex-wrap items-center gap-2 self-end md:self-auto">' +
-        '<div class="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono flex items-center gap-1.5" title="Tagessumme">' +
-          '<i class="fa-solid fa-wallet text-violet-500"></i>' +
-          '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
-        '</div>' +
-        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
-          '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
-        '</button>' +
-        '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
-          '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
-        '</button>' +
-        '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
-          '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
-        '</button>' +
-        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
-          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs pointer-events-none"></i>' +
-        '</button>' +
-      '</div>';
-      html += '</div>';
+      const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
+      const images = Array.isArray(day.images) ? day.images : [];
 
-      // --- DETAILS-BEREICH ---
-      html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5 ' + (day.isCollapsed ? 'hidden' : '') + '">';
-      
-      // 1. Transport & Aktivitäten
-      html += '<div id="day-modules-grid-' + index + '" class="' + ((hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4') + '">';
+      let html = '';
 
-      if (hasTransports) {
-        html += renderTransportModuleHTML(day, index);
+      // Header der ausgeklappten Karte
+      html += `<div id="day-header-${index}" class="px-4 sm:px-5 py-3 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 border-b ${visual.headerClass}">`;
+      html += `
+        <div class="flex items-center gap-3">
+          <div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ${isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : ''}">
+            <div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">${dayName}</div>
+            <div class="text-xs font-bold">${dayFormatted}</div>
+          </div>
+          <div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ${index + 1}</span>
+              ${isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : ''}
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Tagesort & Aktionen im Header
+      html += `
+        <div class="flex-1 max-w-xl flex flex-col gap-1 justify-center">
+          <div id="loc-box-${index}" class="relative flex items-center rounded-xl px-3 py-1.5 border transition ${hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700'}">
+            <button type="button" data-action="open-maps" data-day-index="${index}" class="mr-1.5 shrink-0 transition no-print ${hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed'}" title="In Google Maps online öffnen">
+              <i class="fa-solid fa-map-location-dot text-base pointer-events-none"></i>
+            </button>
+            <button type="button" data-action="open-offline-maps" data-day-index="${index}" class="mr-2.5 shrink-0 transition no-print ${hasLocation ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}" title="Offline-Karten-App öffnen">
+              <i class="fa-solid fa-compass text-base pointer-events-none"></i>
+            </button>
+            <input type="text" value="${escapeHtml(day.location || '')}" placeholder="Tagesort / Etappe eintragen..." data-day-index="${index}" data-field="location" class="w-full bg-transparent text-base md:text-lg font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">
+            <span id="loc-badge-${index}" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ${hasLocation ? '' : 'hidden'}">📍 Festgelegt</span>
+          </div>
+        </div>
+      `;
+
+      html += `
+        <div class="flex flex-wrap items-center gap-1.5 self-end md:self-auto">
+          <div class="px-2.5 py-1 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono flex items-center gap-1.5" title="Tagessumme">
+            <i class="fa-solid fa-wallet text-violet-500"></i>
+            <span id="day-cost-display-${index}" class="font-bold text-slate-800 dark:text-slate-200">${formatEuro(dayCosts.total)}</span>
+          </div>
+          <button data-action="toggle-booking" data-day-index="${index}" id="day-booking-btn-${index}" class="px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs no-print ${visual.btnClass}">
+            <i class="fa-solid ${statusIcon} pointer-events-none"></i> <span>${statusLabel}</span>
+          </button>
+          <button data-action="insert-day" data-day-index="${index}" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">
+            <i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>
+          </button>
+          <button data-action="delete-day" data-day-index="${index}" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">
+            <i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>
+          </button>
+          <button data-action="toggle-collapse" data-day-index="${index}" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Einklappen (Reading Mode)">
+            <i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i>
+          </button>
+        </div>
+      `;
+      html += `</div>`;
+
+      // Detaillierter Bearbeitungskörper
+      html += `<div id="day-body-${index}" class="p-4 sm:p-5 print-compact space-y-4">`;
+
+      // 1. Transport & Aktivitäten (Leere Bereiche werden schlank ohne Box gerendert)
+      if (hasTransports || hasActivities) {
+        html += `<div class="${(hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-3'}">`;
+        if (hasTransports) {
+          html += renderTransportModuleHTML(day, index);
+        } else {
+          html += `
+            <div class="flex items-center pt-1 no-print">
+              <button data-action="add-transport" data-day-index="${index}" class="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-semibold flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition">
+                <i class="fa-solid fa-plane-departure text-[11px]"></i> + Transport hinzufügen
+              </button>
+            </div>
+          `;
+        }
+
+        if (hasActivities) {
+          html += renderActivityModuleHTML(day, index);
+        } else {
+          html += `
+            <div class="flex items-center pt-1 no-print">
+              <button data-action="add-activity" data-day-index="${index}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-semibold flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition">
+                <i class="fa-solid fa-ticket text-[11px]"></i> + Aktivität hinzufügen
+              </button>
+            </div>
+          `;
+        }
+        html += `</div>`;
+      } else {
+        // Beide sind leer: Nur zwei schlichte, unaufdringliche Textlinks ohne graue Kisten
+        html += `
+          <div class="flex items-center gap-4 py-1 no-print">
+            <button data-action="add-transport" data-day-index="${index}" class="text-xs text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 font-semibold flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-cyan-50 dark:hover:bg-cyan-950/40 transition">
+              <i class="fa-solid fa-plane-departure text-[11px]"></i> + Transport hinzufügen
+            </button>
+            <button data-action="add-activity" data-day-index="${index}" class="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 font-semibold flex items-center gap-1.5 py-1 px-2.5 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition">
+              <i class="fa-solid fa-ticket text-[11px]"></i> + Aktivität hinzufügen
+            </button>
+          </div>
+        `;
       }
 
-      if (hasActivities) {
-        html += renderActivityModuleHTML(day, index);
-      }
-
-      html += '</div>';
-
-      // Buttons
-      html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
-      if (!hasTransports) {
-        html += '<button data-action="add-transport" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
-          '<i class="fa-solid fa-plane-departure text-cyan-600 pointer-events-none"></i> + Transport hinzufügen</button>';
-      }
-      if (!hasActivities) {
-        html += '<button data-action="add-activity" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">' +
-          '<i class="fa-solid fa-ticket text-emerald-600 pointer-events-none"></i> + Aktivität hinzufügen</button>';
-      }
-      html += '</div>';
-
-      // 2. Notizen & Belege
-      html += '<div class="space-y-3">' +
-        '<div class="flex items-center justify-between">' +
-          '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
-            '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)' +
-          '</span>' +
-          '<div class="flex items-center gap-2 no-print">' +
-            '<input type="file" id="file-upload-' + index + '" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ' + index + ')">' +
-            '<button type="button" data-action="trigger-file-upload" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
-              '<i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen (PDF / Bild)' +
-            '</button>' +
-            '<span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>' +
-          '</div>' +
-        '</div>' +
-        '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshot direkt per Strg + V einfügen)" ' +
-          'onpaste="handleDayPaste(event, ' + index + ')" ' +
-          'data-day-index="' + index + '" data-field="notes" ' +
-          'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">' +
-          escapeHtml(day.notes || '') +
-        '</textarea>';
-
-      html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
-      html += '</div></div>';
+      // 2. Tagesnotizen & Belege
+      html += `
+        <div class="space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+              <i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)
+            </span>
+            <div class="flex items-center gap-2 no-print">
+              <input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})">
+              <button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">
+                <i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen
+              </button>
+              <span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>
+            </div>
+          </div>
+          <textarea rows="2" placeholder="Notizen für diesen Tag..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-xs">${escapeHtml(day.notes || '')}</textarea>
+          <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
+        </div>
+      `;
 
       // 3. Übernachtung
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
-      const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
 
-      html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
-        '<div class="flex items-center justify-between mb-3">' +
-          '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung (Tagesabschluss)</h3>' +
-          '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
-        '</div>' +
-        '<div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">' +
-          '<div class="md:col-span-5">' +
-            '<input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="' + escapeHtml(day.lodging.name || '') + '" ' +
-              'data-day-index="' + index + '" data-field="lodging.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
-          '</div>' +
-          '<div class="md:col-span-4 flex items-center gap-1.5">' +
-            '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
-              'data-day-index="' + index + '" data-field="lodging.price" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
-            '<select data-day-index="' + index + '" data-field="lodging.currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
-              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-            '</select>' +
-            '<span id="lodging-eur-approx-' + index + '">' + getApproxEurHtml(day.lodging.price, day.lodging.currency) + '</span>' +
-          '</div>' +
-          '<div class="md:col-span-3">' +
-            '<select data-day-index="' + index + '" data-field="lodging.costStatus" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(day.lodging.costStatus || 'geplant') + '">' +
-              '<option value="geplant" ' + ((day.lodging.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
-              '<option value="reserviert" ' + (day.lodging.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
-              '<option value="gebucht" ' + (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' ? 'selected' : '') + '>✅ Gebucht</option>' +
-            '</select>' +
-          '</div>' +
-        '</div>' +
-        '<div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">' +
-          '<div><textarea rows="1" placeholder="Hinweise (z. B. Stornofrist, Frühstück)" data-day-index="' + index + '" data-field="lodging.hint" class="auto-hint w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 placeholder-slate-400 focus:border-indigo-500">' + escapeHtml(day.lodging.hint || '') + '</textarea></div>' +
-          '<div class="flex gap-2">' +
-            '<input type="url" placeholder="Buchungslink (https://...)" value="' + escapeHtml(day.lodging.link || '') + '" data-day-index="' + index + '" data-field="lodging.link" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">' +
-            '<a id="lodging-link-btn-' + index + '" href="' + escapeHtml(lodgingSafeUrl || '#') + '" target="_blank" class="' + (lodgingSafeUrl ? '' : 'hidden') + ' px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
-          '</div>' +
-          '<div><input type="text" placeholder="Adresse / Check-in Notiz" value="' + escapeHtml(day.lodging.notes || '') + '" data-day-index="' + index + '" data-field="lodging.notes" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>' +
-        '</div>' +
-      '</div>';
+      html += `
+        <div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung (Tagesabschluss)</h3>
+            <span id="lodging-status-label-${index}" class="text-[11px] font-semibold ${lodgingStatusColor}">${lodgingStatusText}</span>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-12 gap-3 mb-3">
+            <div class="md:col-span-5">
+              <input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="${escapeHtml(day.lodging.name || '')}" data-day-index="${index}" data-field="lodging.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
+            </div>
+            <div class="md:col-span-4 flex items-center gap-1.5">
+              <input type="text" placeholder="Preis" value="${escapeHtml(day.lodging.price || '')}" data-day-index="${index}" data-field="lodging.price" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">
+              <select data-day-index="${index}" data-field="lodging.currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">
+                ${['EUR', 'THB', 'USD', 'LAK'].map(c => `<option value="${c}" ${(day.lodging.currency || 'EUR') === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+              <span id="lodging-eur-approx-${index}">${getApproxEurHtml(day.lodging.price, day.lodging.currency)}</span>
+            </div>
+            <div class="md:col-span-3">
+              <select data-day-index="${index}" data-field="lodging.costStatus" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ${getStatusBadgeClass(day.lodging.costStatus || 'geplant')}">
+                <option value="geplant" ${(day.lodging.costStatus || 'geplant') === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
+                <option value="reserviert" ${day.lodging.costStatus === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
+                <option value="gebucht" ${(day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'selected' : ''}>✅ Gebucht</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+            <div><textarea rows="1" placeholder="Hinweise (z. B. Stornofrist, Frühstück)" data-day-index="${index}" data-field="lodging.hint" class="auto-hint w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-amber-800 dark:text-amber-200 placeholder-slate-400 focus:border-indigo-500">${escapeHtml(day.lodging.hint || '')}</textarea></div>
+            <div class="flex gap-2">
+              <input type="url" placeholder="Buchungslink (https://...)" value="${escapeHtml(day.lodging.link || '')}" data-day-index="${index}" data-field="lodging.link" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">
+              <a id="lodging-link-btn-${index}" href="${escapeHtml(lodgingSafeUrl || '#')}" target="_blank" class="${lodgingSafeUrl ? '' : 'hidden'} px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+            </div>
+            <div><input type="text" placeholder="Adresse / Check-in Notiz" value="${escapeHtml(day.lodging.notes || '')}" data-day-index="${index}" data-field="lodging.notes" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>
+          </div>
+        </div>
+      `;
 
-      html += '</div>';
+      html += `</div>`;
       card.innerHTML = html;
-      
-      setTimeout(() => updateImagesDOM(index), 0);
 
+      setTimeout(() => updateImagesDOM(index), 0);
       return card;
     }
 
     // Transport Modul mit Up/Down-Pfeilen & Kategorie-Icons: Flugzeug, Mietwagen, Roller, Taxi
     function renderTransportModuleHTML(day, index) {
-      let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-        '<div class="flex items-center justify-between mb-3">' +
+      let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-2.5">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>' +
           '<button data-action="add-transport" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
-        '</div><div class="space-y-2.5">';
+        '</div><div class="space-y-2">';
 
       const totalTr = day.transports.length;
 
@@ -2829,15 +2374,13 @@
         const isLast = trIdx === totalTr - 1;
         const selectedCat = tr.category || '';
 
-        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-xs">' +
           '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
-            // Hoch/Runter Buttons
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
 
-            // Transport Kategorie Dropdown mit Icons: Flugzeug, Mietwagen, Roller, Taxi
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">' +
               '<option value="" ' + (selectedCat === '' ? 'selected' : '') + '>Auto-Icon</option>' +
               '<option value="flugzeug" ' + (selectedCat === 'flugzeug' ? 'selected' : '') + '>✈️ Flugzeug</option>' +
@@ -2846,7 +2389,7 @@
               '<option value="taxi" ' + (selectedCat === 'taxi' ? 'selected' : '') + '>🚕 Taxi / Grab</option>' +
             '</select>' +
 
-            '<input type="text" placeholder="Art (z. B. 08:30 Flug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
+            '<input type="text" placeholder="Art (z. B. Flug nach Hanoi, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
@@ -2870,13 +2413,13 @@
       return html;
     }
 
-    // Aktivitäten Modul mit Up/Down-Pfeilen
+    // Aktivitäten Modul
     function renderActivityModuleHTML(day, index) {
-      let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-        '<div class="flex items-center justify-between mb-3">' +
+      let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-2.5">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>' +
           '<button data-action="add-activity" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
-        '</div><div class="space-y-2.5">';
+        '</div><div class="space-y-2">';
 
       const totalAct = day.activities.length;
 
@@ -2885,13 +2428,13 @@
         const isFirst = actIdx === 0;
         const isLast = actIdx === totalAct - 1;
 
-        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-xs">' +
           '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-activity-up" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-activity-down" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
-            '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
+            '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="${actIdx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
             '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
@@ -2907,7 +2450,7 @@
           '</div>' +
           '<div class="flex items-start gap-2">' +
             '<textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
-            '<input type="url" placeholder="Webseite / Ticket" value="' + escapeHtml(act.link || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
+            '<input type="url" placeholder="Webseite / Ticket URL" value="' + escapeHtml(act.link || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
             '<a id="act-link-btn-' + index + '-' + actIdx + '" href="' + escapeHtml(actSafeUrl || '#') + '" target="_blank" class="' + (actSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
           '</div>' +
         '</div>';
@@ -2916,7 +2459,7 @@
       return html;
     }
 
-    // --- EVENT DELEGATION & GRANULARE DOM-UPDATES ---
+    // --- EVENT DELEGATION ---
     function setupEventDelegation() {
       const container = document.getElementById('daysContainer');
       const checklistCont = document.getElementById('checklistContainer');
@@ -2931,6 +2474,11 @@
           case 'open-maps': {
             const day = tripData.days[dayIdx];
             if (day) openGoogleMaps(day.location);
+            break;
+          }
+          case 'open-offline-maps': {
+            const day = tripData.days[dayIdx];
+            if (day) openOfflineMaps(day.location);
             break;
           }
           case 'toggle-booking': {
@@ -3056,12 +2604,6 @@
             if (trField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
             }
-            if (trField === 'category' || trField === 'title') {
-              const trLine = document.getElementById('day-header-transport-' + dayIdx);
-              if (trLine) {
-                trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIdx]);
-              }
-            }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
             saveToStorage();
@@ -3100,22 +2642,31 @@
             const box = document.getElementById('loc-box-' + dayIdx);
             const badge = document.getElementById('loc-badge-' + dayIdx);
             const mapsBtn = box ? box.querySelector('[data-action="open-maps"]') : null;
+            const offMapsBtn = box ? box.querySelector('[data-action="open-offline-maps"]') : null;
             const hasLoc = (target.value || '').trim() !== '';
 
             if (box && badge) {
               if (hasLoc) {
-                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
+                box.className = "relative flex items-center rounded-xl px-3 py-1.5 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
                 badge.classList.remove('hidden');
                 if (mapsBtn) {
-                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
-                  mapsBtn.title = "In Google Maps öffnen";
+                  mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
+                  mapsBtn.title = "In Google Maps online öffnen";
+                }
+                if (offMapsBtn) {
+                  offMapsBtn.className = "mr-2.5 shrink-0 transition no-print text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer";
+                  offMapsBtn.title = "Offline-Karten-App öffnen";
                 }
               } else {
-                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
+                box.className = "relative flex items-center rounded-xl px-3 py-1.5 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
                 badge.classList.add('hidden');
                 if (mapsBtn) {
-                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
+                  mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
                   mapsBtn.title = "Tagesort eintragen";
+                }
+                if (offMapsBtn) {
+                  offMapsBtn.className = "mr-2.5 shrink-0 transition no-print text-slate-300 dark:text-slate-600 cursor-not-allowed";
+                  offMapsBtn.title = "Tagesort eintragen";
                 }
               }
             }
@@ -3250,10 +2801,10 @@
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
 
       if (card) {
-        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-xs ' + visual.cardClass;
       }
       if (header) {
-        header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass;
+        header.className = 'px-4 sm:px-5 py-3 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 border-b ' + visual.headerClass;
       }
 
       let statusLabel = 'Übernachtung offen';
@@ -3267,7 +2818,7 @@
       }
 
       if (bookingBtn) {
-        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass;
+        bookingBtn.className = 'px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs no-print ' + visual.btnClass;
         bookingBtn.innerHTML = '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>';
       }
 
@@ -3296,31 +2847,31 @@
       updateStats();
     }
 
+    // Beim Ausklappen eines Tages werden alle anderen Tage kompakt geschlossen
     function toggleDayCollapse(dayIndex) {
       if (!tripData.days[dayIndex]) return;
-      tripData.days[dayIndex].isCollapsed = !tripData.days[dayIndex].isCollapsed;
+      const isCurrentlyCollapsed = tripData.days[dayIndex].isCollapsed !== false;
+
+      if (isCurrentlyCollapsed) {
+        // Tag öffnen, alle anderen Tage schließen (Reading Mode)
+        tripData.days.forEach((d, idx) => {
+          if (d) d.isCollapsed = (idx !== dayIndex);
+        });
+      } else {
+        // Diesen Tag wieder schließen
+        tripData.days[dayIndex].isCollapsed = true;
+      }
+
       saveToStorage();
-      
-      const body = document.getElementById('day-body-' + dayIndex);
-      const icon = document.getElementById('collapse-icon-' + dayIndex);
-      const trLine = document.getElementById('day-header-transport-' + dayIndex);
-      
-      if (body && icon) {
-        if (tripData.days[dayIndex].isCollapsed) {
-          body.classList.add('hidden');
-          icon.className = "fa-solid fa-chevron-down text-xs pointer-events-none";
-          if (trLine) {
-            trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIndex]);
-            trLine.classList.toggle('hidden', !(tripData.days[dayIndex].transports && tripData.days[dayIndex].transports.length > 0));
+      renderDays();
+
+      if (isCurrentlyCollapsed) {
+        setTimeout(() => {
+          const el = document.getElementById('day-card-' + dayIndex);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           }
-        } else {
-          body.classList.remove('hidden');
-          icon.className = "fa-solid fa-chevron-up text-xs pointer-events-none";
-          if (trLine) {
-            trLine.classList.add('hidden');
-          }
-          autoResizeAllTextareas();
-        }
+        }, 60);
       }
     }
 
