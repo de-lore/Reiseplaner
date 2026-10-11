@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.6</title>
+  <title>Reiseplaner Pro v1.5</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -34,7 +34,6 @@
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; color: black !important; font-size: 10pt !important; }
-      .tab-content { display: block !important; }
       .day-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; border: 1px solid #94a3b8 !important; background: white !important; margin-bottom: 8px !important; border-radius: 8px !important; }
       .day-card input, .day-card select, .day-card textarea { border: none !important; background: transparent !important; color: black !important; padding: 0 !important; font-size: 9pt !important; }
       .print-compact { padding: 8px 12px !important; }
@@ -62,89 +61,68 @@
     }
   </style>
 </head>
-<body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-20 transition-colors duration-200">
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-16 transition-colors duration-200">
 
   <!-- Header / Navigation -->
-  <header class="bg-white/95 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
-    <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
-      
-      <!-- Brand & Badges -->
+  <header class="bg-white/90 dark:bg-slate-800/80 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm dark:shadow-md transition-colors duration-200">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
-          <i class="fa-solid fa-map-location-dot text-base"></i>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-map-location-dot text-lg"></i>
         </div>
-        <div class="flex items-center gap-2 flex-wrap">
-          <h1 class="text-base font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.6</span>
-          <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
-          <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1">
-            <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span id="networkText">Online</span>
-          </span>
-        </div>
-      </div>
-
-      <!-- Action Buttons & Drei-Punkte-Menü -->
-      <div class="flex items-center gap-2 no-print relative">
-        <button onclick="saveToFile(false)" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm shadow-indigo-600/30" title="Direkt in Datei sichern (Strg + S)">
-          <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
-        </button>
-
-        <button onclick="toggleTheme()" id="themeToggleBtn" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs transition flex items-center justify-center" title="Design wechseln (Hell / Dunkel)">
-          <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
-        </button>
-
-        <!-- Dropdown Menü (3 Punkte) -->
-        <div class="relative">
-          <button onclick="toggleMoreMenu()" id="moreMenuBtn" class="w-8 h-8 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm transition flex items-center justify-center" title="Weitere Aktionen">
-            <i class="fa-solid fa-ellipsis-vertical"></i>
-          </button>
-
-          <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-56 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl p-1.5 space-y-1 z-50 text-xs">
-            <button onclick="saveToFile(true); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-              <i class="fa-solid fa-folder-plus text-indigo-500 w-4"></i> Speichern unter...
-            </button>
-            <button onclick="openFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-              <i class="fa-solid fa-folder-open text-indigo-500 w-4"></i> JSON-Datei laden
-            </button>
-            <button onclick="exportToCSV(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-emerald-600 dark:text-emerald-400 font-semibold">
-              <i class="fa-solid fa-file-csv text-emerald-500 w-4"></i> CSV-Export (Excel)
-            </button>
-            <button onclick="window.print(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-slate-700 dark:text-slate-200">
-              <i class="fa-solid fa-print text-indigo-500 w-4"></i> Spickzettel drucken
-            </button>
-            <div class="border-t border-slate-200 dark:border-slate-700 my-1"></div>
-            <button onclick="showRestoreModal(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-2 text-amber-600 dark:text-amber-400">
-              <i class="fa-solid fa-rotate-left text-amber-500 w-4"></i> Speicherstand zurückholen
-            </button>
-            <button onclick="toggleSosModal(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center gap-2 text-rose-600 dark:text-rose-400 font-semibold">
-              <i class="fa-solid fa-kit-medical text-rose-500 w-4"></i> SOS / Notfall-Spickzettel
-            </button>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.5</span>
+            <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
+            <span id="networkBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1" title="Verbindungsstatus">
+              <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span id="networkText">Online</span>
+            </span>
+            <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
+            </span>
           </div>
+          <p id="fileStatusText" class="text-xs text-slate-500 dark:text-slate-400">Keine Datei verknüpft (Speichert in IndexedDB)</p>
         </div>
-
-        <input type="file" id="importInput" accept=".json" class="hidden" onchange="importJSONFallback(event)">
       </div>
-    </div>
 
-    <!-- Haupt-Tab-Navigation -->
-    <div class="max-w-6xl mx-auto px-4 flex items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
-      <button onclick="switchTab('plan')" id="tabBtn-plan" class="px-3.5 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2">
-        <i class="fa-solid fa-calendar-days"></i> Reiseplan
-      </button>
-      <button onclick="switchTab('budget')" id="tabBtn-budget" class="px-3.5 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2">
-        <i class="fa-solid fa-wallet"></i> Budget & Finanzen
-      </button>
-      <button onclick="switchTab('checklist')" id="tabBtn-checklist" class="px-3.5 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2">
-        <i class="fa-solid fa-list-check"></i> Packliste & Vorbereitung
-      </button>
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 no-print">
+        <button onclick="toggleSosModal()" class="px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition flex items-center gap-1.5" title="Notfall-Nummern & SOS-Spickzettel öffnen">
+          <i class="fa-solid fa-kit-medical text-rose-500"></i> SOS
+        </button>
+        <button onclick="toggleTheme()" id="themeToggleBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Design wechseln (Hell / Dunkel)">
+          <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
+          <span id="themeToggleText" class="hidden sm:inline">Hell</span>
+        </button>
+        <button onclick="showRestoreModal()" id="restoreBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-amber-600 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Vorherigen Speicherstand wiederherstellen">
+          <i class="fa-solid fa-rotate-left"></i> Rückgängig
+        </button>
+        <button onclick="exportToCSV()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-emerald-700 dark:text-emerald-300 text-xs font-semibold transition flex items-center gap-1.5" title="Kostenaufstellung als CSV (Excel) herunterladen">
+          <i class="fa-solid fa-file-csv text-emerald-600 dark:text-emerald-400"></i> CSV
+        </button>
+        <button onclick="saveToFile(false)" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30" title="Direkt in Datei sichern (Strg + S)">
+          <i class="fa-solid fa-floppy-disk"></i> Speichern
+        </button>
+        <button onclick="saveToFile(true)" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Neuen Speicherort wählen">
+          <i class="fa-solid fa-folder-plus"></i> Speichern unter...
+        </button>
+        <button onclick="openFile()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="JSON-Datei laden">
+          <i class="fa-solid fa-folder-open"></i> Öffnen
+        </button>
+        <input type="file" id="importInput" accept=".json" class="hidden" onchange="importJSONFallback(event)">
+        <button onclick="window.print()" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-medium transition flex items-center gap-1.5" title="Kompakten Reise-Spickzettel drucken">
+          <i class="fa-solid fa-print"></i> Drucken
+        </button>
+      </div>
     </div>
   </header>
 
   <!-- AUTO-EXPORT ERINNERUNGS-BANNER -->
   <aside id="backupReminderBanner" class="hidden max-w-6xl mx-auto px-4 mt-4 no-print w-full">
-    <div class="bg-gradient-to-r from-amber-500/15 via-indigo-500/10 to-transparent border border-amber-400/60 dark:border-amber-500/40 rounded-2xl p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm backdrop-blur">
+    <div class="bg-gradient-to-r from-amber-500/15 via-indigo-500/10 to-transparent border border-amber-400/60 dark:border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm backdrop-blur">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-sm">
+        <div class="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-base">
           <i class="fa-solid fa-cloud-arrow-up"></i>
         </div>
         <div>
@@ -153,7 +131,7 @@
             <span id="backupReminderCounter" class="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-mono font-semibold">10 Änderungen</span>
           </h2>
           <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
-            Neue Änderungen erfasst. Neues JSON-Backup auf OneDrive/Festplatte sichern?
+            Du hast neue Änderungen im Plan. Neues JSON-Backup auf OneDrive/Festplatte sichern?
           </p>
         </div>
       </div>
@@ -161,7 +139,7 @@
         <button onclick="dismissBackupReminder()" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
           Später
         </button>
-        <button onclick="saveToFile(false); dismissBackupReminder();" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+        <button onclick="saveToFile(false); dismissBackupReminder();" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow">
           <i class="fa-solid fa-floppy-disk"></i> Jetzt sichern
         </button>
       </div>
@@ -169,87 +147,101 @@
   </aside>
 
   <!-- Hauptinhalt -->
-  <main class="max-w-6xl w-full mx-auto px-4 mt-4 flex-1 space-y-5">
+  <main class="max-w-6xl w-full mx-auto px-4 mt-6 flex-1 space-y-6">
 
-    <!-- EINKLAPPBARE REISE-SUMMARY / KONFIGURATION -->
-    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm transition-colors duration-200 no-print">
-      <!-- Schlanke Zeile (Default nach Setup) -->
-      <div id="tripSummaryBar" class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-sm">
-            <i class="fa-solid fa-compass"></i>
-          </div>
-          <div>
-            <div class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <span id="summaryTripTitle">Unbenannte Reise</span>
-              <span id="summaryTripDaysBadge" class="text-[11px] font-semibold px-2 py-0.2 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">0 Tage</span>
-            </div>
-            <div id="summaryTripDates" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Kein Reisezeitraum festgelegt</div>
-          </div>
+    <!-- Konfigurations-Panel -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm dark:shadow-xl transition-colors duration-200 no-print">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Reisetitel</label>
+          <input type="text" id="tripTitle" placeholder="z. B. Japan Rundreise" oninput="saveMetaData()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
         </div>
-        <button onclick="toggleConfigPanel()" class="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition">
-          <i class="fa-solid fa-pen text-indigo-500"></i> Reisezeitraum & Titel bearbeiten
-        </button>
-      </div>
-
-      <!-- Ausklappbarer Konfigurations-Bereich -->
-      <div id="tripConfigFields" class="hidden mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/60">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Reisetitel</label>
-            <input type="text" id="tripTitle" placeholder="z. B. Japan Rundreise" oninput="saveMetaData()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Startdatum</label>
-            <input type="date" id="startDate" onchange="saveMetaData(); updateStats();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
-          </div>
-          <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Enddatum</label>
-            <input type="date" id="endDate" onchange="saveMetaData(); updateStats();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
-          </div>
-          <div class="flex items-end gap-2">
-            <button onclick="generateOrUpdateDays(); toggleConfigPanel();" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-4 py-2 text-sm font-semibold transition shadow-md shadow-indigo-600/30 flex items-center justify-center gap-2">
-              <i class="fa-solid fa-calendar-days"></i> Tage generieren
-            </button>
-            <button onclick="toggleConfigPanel()" class="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300" title="Einklappen">
-              <i class="fa-solid fa-chevron-up"></i>
-            </button>
-          </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Startdatum</label>
+          <input type="date" id="startDate" onchange="saveMetaData(); updateStats();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider mb-1.5">Enddatum</label>
+          <input type="date" id="endDate" onchange="saveMetaData(); updateStats();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
+        </div>
+        <div class="flex items-end">
+          <button onclick="generateOrUpdateDays()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-4 py-2 text-sm font-semibold transition shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-calendar-days"></i> Tage generieren
+          </button>
         </div>
       </div>
-    </section>
 
-    <!-- ==================== TAB 1: REISEPLAN ==================== -->
-    <div id="tabContent-plan" class="tab-content space-y-4">
-      
-      <!-- ROUTEN-TIMELINE (MINIMAP) -->
-      <section id="routeTimelineCard" class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm transition-colors duration-200 no-print">
-        <div class="flex items-center justify-between mb-2">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-signs-post text-indigo-500"></i> Etappen-Übersicht
-          </h2>
-          <span class="text-[11px] text-slate-400">Klicken, um direkt zum Tag zu springen</span>
+      <!-- Quick Stats & Budget -->
+      <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-4 text-xs font-medium">
+          <span class="flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+            <i class="fa-solid fa-bed text-indigo-500 dark:text-indigo-400"></i> Nächte: <b id="statTotal" class="text-slate-900 dark:text-white font-bold">0</b>
+          </span>
+          <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
+            <i class="fa-solid fa-circle-check"></i> Gebucht/Res.: <b id="statBooked" class="font-bold">0</b>
+          </span>
+          <span class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400">
+            <i class="fa-solid fa-circle-exclamation"></i> Offen: <b id="statOpen" class="font-bold">0</b>
+          </span>
+          <span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span>
+          <span class="flex items-center gap-1.5 text-violet-600 dark:text-violet-400">
+            <i class="fa-solid fa-wallet"></i> Gesamt: <b id="statCostTotal" class="text-slate-900 dark:text-white font-bold">0,00 €</b>
+          </span>
+          <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400" title="Bereits bezahlt / abgebucht">
+            <i class="fa-solid fa-money-bill-wave"></i> Bezahlt: <b id="statCostPaid" class="font-bold">0,00 €</b>
+          </span>
+          <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400" title="Geplant oder reserviert (vor Ort zu zahlen)">
+            <i class="fa-solid fa-hourglass-half"></i> Ausstehend: <b id="statCostPending" class="font-bold">0,00 €</b>
+          </span>
+          <span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span>
+          <span class="flex items-center gap-1 text-slate-700 dark:text-slate-300" title="Durchschnittliche Kosten pro Reisetag">
+            <i class="fa-solid fa-chart-line text-indigo-500"></i> Ø Tag: <b id="statCostPerDay" class="font-bold text-slate-900 dark:text-white">0,00 €</b>
+          </span>
         </div>
-        <div id="routeTimelineContainer" class="timeline-scroll flex items-center gap-2 overflow-x-auto pb-1 text-xs"></div>
-      </section>
+        
+        <div class="flex items-center gap-2">
+          <button onclick="toggleAllDays(true)" class="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">Alle ausklappen</button>
+          <span class="text-slate-300 dark:text-slate-600">|</span>
+          <button onclick="toggleAllDays(false)" class="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">Alle einklappen</button>
+        </div>
+      </div>
 
-      <!-- FILTER & SUCHE LEISTE -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm transition-colors duration-200 no-print flex flex-wrap items-center justify-between gap-3">
+      <!-- VISUELLE KOSTENVERTEILUNG (KATEGORIE-BALKEN) -->
+      <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-chart-pie text-violet-500"></i> Budget-Verteilung nach Kategorien:
+          </span>
+          <div class="flex items-center gap-3 text-[11px] font-semibold">
+            <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Unterkunft: <b id="breakdownLodging">0 € (0%)</b></span>
+            <span class="flex items-center gap-1 text-cyan-600 dark:text-cyan-400"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Transport: <b id="breakdownTransport">0 € (0%)</b></span>
+            <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Aktivitäten: <b id="breakdownActivity">0 € (0%)</b></span>
+          </div>
+        </div>
+        <div class="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden flex shadow-inner">
+          <div id="barLodging" class="h-full bg-indigo-500 transition-all duration-300" style="width: 0%"></div>
+          <div id="barTransport" class="h-full bg-cyan-500 transition-all duration-300" style="width: 0%"></div>
+          <div id="barActivity" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- FILTER-LEISTE, SUCHE & ZU HEUTE -->
+      <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3">
         <div class="flex flex-wrap items-center gap-1.5 text-xs">
-          <button onclick="setFilter('all')" id="filter-all" class="px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow-xs">
+          <button onclick="setFilter('all')" id="filter-all" class="px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow">
             Alle Tage
           </button>
           <button onclick="setFilter('open_lodging')" id="filter-open_lodging" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-            ⚠️ Offene Unterkünfte
+            ⚠️ Nur offene Unterkünfte
           </button>
           <button onclick="setFilter('travel_days')" id="filter-travel_days" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-            ✈️ Reisetage
+            ✈️ Nur Reisetage
           </button>
           <button onclick="setFilter('pending_costs')" id="filter-pending_costs" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-            ⏳ Ausstehend
+            ⏳ Ausstehende Zahlungen
           </button>
           <button onclick="setFilter('with_attachments')" id="filter-with_attachments" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-            📎 Mit Belegen
+            📎 Nur mit Belegen
           </button>
         </div>
 
@@ -259,163 +251,95 @@
             <input 
               type="text" 
               id="searchInput" 
-              placeholder="Ort, Hotel, Notiz suchen..." 
+              placeholder="Suchen (Ort, Hotel, Notiz)..." 
               oninput="handleSearch(this.value)"
-              class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
+              class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500"
             >
             <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs">&times;</button>
           </div>
-          <button onclick="jumpToToday()" class="px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shrink-0" title="Zum heutigen Reisetag scrollen">
+          <button onclick="jumpToToday()" class="px-3 py-1.5 rounded-lg bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow shrink-0" title="Zum heutigen Reisetag scrollen">
             <i class="fa-solid fa-crosshairs"></i> Zu heute
           </button>
         </div>
-      </section>
+      </div>
 
-      <!-- Liste der Reisetage -->
-      <div id="daysContainer" class="space-y-4"></div>
-    </div>
+      <!-- WECHSELKURSE -->
+      <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 flex flex-wrap items-center gap-4 text-xs">
+        <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-coins text-amber-500"></i> Wechselkurse (1 € =):
+        </span>
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold text-slate-500">THB:</span>
+          <input type="number" id="rateTHB" step="0.1" value="38" oninput="updateRate('THB', this.value)" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold text-slate-500">USD:</span>
+          <input type="number" id="rateUSD" step="0.01" value="1.08" oninput="updateRate('USD', this.value)" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="font-semibold text-slate-500">LAK:</span>
+          <input type="number" id="rateLAK" step="100" value="24000" oninput="updateRate('LAK', this.value)" class="w-24 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white font-mono text-center">
+        </div>
+      </div>
+    </section>
 
-    <!-- ==================== TAB 2: BUDGET & FINANZEN ==================== -->
-    <div id="tabContent-budget" class="tab-content hidden space-y-5">
-      
-      <!-- Quick Stats Karten -->
-      <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-0.5">Nächte</span>
-          <b id="statTotal" class="text-base font-black text-slate-900 dark:text-white">0</b>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block mb-0.5">Gebucht/Res.</span>
-          <b id="statBooked" class="text-base font-black text-emerald-600 dark:text-emerald-400">0</b>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 block mb-0.5">Offen</span>
-          <b id="statOpen" class="text-base font-black text-amber-600 dark:text-amber-400">0</b>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-violet-600 dark:text-violet-400 block mb-0.5">Gesamtbudget</span>
-          <b id="statCostTotal" class="text-base font-black text-slate-900 dark:text-white">0,00 €</b>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block mb-0.5">Bereits bezahlt</span>
-          <b id="statCostPaid" class="text-base font-black text-emerald-600 dark:text-emerald-400">0,00 €</b>
-        </div>
-        <div class="bg-white dark:bg-slate-800 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 text-center">
-          <span class="text-[11px] font-semibold text-sky-600 dark:text-sky-400 block mb-0.5">Ausstehend</span>
-          <b id="statCostPending" class="text-base font-black text-sky-600 dark:text-sky-400">0,00 €</b>
-        </div>
-      </section>
-
-      <!-- Kategorie-Balkendiagramm & Tagesdurchschnitt -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/60 pb-3">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie text-violet-500"></i> Kostenverteilung nach Kategorien
-          </h2>
-          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
-            Ø Kosten pro Reisetag: <b id="statCostPerDay" class="text-indigo-600 dark:text-indigo-400">0,00 €</b>
-          </span>
-        </div>
-
-        <div class="w-full h-3 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden flex shadow-inner">
-          <div id="barLodging" class="h-full bg-indigo-500 transition-all duration-300" style="width: 0%"></div>
-          <div id="barTransport" class="h-full bg-cyan-500 transition-all duration-300" style="width: 0%"></div>
-          <div id="barActivity" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-          <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80">
-            <div class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 mb-1">
-              <i class="fa-solid fa-bed"></i> Unterkunft
-            </div>
-            <div id="breakdownLodging" class="text-sm font-black text-slate-900 dark:text-white">0,00 € (0%)</div>
-          </div>
-          <div class="p-3 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800/80">
-            <div class="text-[11px] font-bold text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5 mb-1">
-              <i class="fa-solid fa-route"></i> Transport
-            </div>
-            <div id="breakdownTransport" class="text-sm font-black text-slate-900 dark:text-white">0,00 € (0%)</div>
-          </div>
-          <div class="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80">
-            <div class="text-[11px] font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5 mb-1">
-              <i class="fa-solid fa-ticket"></i> Aktivitäten & Tickets
-            </div>
-            <div id="breakdownActivity" class="text-sm font-black text-slate-900 dark:text-white">0,00 € (0%)</div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Wechselkurs-Einstellungen -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3">
+    <!-- ROUTEN-TIMELINE (VISUELLE MINIMAP DER ETAPPEN) -->
+    <section id="routeTimelineCard" class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm dark:shadow-xl transition-colors duration-200 no-print">
+      <div class="flex items-center justify-between mb-2.5">
         <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-          <i class="fa-solid fa-coins text-amber-500"></i> Wechselkurse konfigurieren (1 € =)
+          <i class="fa-solid fa-signs-post text-indigo-500"></i> Reiseverlauf & Etappen-Minimap
         </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">THB (Thailand Baht):</span>
-            <input type="number" id="rateTHB" step="0.1" value="38" oninput="updateRate('THB', this.value)" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">USD (US-Dollar):</span>
-            <input type="number" id="rateUSD" step="0.01" value="1.08" oninput="updateRate('USD', this.value)" class="w-20 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">LAK (Laos Kip):</span>
-            <input type="number" id="rateLAK" step="100" value="24000" oninput="updateRate('LAK', this.value)" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
-          </div>
-        </div>
-      </section>
-    </div>
+        <span class="text-[11px] text-slate-400">Klicken, um direkt zum Tag zu springen</span>
+      </div>
+      <div id="routeTimelineContainer" class="timeline-scroll flex items-center gap-2 overflow-x-auto pb-1 text-xs"></div>
+    </section>
 
-    <!-- ==================== TAB 3: PACKLISTE & VORBEREITUNG ==================== -->
-    <div id="tabContent-checklist" class="tab-content hidden space-y-5">
+    <!-- ALLGEMEINE HINWEISE & KATEGORISIERTE CHECKLISTE -->
+    <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm dark:shadow-xl transition-colors duration-200">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        
-        <!-- Notizen & Vorbereitung -->
-        <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3">
-          <div class="flex items-center justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-2">
             <h2 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
-              <i class="fa-solid fa-passport"></i> Reisedokumente & Vorbereitung
+              <i class="fa-solid fa-passport text-amber-600 dark:text-amber-400 text-sm"></i> Vorbereitung & Reisedokumente
             </h2>
-            <span class="text-[11px] text-slate-400">Visum, Impfungen, Notfall</span>
+            <span class="text-[11px] text-slate-400 no-print">Visum, Impfungen, Notfall</span>
           </div>
           <textarea 
             id="generalNotes" 
-            rows="8" 
+            rows="5" 
             placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..."
             oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);"
-            class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl p-3.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-500"
+            class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500"
           ></textarea>
-        </section>
+        </div>
 
-        <!-- Strukturierte Packliste mit Tabs -->
-        <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3 flex flex-col">
-          <div class="flex items-center justify-between">
+        <div class="flex flex-col">
+          <div class="flex items-center justify-between mb-2">
             <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
-              <i class="fa-solid fa-list-check"></i> Packliste
+              <i class="fa-solid fa-list-check text-indigo-600 dark:text-indigo-400 text-sm"></i> Pack- & Vorbereitungsliste
             </h2>
             <div class="flex items-center gap-2">
-              <button onclick="toggleHideDoneChecklist()" id="hideDoneToggleBtn" class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition no-print">
+              <button onclick="toggleHideDoneChecklist()" id="hideDoneToggleBtn" class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition no-print">
                 <i class="fa-regular fa-eye-slash"></i> Erledigte verbergen
               </button>
               <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
             </div>
           </div>
 
-          <!-- Kategorie-Tabs -->
+          <!-- Kategorie-Tabs für die Packliste -->
           <div class="flex flex-wrap items-center gap-1 pb-2 border-b border-slate-200 dark:border-slate-700/60 no-print text-[11px]">
-            <button onclick="setChecklistCategoryFilter('all')" id="chk-tab-all" class="px-2.5 py-1 rounded-lg font-bold bg-indigo-600 text-white transition">Alle</button>
-            <button onclick="setChecklistCategoryFilter('Dokumente')" id="chk-tab-Dokumente" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">📄 Dokumente</button>
-            <button onclick="setChecklistCategoryFilter('Technik')" id="chk-tab-Technik" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🔌 Technik</button>
-            <button onclick="setChecklistCategoryFilter('Apotheke')" id="chk-tab-Apotheke" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">💊 Apotheke</button>
-            <button onclick="setChecklistCategoryFilter('Kleidung')" id="chk-tab-Kleidung" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">👕 Kleidung</button>
-            <button onclick="setChecklistCategoryFilter('Sonstiges')" id="chk-tab-Sonstiges" class="px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🎒 Sonstiges</button>
+            <button onclick="setChecklistCategoryFilter('all')" id="chk-tab-all" class="px-2 py-0.5 rounded-lg font-bold bg-indigo-600 text-white transition">Alle</button>
+            <button onclick="setChecklistCategoryFilter('Dokumente')" id="chk-tab-Dokumente" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">📄 Dokumente</button>
+            <button onclick="setChecklistCategoryFilter('Technik')" id="chk-tab-Technik" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🔌 Technik</button>
+            <button onclick="setChecklistCategoryFilter('Apotheke')" id="chk-tab-Apotheke" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">💊 Apotheke</button>
+            <button onclick="setChecklistCategoryFilter('Kleidung')" id="chk-tab-Kleidung" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">👕 Kleidung</button>
+            <button onclick="setChecklistCategoryFilter('Sonstiges')" id="chk-tab-Sonstiges" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🎒 Sonstiges</button>
           </div>
+          
+          <div id="checklistContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 flex-1 mt-2"></div>
 
-          <div id="checklistContainer" class="space-y-1.5 max-h-60 overflow-y-auto pr-1 flex-1"></div>
-
-          <div class="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700/60 no-print">
-            <select id="newChecklistCategorySelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300">
+          <div class="flex items-center gap-2 mt-2.5 no-print pt-2 border-t border-slate-200 dark:border-slate-700/60">
+            <select id="newChecklistCategorySelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-300">
               <option value="Dokumente">📄 Dokumente</option>
               <option value="Technik">🔌 Technik</option>
               <option value="Apotheke">💊 Apotheke</option>
@@ -427,19 +351,21 @@
               id="newChecklistItemInput" 
               placeholder="Neuen Punkt hinzufügen..." 
               onkeydown="if(event.key === 'Enter') addChecklistItem();"
-              class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
+              class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
             >
-            <button onclick="addChecklistItem()" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 shadow-xs">
+            <button onclick="addChecklistItem()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0">
               <i class="fa-solid fa-plus"></i> Hinzufügen
             </button>
           </div>
-        </section>
+        </div>
       </div>
-    </div>
+    </section>
 
+    <!-- Liste der Reisetage -->
+    <div id="daysContainer" class="space-y-4"></div>
   </main>
 
-  <!-- SCHWEBENDER SCHNELL-WÄHRUNGSRECHNER -->
+  <!-- SCHWEBENDER SCHNELL-WÄHRUNGSRECHNER (WIDGET UNTEN LINKS) -->
   <aside id="quickCalcWidget" class="fixed bottom-6 left-6 z-40 no-print">
     <button onclick="toggleQuickCalc()" class="w-12 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl flex items-center justify-center text-lg transition duration-200 hover:scale-105 active:scale-95" title="Schnell-Währungsrechner öffnen">
       <i class="fa-solid fa-calculator"></i>
@@ -455,7 +381,7 @@
 
       <div class="space-y-2.5">
         <div class="flex items-center gap-1.5">
-          <input type="number" id="quickCalcAmount" placeholder="Betrag..." oninput="runQuickCalc()" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
+          <input type="number" id="quickCalcAmount" placeholder="Betrag eingeben..." oninput="runQuickCalc()" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
           <select id="quickCalcCurr" onchange="runQuickCalc()" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-white">
             <option value="THB">THB</option>
             <option value="LAK">LAK</option>
@@ -468,6 +394,7 @@
           <span id="quickCalcResultLabel" class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Euro-Gegenwert (ca.)</span>
           <b id="quickCalcResult" class="text-lg font-black text-indigo-600 dark:text-indigo-400">0,00 €</b>
         </div>
+        <p class="text-[10px] text-slate-400 italic text-center">Nutzt die oben hinterlegten Tageswechselkurse</p>
       </div>
     </div>
   </aside>
@@ -480,12 +407,13 @@
           <h3 class="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
             <i class="fa-solid fa-kit-medical"></i> Notfall-Spickzettel & SOS
           </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Wichtige Notrufnummern und Kontakte offline griffbereit</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Wichtige Notrufnummern und medizinische Kontakte offline griffbereit</p>
         </div>
         <button onclick="toggleSosModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
       </div>
 
       <div class="space-y-3 text-xs">
+        <!-- Notfallnummern Box -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div class="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50">
             <div class="font-bold text-rose-800 dark:text-rose-300">Kreditkarten-Sperre</div>
@@ -502,11 +430,12 @@
             <div class="text-sm font-black text-slate-900 dark:text-white font-mono mt-0.5">+49 89 22 22 22</div>
           </div>
           <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-            <div class="font-bold text-slate-800 dark:text-slate-200">Notruf / Polizei lokal</div>
+            <div class="font-bold text-slate-800 dark:text-slate-200">Polizei vor Ort (SE-Asien)</div>
             <div class="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-0.5">TH: 1155 (Touristenpolizei) | VN: 113</div>
           </div>
         </div>
 
+        <!-- Eigene Notfall-Notizen -->
         <div>
           <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
             Persönliche Notfall-Daten (Versicherungsschein, Blutgruppe, Notfallkontakt):
@@ -543,7 +472,7 @@
       <div id="dayActionModalWarnings" class="hidden"></div>
 
       <div class="space-y-3">
-        <!-- Modus A -->
+        <!-- Modus A Card -->
         <div class="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
           <div class="flex items-center justify-between">
             <span id="dayActionModalTitleA" class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"></span>
@@ -553,7 +482,7 @@
           <button id="dayActionModalBtnA" onclick="executeDayAction('A')"></button>
         </div>
 
-        <!-- Modus B -->
+        <!-- Modus B Card -->
         <div class="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
           <div class="flex items-center justify-between">
             <span id="dayActionModalTitleB" class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"></span>
@@ -621,14 +550,14 @@
     };
 
     let activeFileHandle = null;
-    let currentTab = 'plan';
     let currentFilter = 'all';
     let currentChecklistCategory = 'all';
     let hideDoneChecklist = false;
     let searchQuery = '';
     let saveDebounceTimer = null;
-    let pendingModalAction = null;
+    let pendingModalAction = null; // { type: 'delete' | 'insert', dayIndex: number }
 
+    // Backup-Zähler & Intervall-Tracking
     let unsavedChangesCount = 0;
     let lastExportTimestamp = Date.now();
 
@@ -637,66 +566,6 @@
     const DB_STORE = 'app_state';
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
     const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
-
-    // --- TAB NAVIGATION ---
-    function switchTab(tabId) {
-      currentTab = tabId;
-      ['plan', 'budget', 'checklist'].forEach(t => {
-        const btn = document.getElementById('tabBtn-' + t);
-        const content = document.getElementById('tabContent-' + t);
-        if (t === tabId) {
-          if (btn) btn.className = "px-3.5 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2";
-          if (content) content.classList.remove('hidden');
-        } else {
-          if (btn) btn.className = "px-3.5 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2";
-          if (content) content.classList.add('hidden');
-        }
-      });
-      if (tabId === 'plan') {
-        autoResizeAllTextareas();
-      }
-    }
-
-    // --- DREI-PUNKTE MENÜ TOGGLE ---
-    function toggleMoreMenu() {
-      const menu = document.getElementById('moreMenuDropdown');
-      if (menu) menu.classList.toggle('hidden');
-    }
-
-    // Klick außerhalb schließt das Dropdown-Menü
-    document.addEventListener('click', (e) => {
-      const menu = document.getElementById('moreMenuDropdown');
-      const btn = document.getElementById('moreMenuBtn');
-      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
-        menu.classList.add('hidden');
-      }
-    });
-
-    // --- EINKLAPPBARES CONFIG PANEL ---
-    function toggleConfigPanel() {
-      const fields = document.getElementById('tripConfigFields');
-      if (fields) fields.classList.toggle('hidden');
-    }
-
-    function updateSummaryBar() {
-      const titleEl = document.getElementById('summaryTripTitle');
-      const badgeEl = document.getElementById('summaryTripDaysBadge');
-      const datesEl = document.getElementById('summaryTripDates');
-
-      const count = (tripData.days || []).length;
-      if (titleEl) titleEl.innerText = (tripData.title || '').trim() || 'Unbenannte Reise';
-      if (badgeEl) badgeEl.innerText = `${count} Tag${count === 1 ? '' : 'e'}`;
-
-      if (datesEl) {
-        if (tripData.startDate && tripData.endDate) {
-          const { dayFormatted: sDate } = formatISODate(tripData.startDate);
-          const { dayFormatted: eDate } = formatISODate(tripData.endDate);
-          datesEl.innerText = `${sDate} – ${eDate}`;
-        } else {
-          datesEl.innerText = 'Kein Reisezeitraum festgelegt';
-        }
-      }
-    }
 
     // --- INDEXEDDB SPEICHER-LAYER ---
     function openDB() {
@@ -821,11 +690,11 @@
       if (!dot || !text || !badge) return;
 
       if (navigator.onLine) {
-        badge.className = "text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1";
+        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1";
         dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
         text.innerText = "Online";
       } else {
-        badge.className = "text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 flex items-center gap-1";
+        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 flex items-center gap-1";
         dot.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
         text.innerText = "Offline bereit";
       }
@@ -924,17 +793,20 @@
     function setTheme(theme) {
       const html = document.documentElement;
       const icon = document.getElementById('themeToggleIcon');
+      const text = document.getElementById('themeToggleText');
       const metaTheme = document.querySelector('meta[name="theme-color"]');
 
       if (theme === 'light') {
         html.classList.remove('dark');
         localStorage.setItem(THEME_KEY, 'light');
         if (icon) icon.className = 'fa-solid fa-moon text-indigo-600';
+        if (text) text.innerText = 'Dunkel';
         if (metaTheme) metaTheme.setAttribute('content', '#f8fafc');
       } else {
         html.classList.add('dark');
         localStorage.setItem(THEME_KEY, 'dark');
         if (icon) icon.className = 'fa-solid fa-sun text-amber-300';
+        if (text) text.innerText = 'Hell';
         if (metaTheme) metaTheme.setAttribute('content', '#0f172a');
       }
     }
@@ -971,11 +843,23 @@
       const badge = document.getElementById('storageBadge');
       if (!badge) return;
       if (isProtected) {
-        badge.className = "text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5";
+        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5";
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Dauerhaft geschützt';
       } else {
-        badge.className = "text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5";
+        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5";
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400"></span> Temporärer Speicher';
+      }
+    }
+
+    function updateFileStatus(name) {
+      const el = document.getElementById('fileStatusText');
+      if (!el) return;
+      if (name) {
+        el.className = "text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5";
+        el.innerHTML = '<i class="fa-solid fa-file-circle-check"></i> Datei: <b>' + escapeHtml(name) + '</b>';
+      } else {
+        el.className = "text-xs text-slate-500 dark:text-slate-400";
+        el.innerText = "Keine Datei verknüpft (Speichert in IndexedDB)";
       }
     }
 
@@ -1121,7 +1005,7 @@
 
         if (isPdf) {
           return `
-            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-xs">
+            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-sm">
               <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
               <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-day-index="${dayIndex}" data-item-index="${itemIdx}" title="PDF ansehen">
                 <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(fileName)}</span>
@@ -1133,7 +1017,7 @@
         }
 
         return `
-          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-xs">
+          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm">
             <img src="${fileSrc}" data-action="open-lightbox" data-img-src="${fileSrc}" class="w-20 h-20 object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern">
             <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
           </div>
@@ -1301,9 +1185,6 @@
     }
 
     function scrollToDay(index) {
-      if (currentTab !== 'plan') {
-        switchTab('plan');
-      }
       if (tripData.days[index] && tripData.days[index].isCollapsed) {
         toggleDayCollapse(index);
       }
@@ -1526,6 +1407,7 @@
       const clone = JSON.parse(JSON.stringify(src));
       clone.date = addDaysISO(src.date, 1);
       clone.isCollapsed = false;
+      // Buchungsstatus bei Duplikat sicherheitshalber auf 'geplant' zurücksetzen
       if (clone.lodging) {
         clone.lodging.costStatus = 'geplant';
         clone.lodging.isBooked = false;
@@ -1592,6 +1474,7 @@
         return;
       }
       const q = encodeURIComponent(locationStr.trim());
+      // Öffnet geo: URI für installierte Offline-Karten (OsmAnd, Organic Maps, Apple Maps etc.)
       window.location.href = `geo:0,0?q=${q}`;
     }
 
@@ -1655,7 +1538,29 @@
       }
     }
 
-    // --- CHECKLISTEN-LOGIK ---
+    function convertToEur(val, currency) {
+      if (!val) return 0;
+      const clean = String(val).replace(/[^0-9,\.]/g, '').replace(',', '.');
+      const num = parseFloat(clean);
+      if (isNaN(num)) return 0;
+
+      const curr = (currency || 'EUR').toUpperCase();
+      if (curr === 'EUR') return num;
+
+      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
+      const rate = rates[curr] || 1;
+      return num / rate;
+    }
+
+    function getApproxEurHtml(val, currency) {
+      const curr = (currency || 'EUR').toUpperCase();
+      if (!val || curr === 'EUR') return '';
+      const eur = convertToEur(val, curr);
+      if (eur === 0) return '';
+      return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
+    }
+
+    // --- CHECKLISTEN-LOGIK MIT KATEGORIEN & AUSBLENDEN ---
     const DEFAULT_CHECKLIST = [
       { text: "Reisepass (Gültigkeit prüfen, min. 6 Monate)", done: false, category: "Dokumente" },
       { text: "E-Visum beantragt & ausgedruckt", done: false, category: "Dokumente" },
@@ -1707,9 +1612,9 @@
         const btn = document.getElementById('chk-tab-' + c);
         if (btn) {
           if (c === cat) {
-            btn.className = "px-2.5 py-1 rounded-lg font-bold bg-indigo-600 text-white transition";
+            btn.className = "px-2 py-0.5 rounded-lg font-bold bg-indigo-600 text-white transition";
           } else {
-            btn.className = "px-2.5 py-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition";
+            btn.className = "px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition";
           }
         }
       });
@@ -1759,22 +1664,131 @@
       }
     }
 
-    // --- TRANSPORT-ICON HELFER (FLUGZEUG, MIETWAGEN, ROLLER, TAXI & AUTO-ERKENNUNG) ---
-    function getTransportIcon(title, explicitCategory) {
-      if (explicitCategory) {
-        if (explicitCategory === 'flugzeug') return 'fa-plane';
-        if (explicitCategory === 'mietwagen') return 'fa-car';
-        if (explicitCategory === 'roller') return 'fa-motorcycle';
-        if (explicitCategory === 'taxi') return 'fa-taxi';
+    // --- COUNTDOWN HELFER ---
+    function updateTripCountdown() {
+      const badge = document.getElementById('tripCountdownBadge');
+      if (!badge) return;
+
+      if (!tripData.startDate || !tripData.endDate) {
+        badge.classList.add('hidden');
+        return;
       }
+
+      const todayStr = getTodayIso();
+      const pNow = parseISOParts(todayStr);
+      const pStart = parseISOParts(tripData.startDate);
+      const pEnd = parseISOParts(tripData.endDate);
+
+      if (!pNow || !pStart || !pEnd) {
+        badge.classList.add('hidden');
+        return;
+      }
+
+      const tNow = Date.UTC(pNow.y, pNow.m - 1, pNow.d);
+      const tStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d);
+      const tEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
+      const msPerDay = 1000 * 60 * 60 * 24;
+
+      if (tNow < tStart) {
+        const diff = Math.ceil((tStart - tNow) / msPerDay);
+        badge.innerHTML = '<i class="fa-solid fa-plane-departure text-indigo-500 dark:text-indigo-400"></i> Noch ' + diff + ' Tage bis zum Start';
+        badge.className = "hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80";
+        badge.classList.remove('hidden');
+      } else if (tNow >= tStart && tNow <= tEnd) {
+        const currentDayNum = Math.floor((tNow - tStart) / msPerDay) + 1;
+        const totalDays = Math.floor((tEnd - tStart) / msPerDay) + 1;
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Reisetag ' + currentDayNum + ' von ' + totalDays + ' (Heute)';
+        badge.className = "hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
+        badge.classList.remove('hidden');
+      } else {
+        badge.innerHTML = '<i class="fa-solid fa-flag-checkered text-slate-400"></i> Reise beendet';
+        badge.className = "hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+        badge.classList.remove('hidden');
+      }
+    }
+
+    function jumpToToday() {
+      const today = getTodayIso();
+      const targetIndex = (tripData.days || []).findIndex(d => d.date === today);
+
+      if (targetIndex === -1) {
+        showToast("Heute (" + today + ") liegt nicht im Reisezeitraum", true);
+        return;
+      }
+
+      if (currentFilter !== 'all' || searchQuery !== '') {
+        setFilter('all');
+        clearSearch();
+      }
+
+      if (tripData.days[targetIndex].isCollapsed) {
+        toggleDayCollapse(targetIndex);
+      }
+
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + targetIndex);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-indigo-400');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 2000);
+          showToast("Zu Tag " + (targetIndex + 1) + " (Heute) gesprungen");
+        }
+      }, 100);
+    }
+
+    function openGoogleMaps(locationStr) {
+      if (!locationStr || !locationStr.trim()) {
+        showToast("Bitte zuerst einen Tagesort eingeben", true);
+        return;
+      }
+      window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
+    }
+
+    // --- FILTER & SUCHE ---
+    function setFilter(filterType) {
+      currentFilter = filterType;
+      ['all', 'open_lodging', 'travel_days', 'pending_costs', 'with_attachments'].forEach(id => {
+        const btn = document.getElementById('filter-' + id);
+        if (btn) {
+          btn.className = (id === filterType)
+            ? "px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow"
+            : "px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700";
+        }
+      });
+      renderDays();
+    }
+
+    function handleSearch(val) {
+      searchQuery = (val || '').trim().toLowerCase();
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.classList.toggle('hidden', searchQuery.length === 0);
+      renderDays();
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('searchInput');
+      if (input) input.value = '';
+      searchQuery = '';
+      const clearBtn = document.getElementById('clearSearchBtn');
+      if (clearBtn) clearBtn.classList.add('hidden');
+      renderDays();
+    }
+
+    // --- KOSTEN- & STATUS-HELFER ---
+    function isDayBooked(day) {
+      if (!day || !day.lodging) return false;
+      const s = (day.lodging.costStatus || '').toLowerCase();
+      return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
+    }
+
+    function getTransportIcon(title) {
       const t = (title || '').toLowerCase();
       if (t.includes('flug') || t.includes('flight') || t.includes('airline') || t.includes('airport')) return 'fa-plane';
-      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
-      if (t.includes('taxi') || t.includes('grab') || t.includes('bolt')) return 'fa-taxi';
-      if (t.includes('mietwagen') || t.includes('rental') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
       if (t.includes('zug') || t.includes('bahn') || t.includes('train') || t.includes('ice') || t.includes('rail')) return 'fa-train';
       if (t.includes('bus') || t.includes('shuttle') || t.includes('van')) return 'fa-bus';
       if (t.includes('boot') || t.includes('fähre') || t.includes('ferry') || t.includes('boat') || t.includes('speedboot')) return 'fa-ship';
+      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
+      if (t.includes('taxi') || t.includes('grab') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
       return 'fa-plane-departure';
     }
 
@@ -1787,7 +1801,7 @@
       '</span>';
 
       day.transports.forEach(tr => {
-        const icon = getTransportIcon(tr.title, tr.category);
+        const icon = getTransportIcon(tr.title);
         const titleText = (tr.title || 'Transport').trim();
         const status = (tr.costStatus || 'geplant').toLowerCase();
         
@@ -2022,7 +2036,6 @@
           day.transports.forEach(t => {
             if (!t) return;
             if (t.title === undefined) t.title = '';
-            if (t.category === undefined) t.category = '';
             if (t.cost === undefined) t.cost = '';
             if (!t.currency) t.currency = 'EUR';
             if (!t.costStatus) t.costStatus = 'geplant';
@@ -2057,7 +2070,6 @@
           console.error("Speicherfehler:", e);
         }
         updateStats();
-        updateSummaryBar();
       }, 250);
     }
 
@@ -2071,6 +2083,7 @@
             saved = JSON.parse(legacy);
             await idbSet('trip_data', saved);
             localStorage.removeItem('reiseplaner_pro_pwa_data');
+            console.log("Migration von localStorage zu IndexedDB erfolgreich abgeschlossen.");
           } catch (e) {}
         }
       }
@@ -2107,6 +2120,7 @@
           const writableStream = await activeFileHandle.createWritable();
           await writableStream.write(jsonContent);
           await writableStream.close();
+          updateFileStatus(activeFileHandle.name);
           resetBackupReminder();
           showToast('Gespeichert in: ' + activeFileHandle.name);
           return;
@@ -2146,6 +2160,7 @@
             resetBackupReminder();
             saveToStorage();
             syncUI();
+            updateFileStatus(handle.name);
             showToast('Datei geöffnet');
           }
           return;
@@ -2171,6 +2186,7 @@
             resetBackupReminder();
             saveToStorage();
             syncUI();
+            updateFileStatus(file.name);
             showToast('Datei geladen');
           }
         } catch (err) {
@@ -2196,7 +2212,6 @@
       if (elUSD) elUSD.value = rates.USD || 1.08;
       if (elLAK) elLAK.value = rates.LAK || 24000;
 
-      updateSummaryBar();
       renderChecklist();
       renderDays();
       renderRouteTimeline();
@@ -2209,7 +2224,6 @@
       tripData.endDate = document.getElementById('endDate').value;
       recordChangeForReminder();
       saveToStorage();
-      updateSummaryBar();
       renderRouteTimeline();
     }
 
@@ -2272,12 +2286,11 @@
       normalizeDataModel();
       recordChangeForReminder();
       saveToStorage();
-      updateSummaryBar();
       renderDays();
       renderRouteTimeline();
     }
 
-    // --- RENDERING TAGE ---
+    // --- RENDERING ---
     function renderDays() {
       const container = document.getElementById('daysContainer');
       if (!container) return;
@@ -2285,7 +2298,7 @@
 
       if (!tripData.days || tripData.days.length === 0) {
         container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-12 text-center text-slate-500 dark:text-slate-400 no-print">' +
-          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden. Klicke oben auf "Reisezeitraum & Titel bearbeiten" und generiere Tage.</p></div>';
+          '<i class="fa-solid fa-map text-4xl mb-3 text-slate-400"></i><p>Noch keine Tage vorhanden.</p></div>';
         updateStats();
         return;
       }
@@ -2344,7 +2357,7 @@
       let html = '';
 
       // --- HEADER ---
-      html += '<div id="day-header-' + index + '" class="px-4 sm:px-5 py-3.5 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 border-b ' + visual.headerClass + '">';
+      html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass + '">';
       
       html += '<div class="flex items-center gap-3">' +
         '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
@@ -2360,11 +2373,13 @@
       // Tagesort & Zeile vor Tagesort für Transport im eingeklappten Zustand
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
       
+      // TRANSPORTZEILE (NUR IM EINGEKLAPPTEN ZUSTAND SICHTBAR)
       html += '<div id="day-header-transport-' + index + '" class="' + (day.isCollapsed && hasTransports ? '' : 'hidden') + '">' +
         getHeaderTransportLineContent(day) +
       '</div>';
 
-      html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-1.5 border transition ' +
+      // TAGESORT INPUT-FELD + GOOGLE MAPS + OFFLINE-MAPS (GEO:)
+      html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
           (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
             'class="mr-1.5 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
@@ -2377,11 +2392,12 @@
             '<i class="fa-solid fa-compass text-base pointer-events-none"></i>' +
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
-            'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-base md:text-lg font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
+            'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
           '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLocation ? '' : 'hidden') + '">📍 Festgelegt</span>' +
         '</div>' +
       '</div>';
 
+      // Statusanzeige des Tages
       let statusLabel = 'Übernachtung offen';
       let statusIcon = 'fa-clock';
       if (day.lodging.costStatus === 'reserviert') { 
@@ -2392,34 +2408,34 @@
         statusIcon = 'fa-check'; 
       }
 
-      html += '<div class="flex flex-wrap items-center gap-1.5 self-end md:self-auto">' +
+      html += '<div class="flex flex-wrap items-center gap-2 self-end md:self-auto">' +
         '<div class="px-2.5 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono flex items-center gap-1.5" title="Tagessumme">' +
           '<i class="fa-solid fa-wallet text-violet-500"></i>' +
           '<span id="day-cost-display-' + index + '" class="font-bold text-slate-800 dark:text-slate-200">' + formatEuro(dayCosts.total) + '</span>' +
         '</div>' +
-        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs no-print ' + visual.btnClass + '">' +
+        '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
           '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
         '</button>' +
-        '<button data-action="duplicate-day" data-day-index="' + index + '" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center justify-center transition no-print" title="Diesen Tag duplizieren / als nächsten Tag kopieren">' +
+        '<button data-action="duplicate-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center justify-center transition no-print" title="Diesen Tag duplizieren / als nächsten Tag kopieren">' +
           '<i class="fa-solid fa-copy text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="insert-day" data-day-index="' + index + '" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
+        '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
           '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="delete-day" data-day-index="' + index + '" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
+        '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
           '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-7 h-7 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
+        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
           '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs pointer-events-none"></i>' +
         '</button>' +
       '</div>';
       html += '</div>';
 
       // --- DETAILS-BEREICH ---
-      html += '<div id="day-body-' + index + '" class="p-4 sm:p-5 print-compact space-y-4 ' + (day.isCollapsed ? 'hidden' : '') + '">';
+      html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5 ' + (day.isCollapsed ? 'hidden' : '') + '">';
       
-      // 1. Transport & Aktivitäten
-      html += '<div id="day-modules-grid-' + index + '" class="' + ((hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-4' : 'space-y-4') + '">';
+      // 1. Transport & Aktivitäten Container
+      html += '<div id="day-modules-grid-' + index + '" class="' + ((hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4') + '">';
 
       if (hasTransports) {
         html += renderTransportModuleHTML(day, index);
@@ -2431,8 +2447,8 @@
 
       html += '</div>';
 
-      // Add Buttons
-      html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-0.5 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
+      // Buttons zum Hinzufügen falls noch nicht vorhanden
+      html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
       if (!hasTransports) {
         html += '<button data-action="add-transport" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
           '<i class="fa-solid fa-plane-departure text-cyan-600 pointer-events-none"></i> + Transport hinzufügen</button>';
@@ -2443,8 +2459,8 @@
       }
       html += '</div>';
 
-      // 2. Tagesnotizen & Screenshots
-      html += '<div class="space-y-2.5">' +
+      // 2. Tagesnotizen & Screenshots / Belege (Multi & PDF)
+      html += '<div class="space-y-3">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
             '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)' +
@@ -2460,7 +2476,7 @@
         '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshot direkt per Strg + V einfügen)" ' +
           'onpaste="handleDayPaste(event, ' + index + ')" ' +
           'data-day-index="' + index + '" data-field="notes" ' +
-          'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-xs">' +
+          'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">' +
           escapeHtml(day.notes || '') +
         '</textarea>';
 
@@ -2472,7 +2488,7 @@
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
 
-      html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-xs">' +
+      html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
         '<div class="flex items-center justify-between mb-3">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung (Tagesabschluss)</h3>' +
           '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
@@ -2516,13 +2532,12 @@
       return card;
     }
 
-    // --- TRANSPORT MODUL MIT ICONS (FLUGZEUG, MIETWAGEN, ROLLER, TAXI) ---
     function renderTransportModuleHTML(day, index) {
-      let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-        '<div class="flex items-center justify-between mb-2.5">' +
+      let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-3">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>' +
           '<button data-action="add-transport" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>' +
-        '</div><div class="space-y-2">';
+        '</div><div class="space-y-2.5">';
 
       const totalTr = day.transports.length;
 
@@ -2530,26 +2545,14 @@
         const trSafeUrl = formatSafeUrl(tr.link);
         const isFirst = trIdx === 0;
         const isLast = trIdx === totalTr - 1;
-        const selectedCat = tr.category || '';
 
-        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-xs">' +
-          '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
-            // Hoch/Runter Buttons
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+          '<div class="flex items-center gap-1.5">' +
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
-            
-            // Transport Kategorie Dropdown mit Icons
-            '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">' +
-              '<option value="" ' + (selectedCat === '' ? 'selected' : '') + '>Auto-Icon</option>' +
-              '<option value="flugzeug" ' + (selectedCat === 'flugzeug' ? 'selected' : '') + '>✈️ Flugzeug</option>' +
-              '<option value="mietwagen" ' + (selectedCat === 'mietwagen' ? 'selected' : '') + '>🚗 Mietwagen</option>' +
-              '<option value="roller" ' + (selectedCat === 'roller' ? 'selected' : '') + '>🛵 Roller</option>' +
-              '<option value="taxi" ' + (selectedCat === 'taxi' ? 'selected' : '') + '>🚕 Taxi / Grab</option>' +
-            '</select>' +
-
-            '<input type="text" placeholder="Bezeichnung (z. B. 08:30 Flug nach Hanoi, Rollerverleih)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
+            '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
@@ -2563,8 +2566,8 @@
             '<button data-action="remove-transport" data-day-index="' + index + '" data-tr-index="' + trIdx + '" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
           '</div>' +
           '<div class="flex items-start gap-2">' +
-            '<textarea rows="1" placeholder="Hinweise (z. B. Buchungscode, Kaution, Helme)" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(tr.hint || '') + '</textarea>' +
-            '<input type="url" placeholder="Buchungslink / Ticket URL" value="' + escapeHtml(tr.link || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
+            '<textarea rows="1" placeholder="Hinweise (z. B. Gleis, Helme, Kaution)" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(tr.hint || '') + '</textarea>' +
+            '<input type="url" placeholder="Buchungs-URL" value="' + escapeHtml(tr.link || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
             '<a id="tr-link-btn-' + index + '-' + trIdx + '" href="' + escapeHtml(trSafeUrl || '#') + '" target="_blank" class="' + (trSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
           '</div>' +
         '</div>';
@@ -2574,11 +2577,11 @@
     }
 
     function renderActivityModuleHTML(day, index) {
-      let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
-        '<div class="flex items-center justify-between mb-2.5">' +
+      let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
+        '<div class="flex items-center justify-between mb-3">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>' +
           '<button data-action="add-activity" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>' +
-        '</div><div class="space-y-2">';
+        '</div><div class="space-y-2.5">';
 
       const totalAct = day.activities.length;
 
@@ -2587,14 +2590,14 @@
         const isFirst = actIdx === 0;
         const isLast = actIdx === totalAct - 1;
 
-        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-xs">' +
-          '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
+        html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
+          '<div class="flex items-center gap-1.5">' +
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-activity-up" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-activity-down" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
             '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
-            '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
+            '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
@@ -2608,8 +2611,8 @@
             '<button data-action="remove-activity" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>' +
           '</div>' +
           '<div class="flex items-start gap-2">' +
-            '<textarea rows="1" placeholder="Hinweise (z. B. Treffpunkt, Ticket-Buchung)" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
-            '<input type="url" placeholder="Webseite / Ticket URL" value="' + escapeHtml(act.link || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
+            '<textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">' + escapeHtml(act.hint || '') + '</textarea>' +
+            '<input type="url" placeholder="Webseite / Ticket" value="' + escapeHtml(act.link || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">' +
             '<a id="act-link-btn-' + index + '-' + actIdx + '" href="' + escapeHtml(actSafeUrl || '#') + '" target="_blank" class="' + (actSafeUrl ? '' : 'hidden') + ' px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>' +
           '</div>' +
         '</div>';
@@ -2623,6 +2626,7 @@
       const container = document.getElementById('daysContainer');
       const checklistCont = document.getElementById('checklistContainer');
 
+      // Click Events delegieren
       container.addEventListener('click', (e) => {
         const target = e.target.closest('[data-action]');
         if (!target) return;
@@ -2722,6 +2726,7 @@
         }
       });
 
+      // Change Events (Selects, Checkboxen)
       container.addEventListener('change', (e) => {
         const target = e.target;
         const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
@@ -2790,6 +2795,7 @@
         }
       });
 
+      // Input Events
       container.addEventListener('input', (e) => {
         const target = e.target;
         const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
@@ -2810,7 +2816,7 @@
 
             if (box && badge) {
               if (hasLoc) {
-                box.className = "relative flex items-center rounded-xl px-3 py-1.5 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
+                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
                 badge.classList.remove('hidden');
                 if (mapsBtn) {
                   mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
@@ -2818,10 +2824,10 @@
                 }
                 if (offMapsBtn) {
                   offMapsBtn.className = "mr-2.5 shrink-0 transition no-print text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer";
-                  offMapsBtn.title = "Offline-Karten-App öffnen";
+                  offMapsBtn.title = "Offline-Karten-App (geo: URI / OsmAnd / Organic Maps) öffnen";
                 }
               } else {
-                box.className = "relative flex items-center rounded-xl px-3 py-1.5 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
+                box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
                 badge.classList.add('hidden');
                 if (mapsBtn) {
                   mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
@@ -2925,6 +2931,7 @@
         }
       });
 
+      // Delegation für Checkliste
       if (checklistCont) {
         checklistCont.addEventListener('change', (e) => {
           if (e.target.getAttribute('data-action') === 'toggle-checklist-item') {
@@ -2967,7 +2974,7 @@
         card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
       }
       if (header) {
-        header.className = 'px-4 sm:px-5 py-3.5 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 border-b ' + visual.headerClass;
+        header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass;
       }
 
       let statusLabel = 'Übernachtung offen';
@@ -2981,7 +2988,7 @@
       }
 
       if (bookingBtn) {
-        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs no-print ' + visual.btnClass;
+        bookingBtn.className = 'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass;
         bookingBtn.innerHTML = '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>';
       }
 
@@ -3048,7 +3055,7 @@
     function addTransportRow(dayIndex) {
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].transports)) tripData.days[dayIndex].transports = [];
-      tripData.days[dayIndex].transports.push({ title: '', category: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
+      tripData.days[dayIndex].transports.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
       recordChangeForReminder();
       saveToStorage();
       renderDays();
@@ -3121,6 +3128,7 @@
       if (elCostPending) elCostPending.innerText = formatEuro(grandPending);
       if (elCostPerDay) elCostPerDay.innerText = formatEuro(avgPerDay);
 
+      // Balkendiagramm & Prozentverteilung berechnen
       const pctL = grandTotal > 0 ? (sumLodging / grandTotal * 100) : 0;
       const pctT = grandTotal > 0 ? (sumTransport / grandTotal * 100) : 0;
       const pctA = grandTotal > 0 ? (sumActivity / grandTotal * 100) : 0;
@@ -3203,9 +3211,6 @@
     window.toggleQuickCalc = toggleQuickCalc;
     window.runQuickCalc = runQuickCalc;
     window.toggleSosModal = toggleSosModal;
-    window.switchTab = switchTab;
-    window.toggleMoreMenu = toggleMoreMenu;
-    window.toggleConfigPanel = toggleConfigPanel;
   </script>
 </body>
 </html>
