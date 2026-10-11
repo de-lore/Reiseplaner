@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.5</title>
+  <title>Reiseplaner Pro v1.61</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -73,11 +73,8 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-lg font-bold tracking-tight text-slate-900 dark:text-white">Reiseplaner</h1>
-            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.5</span>
+            <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">v1.61</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80"></span>
-            <span id="networkBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1" title="Verbindungsstatus">
-              <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> <span id="networkText">Online</span>
-            </span>
             <span id="storageBadge" class="text-xs font-normal px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600 flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Prüfe Speicher...
             </span>
@@ -88,13 +85,11 @@
 
       <!-- Action Buttons -->
       <div class="flex items-center gap-2 no-print">
-        <button onclick="toggleSosModal()" class="px-2.5 py-1.5 rounded-lg border border-rose-300 dark:border-rose-900/60 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 text-xs font-bold transition flex items-center gap-1.5" title="Notfall-Nummern & SOS-Spickzettel öffnen">
-          <i class="fa-solid fa-kit-medical text-rose-500"></i> SOS
-        </button>
         <button onclick="toggleTheme()" id="themeToggleBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Design wechseln (Hell / Dunkel)">
           <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
           <span id="themeToggleText" class="hidden sm:inline">Hell</span>
         </button>
+
         <button onclick="showRestoreModal()" id="restoreBtn" class="px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-transparent bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-amber-600 dark:text-amber-300 text-xs font-medium transition flex items-center gap-1.5" title="Vorherigen Speicherstand wiederherstellen">
           <i class="fa-solid fa-rotate-left"></i> Rückgängig
         </button>
@@ -193,35 +188,12 @@
           <span class="flex items-center gap-1.5 text-sky-600 dark:text-sky-400" title="Geplant oder reserviert (vor Ort zu zahlen)">
             <i class="fa-solid fa-hourglass-half"></i> Ausstehend: <b id="statCostPending" class="font-bold">0,00 €</b>
           </span>
-          <span class="text-slate-300 dark:text-slate-600 hidden sm:inline">|</span>
-          <span class="flex items-center gap-1 text-slate-700 dark:text-slate-300" title="Durchschnittliche Kosten pro Reisetag">
-            <i class="fa-solid fa-chart-line text-indigo-500"></i> Ø Tag: <b id="statCostPerDay" class="font-bold text-slate-900 dark:text-white">0,00 €</b>
-          </span>
         </div>
         
         <div class="flex items-center gap-2">
           <button onclick="toggleAllDays(true)" class="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">Alle ausklappen</button>
           <span class="text-slate-300 dark:text-slate-600">|</span>
           <button onclick="toggleAllDays(false)" class="text-xs text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">Alle einklappen</button>
-        </div>
-      </div>
-
-      <!-- VISUELLE KOSTENVERTEILUNG (KATEGORIE-BALKEN) -->
-      <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700/60 space-y-2">
-        <div class="flex items-center justify-between text-xs">
-          <span class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-chart-pie text-violet-500"></i> Budget-Verteilung nach Kategorien:
-          </span>
-          <div class="flex items-center gap-3 text-[11px] font-semibold">
-            <span class="flex items-center gap-1 text-indigo-600 dark:text-indigo-400"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Unterkunft: <b id="breakdownLodging">0 € (0%)</b></span>
-            <span class="flex items-center gap-1 text-cyan-600 dark:text-cyan-400"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Transport: <b id="breakdownTransport">0 € (0%)</b></span>
-            <span class="flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Aktivitäten: <b id="breakdownActivity">0 € (0%)</b></span>
-          </div>
-        </div>
-        <div class="w-full h-2.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden flex shadow-inner">
-          <div id="barLodging" class="h-full bg-indigo-500 transition-all duration-300" style="width: 0%"></div>
-          <div id="barTransport" class="h-full bg-cyan-500 transition-all duration-300" style="width: 0%"></div>
-          <div id="barActivity" class="h-full bg-emerald-500 transition-all duration-300" style="width: 0%"></div>
         </div>
       </div>
 
@@ -239,9 +211,6 @@
           </button>
           <button onclick="setFilter('pending_costs')" id="filter-pending_costs" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
             ⏳ Ausstehende Zahlungen
-          </button>
-          <button onclick="setFilter('with_attachments')" id="filter-with_attachments" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700">
-            📎 Nur mit Belegen
           </button>
         </div>
 
@@ -294,7 +263,7 @@
       <div id="routeTimelineContainer" class="timeline-scroll flex items-center gap-2 overflow-x-auto pb-1 text-xs"></div>
     </section>
 
-    <!-- ALLGEMEINE HINWEISE & KATEGORISIERTE CHECKLISTE -->
+    <!-- ALLGEMEINE HINWEISE & CHECKLISTE -->
     <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm dark:shadow-xl transition-colors duration-200">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <div>
@@ -306,46 +275,24 @@
           </div>
           <textarea 
             id="generalNotes" 
-            rows="5" 
+            rows="4" 
             placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..."
             oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);"
             class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl p-3 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:border-indigo-500"
           ></textarea>
         </div>
 
-        <div class="flex flex-col">
+        <div>
           <div class="flex items-center justify-between mb-2">
             <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
               <i class="fa-solid fa-list-check text-indigo-600 dark:text-indigo-400 text-sm"></i> Pack- & Vorbereitungsliste
             </h2>
-            <div class="flex items-center gap-2">
-              <button onclick="toggleHideDoneChecklist()" id="hideDoneToggleBtn" class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-600 transition no-print">
-                <i class="fa-regular fa-eye-slash"></i> Erledigte verbergen
-              </button>
-              <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
-            </div>
-          </div>
-
-          <!-- Kategorie-Tabs für die Packliste -->
-          <div class="flex flex-wrap items-center gap-1 pb-2 border-b border-slate-200 dark:border-slate-700/60 no-print text-[11px]">
-            <button onclick="setChecklistCategoryFilter('all')" id="chk-tab-all" class="px-2 py-0.5 rounded-lg font-bold bg-indigo-600 text-white transition">Alle</button>
-            <button onclick="setChecklistCategoryFilter('Dokumente')" id="chk-tab-Dokumente" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">📄 Dokumente</button>
-            <button onclick="setChecklistCategoryFilter('Technik')" id="chk-tab-Technik" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🔌 Technik</button>
-            <button onclick="setChecklistCategoryFilter('Apotheke')" id="chk-tab-Apotheke" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">💊 Apotheke</button>
-            <button onclick="setChecklistCategoryFilter('Kleidung')" id="chk-tab-Kleidung" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">👕 Kleidung</button>
-            <button onclick="setChecklistCategoryFilter('Sonstiges')" id="chk-tab-Sonstiges" class="px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition">🎒 Sonstiges</button>
+            <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
           </div>
           
-          <div id="checklistContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-1 flex-1 mt-2"></div>
+          <div id="checklistContainer" class="space-y-1.5 max-h-48 overflow-y-auto pr-1"></div>
 
-          <div class="flex items-center gap-2 mt-2.5 no-print pt-2 border-t border-slate-200 dark:border-slate-700/60">
-            <select id="newChecklistCategorySelect" class="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-xs text-slate-700 dark:text-slate-300">
-              <option value="Dokumente">📄 Dokumente</option>
-              <option value="Technik">🔌 Technik</option>
-              <option value="Apotheke">💊 Apotheke</option>
-              <option value="Kleidung">👕 Kleidung</option>
-              <option value="Sonstiges" selected>🎒 Sonstiges</option>
-            </select>
+          <div class="flex items-center gap-2 mt-2.5 no-print">
             <input 
               type="text" 
               id="newChecklistItemInput" 
@@ -364,99 +311,6 @@
     <!-- Liste der Reisetage -->
     <div id="daysContainer" class="space-y-4"></div>
   </main>
-
-  <!-- SCHWEBENDER SCHNELL-WÄHRUNGSRECHNER (WIDGET UNTEN LINKS) -->
-  <aside id="quickCalcWidget" class="fixed bottom-6 left-6 z-40 no-print">
-    <button onclick="toggleQuickCalc()" class="w-12 h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl flex items-center justify-center text-lg transition duration-200 hover:scale-105 active:scale-95" title="Schnell-Währungsrechner öffnen">
-      <i class="fa-solid fa-calculator"></i>
-    </button>
-
-    <div id="quickCalcPopup" class="hidden absolute bottom-14 left-0 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-        <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-coins text-amber-500"></i> Schnell-Währungsrechner
-        </span>
-        <button onclick="toggleQuickCalc()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-base font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-2.5">
-        <div class="flex items-center gap-1.5">
-          <input type="number" id="quickCalcAmount" placeholder="Betrag eingeben..." oninput="runQuickCalc()" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
-          <select id="quickCalcCurr" onchange="runQuickCalc()" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-white">
-            <option value="THB">THB</option>
-            <option value="LAK">LAK</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR ➔ Lokal</option>
-          </select>
-        </div>
-
-        <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 text-center">
-          <span id="quickCalcResultLabel" class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Euro-Gegenwert (ca.)</span>
-          <b id="quickCalcResult" class="text-lg font-black text-indigo-600 dark:text-indigo-400">0,00 €</b>
-        </div>
-        <p class="text-[10px] text-slate-400 italic text-center">Nutzt die oben hinterlegten Tageswechselkurse</p>
-      </div>
-    </div>
-  </aside>
-
-  <!-- SOS / NOTFALL-MODAL -->
-  <div id="sosModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="toggleSosModal()">
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-        <div>
-          <h3 class="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
-            <i class="fa-solid fa-kit-medical"></i> Notfall-Spickzettel & SOS
-          </h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Wichtige Notrufnummern und medizinische Kontakte offline griffbereit</p>
-        </div>
-        <button onclick="toggleSosModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-3 text-xs">
-        <!-- Notfallnummern Box -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div class="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50">
-            <div class="font-bold text-rose-800 dark:text-rose-300">Kreditkarten-Sperre</div>
-            <div class="text-base font-black text-slate-900 dark:text-white font-mono mt-0.5">+49 116 116</div>
-            <div class="text-[10px] text-slate-500 dark:text-slate-400">24/7 Notruf Deutschland</div>
-          </div>
-          <div class="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50">
-            <div class="font-bold text-amber-800 dark:text-amber-300">Auswärtiges Amt (Krisen)</div>
-            <div class="text-base font-black text-slate-900 dark:text-white font-mono mt-0.5">+49 30 5000 2000</div>
-            <div class="text-[10px] text-slate-500 dark:text-slate-400">Bürgerservice Berlin</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-            <div class="font-bold text-slate-800 dark:text-slate-200">ADAC Auslandshilfe</div>
-            <div class="text-sm font-black text-slate-900 dark:text-white font-mono mt-0.5">+49 89 22 22 22</div>
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700">
-            <div class="font-bold text-slate-800 dark:text-slate-200">Polizei vor Ort (SE-Asien)</div>
-            <div class="text-sm font-semibold text-slate-700 dark:text-slate-300 mt-0.5">TH: 1155 (Touristenpolizei) | VN: 113</div>
-          </div>
-        </div>
-
-        <!-- Eigene Notfall-Notizen -->
-        <div>
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-            Persönliche Notfall-Daten (Versicherungsschein, Blutgruppe, Notfallkontakt):
-          </label>
-          <textarea 
-            id="emergencyNotesInput" 
-            rows="4" 
-            placeholder="z. B. Auslandskrankenversicherung: ERGO Nr. 1234567, Notfalltelefon: ..., Kontakt daheim: ..." 
-            oninput="saveEmergencyNotes(this.value)"
-            class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
-          ></textarea>
-        </div>
-      </div>
-
-      <div class="flex justify-end pt-1">
-        <button onclick="toggleSosModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">
-          Schließen
-        </button>
-      </div>
-    </div>
-  </div>
 
   <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
   <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
@@ -543,7 +397,6 @@
       startDate: "",
       endDate: "",
       generalNotes: "",
-      emergencyNotes: "",
       exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
       checklist: [],
       days: []
@@ -551,8 +404,6 @@
 
     let activeFileHandle = null;
     let currentFilter = 'all';
-    let currentChecklistCategory = 'all';
-    let hideDoneChecklist = false;
     let searchQuery = '';
     let saveDebounceTimer = null;
     let pendingModalAction = null; // { type: 'delete' | 'insert', dayIndex: number }
@@ -652,7 +503,6 @@
     window.addEventListener('DOMContentLoaded', async () => {
       try {
         initTheme();
-        initNetworkStatus();
         initBackupReminderState();
         await loadFromStorage();
         initServiceWorker();
@@ -674,30 +524,6 @@
           saveToFile(false);
         }
       });
-    }
-
-    // --- ONLINE / OFFLINE STATUS ANZEIGE ---
-    function initNetworkStatus() {
-      updateNetworkBadge();
-      window.addEventListener('online', updateNetworkBadge);
-      window.addEventListener('offline', updateNetworkBadge);
-    }
-
-    function updateNetworkBadge() {
-      const dot = document.getElementById('networkDot');
-      const text = document.getElementById('networkText');
-      const badge = document.getElementById('networkBadge');
-      if (!dot || !text || !badge) return;
-
-      if (navigator.onLine) {
-        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1";
-        dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
-        text.innerText = "Online";
-      } else {
-        badge.className = "text-xs font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 flex items-center gap-1";
-        dot.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
-        text.innerText = "Offline bereit";
-      }
     }
 
     // --- AUTO-EXPORT ERINNERUNG ---
@@ -1399,45 +1225,6 @@
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
     }
 
-    // --- TAG DUPLIZIEREN (KOPIEREN) ---
-    function duplicateDay(dayIndex) {
-      const src = tripData.days[dayIndex];
-      if (!src) return;
-
-      const clone = JSON.parse(JSON.stringify(src));
-      clone.date = addDaysISO(src.date, 1);
-      clone.isCollapsed = false;
-      // Buchungsstatus bei Duplikat sicherheitshalber auf 'geplant' zurücksetzen
-      if (clone.lodging) {
-        clone.lodging.costStatus = 'geplant';
-        clone.lodging.isBooked = false;
-      }
-      if (Array.isArray(clone.transports)) {
-        clone.transports.forEach(t => t.costStatus = 'geplant');
-      }
-      if (Array.isArray(clone.activities)) {
-        clone.activities.forEach(a => { a.costStatus = 'geplant'; a.done = false; });
-      }
-
-      tripData.days.splice(dayIndex + 1, 0, clone);
-
-      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
-      }
-      if (tripData.endDate) {
-        tripData.endDate = addDaysISO(tripData.endDate, 1);
-        const endEl = document.getElementById('endDate');
-        if (endEl) endEl.value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
-      renderRouteTimeline();
-      showToast(`Tag ${dayIndex + 1} dupliziert & als Tag ${dayIndex + 2} eingefügt`);
-    }
-
     // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
     function moveTransportItem(dayIndex, itemIndex, direction) {
       const day = tripData.days[dayIndex];
@@ -1467,64 +1254,6 @@
       showToast("Aktivitätsreihenfolge verschoben");
     }
 
-    // --- OFFLINE-KARTEN HELFER ---
-    function openOfflineMaps(locationStr) {
-      if (!locationStr || !locationStr.trim()) {
-        showToast("Bitte zuerst einen Tagesort eingeben", true);
-        return;
-      }
-      const q = encodeURIComponent(locationStr.trim());
-      // Öffnet geo: URI für installierte Offline-Karten (OsmAnd, Organic Maps, Apple Maps etc.)
-      window.location.href = `geo:0,0?q=${q}`;
-    }
-
-    // --- SCHNELL-WÄHRUNGSRECHNER WIDGET ---
-    function toggleQuickCalc() {
-      const popup = document.getElementById('quickCalcPopup');
-      if (popup) popup.classList.toggle('hidden');
-    }
-
-    function runQuickCalc() {
-      const amt = parseFloat(document.getElementById('quickCalcAmount').value);
-      const curr = document.getElementById('quickCalcCurr').value;
-      const resEl = document.getElementById('quickCalcResult');
-      const labelEl = document.getElementById('quickCalcResultLabel');
-      if (!resEl) return;
-
-      if (isNaN(amt) || amt <= 0) {
-        resEl.innerText = '0,00 €';
-        return;
-      }
-
-      if (curr === 'EUR') {
-        const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
-        labelEl.innerText = "Lokale Währungen für " + formatEuro(amt);
-        const thb = (amt * (rates.THB || 38)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
-        const lak = (amt * (rates.LAK || 24000)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
-        const usd = (amt * (rates.USD || 1.08)).toFixed(2);
-        resEl.innerHTML = `<span class="text-xs font-mono font-bold">${thb} THB &bull; ${lak} LAK &bull; $${usd}</span>`;
-      } else {
-        labelEl.innerText = "Euro-Gegenwert (ca.)";
-        const eur = convertToEur(amt, curr);
-        resEl.innerText = formatEuro(eur);
-      }
-    }
-
-    // --- SOS / NOTFALL MODAL ---
-    function toggleSosModal() {
-      const modal = document.getElementById('sosModal');
-      const input = document.getElementById('emergencyNotesInput');
-      if (!modal) return;
-      if (input) input.value = tripData.emergencyNotes || '';
-      modal.classList.toggle('hidden');
-    }
-
-    function saveEmergencyNotes(val) {
-      tripData.emergencyNotes = val;
-      recordChangeForReminder();
-      saveToStorage();
-    }
-
     // --- WECHSELKURSE & UMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
@@ -1534,7 +1263,6 @@
         recordChangeForReminder();
         saveToStorage();
         updateAllCostDisplays();
-        runQuickCalc();
       }
     }
 
@@ -1560,15 +1288,15 @@
       return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
     }
 
-    // --- CHECKLISTEN-LOGIK MIT KATEGORIEN & AUSBLENDEN ---
+    // --- CHECKLISTEN-LOGIK ---
     const DEFAULT_CHECKLIST = [
-      { text: "Reisepass (Gültigkeit prüfen, min. 6 Monate)", done: false, category: "Dokumente" },
-      { text: "E-Visum beantragt & ausgedruckt", done: false, category: "Dokumente" },
-      { text: "Auslandskrankenversicherung & Notfallnummer", done: false, category: "Dokumente" },
-      { text: "Kreditkarten für gebührenfreie Abhebungen (2x)", done: false, category: "Dokumente" },
-      { text: "eSIM oder lokale SIM-Karte vorbereitet", done: false, category: "Technik" },
-      { text: "Reiseadapter (Typ C/G für SE-Asien)", done: false, category: "Technik" },
-      { text: "Reiseapotheke & Mückenschutz (DEET)", done: false, category: "Apotheke" }
+      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
+      "E-Visum beantragt & ausgedruckt",
+      "Auslandskrankenversicherung & Notfallnummer",
+      "Kreditkarten für gebührenfreie Abhebungen (2x)",
+      "eSIM oder lokale SIM-Karte vorbereitet",
+      "Reiseadapter (Typ C/G für SE-Asien)",
+      "Reiseapotheke & Mückenschutz (DEET)"
     ];
 
     function renderChecklist() {
@@ -1585,51 +1313,16 @@
       }
 
       list.forEach((item, idx) => {
-        const itemCat = item.category || 'Sonstiges';
-        if (currentChecklistCategory !== 'all' && itemCat !== currentChecklistCategory) {
-          return;
-        }
-        if (hideDoneChecklist && item.done) {
-          return;
-        }
-
         const row = document.createElement('div');
         row.className = "flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/60 text-xs transition";
         row.innerHTML = 
           '<label class="flex items-center gap-2 cursor-pointer flex-1 overflow-hidden">' +
             '<input type="checkbox" ' + (item.done ? 'checked' : '') + ' data-action="toggle-checklist-item" data-idx="' + idx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 shrink-0">' +
-            '<span class="text-[10px] px-1.5 py-0.2 rounded font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">' + escapeHtml(itemCat) + '</span>' +
             '<span class="truncate ' + (item.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-700 dark:text-slate-200') + '">' + escapeHtml(item.text) + '</span>' +
           '</label>' +
           '<button data-action="remove-checklist-item" data-idx="' + idx + '" class="text-rose-400 hover:text-rose-600 px-1 text-xs shrink-0 no-print" title="Löschen">&times;</button>';
         container.appendChild(row);
       });
-    }
-
-    function setChecklistCategoryFilter(cat) {
-      currentChecklistCategory = cat;
-      ['all', 'Dokumente', 'Technik', 'Apotheke', 'Kleidung', 'Sonstiges'].forEach(c => {
-        const btn = document.getElementById('chk-tab-' + c);
-        if (btn) {
-          if (c === cat) {
-            btn.className = "px-2 py-0.5 rounded-lg font-bold bg-indigo-600 text-white transition";
-          } else {
-            btn.className = "px-2 py-0.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition";
-          }
-        }
-      });
-      renderChecklist();
-    }
-
-    function toggleHideDoneChecklist() {
-      hideDoneChecklist = !hideDoneChecklist;
-      const btn = document.getElementById('hideDoneToggleBtn');
-      if (btn) {
-        btn.innerHTML = hideDoneChecklist 
-          ? '<i class="fa-solid fa-eye"></i> Alle anzeigen' 
-          : '<i class="fa-regular fa-eye-slash"></i> Erledigte verbergen';
-      }
-      renderChecklist();
     }
 
     function toggleChecklistItem(idx) {
@@ -1643,12 +1336,9 @@
 
     function addChecklistItem() {
       const input = document.getElementById('newChecklistItemInput');
-      const catSelect = document.getElementById('newChecklistCategorySelect');
       if (!input || !input.value.trim()) return;
-      const cat = catSelect ? catSelect.value : 'Sonstiges';
-
       if (!Array.isArray(tripData.checklist)) tripData.checklist = [];
-      tripData.checklist.push({ text: input.value.trim(), done: false, category: cat });
+      tripData.checklist.push({ text: input.value.trim(), done: false });
       input.value = '';
       recordChangeForReminder();
       saveToStorage();
@@ -1747,7 +1437,7 @@
     // --- FILTER & SUCHE ---
     function setFilter(filterType) {
       currentFilter = filterType;
-      ['all', 'open_lodging', 'travel_days', 'pending_costs', 'with_attachments'].forEach(id => {
+      ['all', 'open_lodging', 'travel_days', 'pending_costs'].forEach(id => {
         const btn = document.getElementById('filter-' + id);
         if (btn) {
           btn.className = (id === filterType)
@@ -1781,15 +1471,23 @@
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
     }
 
-    function getTransportIcon(title) {
+    // Transport-Icon Ermittlung inklusive expliziter Kategorie (Flugzeug, Mietwagen, Roller, Taxi)
+    function getTransportIcon(title, explicitCategory) {
+      if (explicitCategory) {
+        if (explicitCategory === 'flugzeug') return 'fa-plane';
+        if (explicitCategory === 'mietwagen') return 'fa-car';
+        if (explicitCategory === 'roller') return 'fa-motorcycle';
+        if (explicitCategory === 'taxi') return 'fa-taxi';
+      }
       const t = (title || '').toLowerCase();
       if (t.includes('flug') || t.includes('flight') || t.includes('airline') || t.includes('airport')) return 'fa-plane';
+      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
+      if (t.includes('taxi') || t.includes('grab') || t.includes('bolt')) return 'fa-taxi';
+      if (t.includes('mietwagen') || t.includes('rental') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
       if (t.includes('zug') || t.includes('bahn') || t.includes('train') || t.includes('ice') || t.includes('rail')) return 'fa-train';
       if (t.includes('bus') || t.includes('shuttle') || t.includes('van')) return 'fa-bus';
       if (t.includes('boot') || t.includes('fähre') || t.includes('ferry') || t.includes('boat') || t.includes('speedboot')) return 'fa-ship';
-      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
-      if (t.includes('taxi') || t.includes('grab') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
-      return 'fa-plane-departure';
+      return 'fa-route';
     }
 
     function getHeaderTransportLineContent(day) {
@@ -1801,7 +1499,7 @@
       '</span>';
 
       day.transports.forEach(tr => {
-        const icon = getTransportIcon(tr.title);
+        const icon = getTransportIcon(tr.title, tr.category);
         const titleText = (tr.title || 'Transport').trim();
         const status = (tr.costStatus || 'geplant').toLowerCase();
         
@@ -1834,14 +1532,10 @@
     function getDayCostBreakdown(day) {
       let total = 0;
       let paid = 0;
-      let lodging = 0;
-      let transport = 0;
-      let activity = 0;
 
       if (day && day.lodging) {
         const c = convertToEur(day.lodging.price, day.lodging.currency);
         total += c;
-        lodging += c;
         const s = (day.lodging.costStatus || '').toLowerCase();
         if (s === 'bezahlt' || s === 'gebucht') paid += c;
       }
@@ -1851,7 +1545,6 @@
           if (!t) return;
           const c = convertToEur(t.cost, t.currency);
           total += c;
-          transport += c;
           const s = (t.costStatus || '').toLowerCase();
           if (s === 'bezahlt' || s === 'gebucht') paid += c;
         });
@@ -1862,13 +1555,12 @@
           if (!a) return;
           const c = convertToEur(a.cost, a.currency);
           total += c;
-          activity += c;
           const s = (a.costStatus || '').toLowerCase();
           if (s === 'bezahlt' || s === 'gebucht') paid += c;
         });
       }
 
-      return { total: total, paid: paid, pending: total - paid, lodging: lodging, transport: transport, activity: activity };
+      return { total: total, paid: paid, pending: total - paid };
     }
 
     function formatEuro(num) {
@@ -1975,23 +1667,12 @@
     // --- NORMALISIERUNG & SPEICHERUNG ---
     function normalizeDataModel() {
       if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
+        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
       }
       if (tripData.generalNotes === undefined) tripData.generalNotes = "";
-      if (tripData.emergencyNotes === undefined) tripData.emergencyNotes = "";
       if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000 };
       if (!Array.isArray(tripData.checklist) || tripData.checklist.length === 0) {
-        tripData.checklist = JSON.parse(JSON.stringify(DEFAULT_CHECKLIST));
-      } else {
-        tripData.checklist = tripData.checklist.map(item => {
-          if (typeof item === 'string') {
-            return { text: item, done: false, category: 'Sonstiges' };
-          }
-          if (item && item.category === undefined) {
-            item.category = 'Sonstiges';
-          }
-          return item;
-        });
+        tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
       }
       if (!Array.isArray(tripData.days)) {
         tripData.days = [];
@@ -2036,6 +1717,7 @@
           day.transports.forEach(t => {
             if (!t) return;
             if (t.title === undefined) t.title = '';
+            if (t.category === undefined) t.category = '';
             if (t.cost === undefined) t.cost = '';
             if (!t.currency) t.currency = 'EUR';
             if (!t.costStatus) t.costStatus = 'geplant';
@@ -2201,8 +1883,6 @@
       document.getElementById('startDate').value = tripData.startDate || '';
       document.getElementById('endDate').value = tripData.endDate || '';
       document.getElementById('generalNotes').value = tripData.generalNotes || '';
-      const emInput = document.getElementById('emergencyNotesInput');
-      if (emInput) emInput.value = tripData.emergencyNotes || '';
       
       const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
       const elTHB = document.getElementById('rateTHB');
@@ -2215,7 +1895,6 @@
       renderChecklist();
       renderDays();
       renderRouteTimeline();
-      runQuickCalc();
     }
 
     function saveMetaData() {
@@ -2311,7 +1990,6 @@
         if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
         else if (currentFilter === 'travel_days') matchesFilter = Array.isArray(day.transports) && day.transports.length > 0;
         else if (currentFilter === 'pending_costs') matchesFilter = getDayCostBreakdown(day).pending > 0;
-        else if (currentFilter === 'with_attachments') matchesFilter = Array.isArray(day.images) && day.images.length > 0;
 
         let matchesSearch = true;
         if (searchQuery) {
@@ -2378,18 +2056,13 @@
         getHeaderTransportLineContent(day) +
       '</div>';
 
-      // TAGESORT INPUT-FELD + GOOGLE MAPS + OFFLINE-MAPS (GEO:)
+      // TAGESORT INPUT-FELD
       html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
           (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
-            'class="mr-1.5 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
-            'title="' + (hasLocation ? 'In Google Maps online öffnen' : 'Tagesort eintragen') + '">' +
+            'class="mr-2.5 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
+            'title="' + (hasLocation ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
             '<i class="fa-solid fa-map-location-dot text-lg pointer-events-none"></i>' +
-          '</button>' +
-          '<button type="button" data-action="open-offline-maps" data-day-index="' + index + '" ' +
-            'class="mr-2.5 shrink-0 transition no-print ' + (hasLocation ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed') + '" ' +
-            'title="' + (hasLocation ? 'Offline-Karten-App (geo: URI / OsmAnd / Organic Maps) öffnen' : 'Tagesort eintragen') + '">' +
-            '<i class="fa-solid fa-compass text-base pointer-events-none"></i>' +
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
             'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-lg md:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
@@ -2415,9 +2088,6 @@
         '</div>' +
         '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
           '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
-        '</button>' +
-        '<button data-action="duplicate-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 flex items-center justify-center transition no-print" title="Diesen Tag duplizieren / als nächsten Tag kopieren">' +
-          '<i class="fa-solid fa-copy text-xs pointer-events-none"></i>' +
         '</button>' +
         '<button data-action="insert-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
           '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
@@ -2532,6 +2202,7 @@
       return card;
     }
 
+    // Transport Modul mit Up/Down-Pfeilen & Kategorie-Icons: Flugzeug, Mietwagen, Roller, Taxi
     function renderTransportModuleHTML(day, index) {
       let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
         '<div class="flex items-center justify-between mb-3">' +
@@ -2545,14 +2216,26 @@
         const trSafeUrl = formatSafeUrl(tr.link);
         const isFirst = trIdx === 0;
         const isLast = trIdx === totalTr - 1;
+        const selectedCat = tr.category || '';
 
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-          '<div class="flex items-center gap-1.5">' +
+          '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
+            // Hoch/Runter Buttons
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
-            '<input type="text" placeholder="Art (z. B. 08:30 Zug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
+
+            // Transport Kategorie Dropdown mit Icons: Flugzeug, Mietwagen, Roller, Taxi
+            '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">' +
+              '<option value="" ' + (selectedCat === '' ? 'selected' : '') + '>Auto-Icon</option>' +
+              '<option value="flugzeug" ' + (selectedCat === 'flugzeug' ? 'selected' : '') + '>✈️ Flugzeug</option>' +
+              '<option value="mietwagen" ' + (selectedCat === 'mietwagen' ? 'selected' : '') + '>🚗 Mietwagen</option>' +
+              '<option value="roller" ' + (selectedCat === 'roller' ? 'selected' : '') + '>🛵 Roller</option>' +
+              '<option value="taxi" ' + (selectedCat === 'taxi' ? 'selected' : '') + '>🚕 Taxi / Grab</option>' +
+            '</select>' +
+
+            '<input type="text" placeholder="Art (z. B. 08:30 Flug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
@@ -2576,6 +2259,7 @@
       return html;
     }
 
+    // Aktivitäten Modul mit Up/Down-Pfeilen
     function renderActivityModuleHTML(day, index) {
       let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
         '<div class="flex items-center justify-between mb-3">' +
@@ -2591,13 +2275,13 @@
         const isLast = actIdx === totalAct - 1;
 
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
-          '<div class="flex items-center gap-1.5">' +
+          '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-activity-up" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-activity-down" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
             '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
-            '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
+            '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
             '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
             '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
               ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
@@ -2639,17 +2323,8 @@
             if (day) openGoogleMaps(day.location);
             break;
           }
-          case 'open-offline-maps': {
-            const day = tripData.days[dayIdx];
-            if (day) openOfflineMaps(day.location);
-            break;
-          }
           case 'toggle-booking': {
             toggleBookingStatus(dayIdx);
-            break;
-          }
-          case 'duplicate-day': {
-            duplicateDay(dayIdx);
             break;
           }
           case 'insert-day': {
@@ -2772,6 +2447,13 @@
             if (trField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
             }
+            // Wenn Kategorie oder Titel geändert wurde, aktualisiere die Header-Transportzeile
+            if (trField === 'category' || trField === 'title') {
+              const trLine = document.getElementById('day-header-transport-' + dayIdx);
+              if (trLine) {
+                trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIdx]);
+              }
+            }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
             saveToStorage();
@@ -2811,7 +2493,6 @@
             const box = document.getElementById('loc-box-' + dayIdx);
             const badge = document.getElementById('loc-badge-' + dayIdx);
             const mapsBtn = box ? box.querySelector('[data-action="open-maps"]') : null;
-            const offMapsBtn = box ? box.querySelector('[data-action="open-offline-maps"]') : null;
             const hasLoc = (target.value || '').trim() !== '';
 
             if (box && badge) {
@@ -2819,23 +2500,15 @@
                 box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
                 badge.classList.remove('hidden');
                 if (mapsBtn) {
-                  mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
-                  mapsBtn.title = "In Google Maps online öffnen";
-                }
-                if (offMapsBtn) {
-                  offMapsBtn.className = "mr-2.5 shrink-0 transition no-print text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer";
-                  offMapsBtn.title = "Offline-Karten-App (geo: URI / OsmAnd / Organic Maps) öffnen";
+                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
+                  mapsBtn.title = "In Google Maps öffnen";
                 }
               } else {
                 box.className = "relative flex items-center rounded-xl px-3 py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
                 badge.classList.add('hidden');
                 if (mapsBtn) {
-                  mapsBtn.className = "mr-1.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
+                  mapsBtn.className = "mr-2.5 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
                   mapsBtn.title = "Tagesort eintragen";
-                }
-                if (offMapsBtn) {
-                  offMapsBtn.className = "mr-2.5 shrink-0 transition no-print text-slate-300 dark:text-slate-600 cursor-not-allowed";
-                  offMapsBtn.title = "Tagesort eintragen";
                 }
               }
             }
@@ -3055,7 +2728,7 @@
     function addTransportRow(dayIndex) {
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].transports)) tripData.days[dayIndex].transports = [];
-      tripData.days[dayIndex].transports.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
+      tripData.days[dayIndex].transports.push({ title: '', category: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
       recordChangeForReminder();
       saveToStorage();
       renderDays();
@@ -3086,7 +2759,7 @@
       renderDays();
     }
 
-    // --- STATISTIKEN, BUDGET-VERTEILUNG & DURCHSCHNITT ---
+    // --- STATISTIKEN & GESAMTSUMMEN ---
     function updateStats() {
       const days = Array.isArray(tripData.days) ? tripData.days : [];
       const total = days.length;
@@ -3095,22 +2768,15 @@
 
       let grandTotal = 0;
       let grandPaid = 0;
-      let sumLodging = 0;
-      let sumTransport = 0;
-      let sumActivity = 0;
 
       days.forEach(d => {
         if (!d) return;
         const b = getDayCostBreakdown(d);
         grandTotal += b.total;
         grandPaid += b.paid;
-        sumLodging += b.lodging;
-        sumTransport += b.transport;
-        sumActivity += b.activity;
       });
 
       const grandPending = grandTotal - grandPaid;
-      const avgPerDay = total > 0 ? (grandTotal / total) : 0;
 
       const elTotal = document.getElementById('statTotal');
       const elBooked = document.getElementById('statBooked');
@@ -3118,7 +2784,6 @@
       const elCostTotal = document.getElementById('statCostTotal');
       const elCostPaid = document.getElementById('statCostPaid');
       const elCostPending = document.getElementById('statCostPending');
-      const elCostPerDay = document.getElementById('statCostPerDay');
 
       if (elTotal) elTotal.innerText = total;
       if (elBooked) elBooked.innerText = booked;
@@ -3126,27 +2791,6 @@
       if (elCostTotal) elCostTotal.innerText = formatEuro(grandTotal);
       if (elCostPaid) elCostPaid.innerText = formatEuro(grandPaid);
       if (elCostPending) elCostPending.innerText = formatEuro(grandPending);
-      if (elCostPerDay) elCostPerDay.innerText = formatEuro(avgPerDay);
-
-      // Balkendiagramm & Prozentverteilung berechnen
-      const pctL = grandTotal > 0 ? (sumLodging / grandTotal * 100) : 0;
-      const pctT = grandTotal > 0 ? (sumTransport / grandTotal * 100) : 0;
-      const pctA = grandTotal > 0 ? (sumActivity / grandTotal * 100) : 0;
-
-      const barL = document.getElementById('barLodging');
-      const barT = document.getElementById('barTransport');
-      const barA = document.getElementById('barActivity');
-      const txtL = document.getElementById('breakdownLodging');
-      const txtT = document.getElementById('breakdownTransport');
-      const txtA = document.getElementById('breakdownActivity');
-
-      if (barL) barL.style.width = pctL.toFixed(1) + '%';
-      if (barT) barT.style.width = pctT.toFixed(1) + '%';
-      if (barA) barA.style.width = pctA.toFixed(1) + '%';
-
-      if (txtL) txtL.innerText = `${formatEuro(sumLodging)} (${pctL.toFixed(0)}%)`;
-      if (txtT) txtT.innerText = `${formatEuro(sumTransport)} (${pctT.toFixed(0)}%)`;
-      if (txtA) txtA.innerText = `${formatEuro(sumActivity)} (${pctA.toFixed(0)}%)`;
 
       updateTripCountdown();
     }
@@ -3168,7 +2812,6 @@
     window.importJSONFallback = importJSONFallback;
     window.toggleAllDays = toggleAllDays;
     window.toggleBookingStatus = toggleBookingStatus;
-    window.duplicateDay = duplicateDay;
     window.toggleDayCollapse = toggleDayCollapse;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
@@ -3179,16 +2822,12 @@
     window.moveActivityItem = moveActivityItem;
     window.saveMetaData = saveMetaData;
     window.saveGeneralNotes = saveGeneralNotes;
-    window.saveEmergencyNotes = saveEmergencyNotes;
     window.autoResizeTextarea = autoResizeTextarea;
     window.setFilter = setFilter;
-    window.setChecklistCategoryFilter = setChecklistCategoryFilter;
-    window.toggleHideDoneChecklist = toggleHideDoneChecklist;
     window.handleSearch = handleSearch;
     window.clearSearch = clearSearch;
     window.jumpToToday = jumpToToday;
     window.openGoogleMaps = openGoogleMaps;
-    window.openOfflineMaps = openOfflineMaps;
     window.showRestoreModal = showRestoreModal;
     window.closeRestoreModal = closeRestoreModal;
     window.restoreBackup = restoreBackup;
@@ -3208,9 +2847,6 @@
     window.closeDayActionModal = closeDayActionModal;
     window.executeDayAction = executeDayAction;
     window.dismissBackupReminder = dismissBackupReminder;
-    window.toggleQuickCalc = toggleQuickCalc;
-    window.runQuickCalc = runQuickCalc;
-    window.toggleSosModal = toggleSosModal;
   </script>
 </body>
 </html>
