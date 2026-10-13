@@ -66,7 +66,7 @@
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-20 transition-colors duration-200">
 
-  <!-- Header / Navigation mit Headline & Drei-Punkte-Menü -->
+  <!-- Header / Navigation -->
   <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
       
@@ -94,7 +94,7 @@
         </div>
       </div>
 
-      <!-- Rechte Seite: Speichern, Theme & Drei-Punkte-Menü (Button "Neue Reise" ins Menü verschoben) -->
+      <!-- Rechte Seite: Speichern, Theme & Drei-Punkte-Menü -->
       <div class="flex items-center gap-2 no-print relative shrink-0">
         <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
@@ -264,7 +264,7 @@
         </div>
       </section>
 
-      <!-- Liste der Reisetage -->
+      <!-- Liste der Reisetage (Accordion) -->
       <div id="daysContainer" class="space-y-2"></div>
     </div>
 
@@ -611,7 +611,6 @@
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
     const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
 
-    // --- NEUE REISE VON ANFANG AN PLANEN ---
     async function createNewTrip() {
       const hasExistingDays = Array.isArray(tripData.days) && tripData.days.length > 0;
       if (hasExistingDays) {
@@ -664,7 +663,6 @@
       showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
     }
 
-    // --- TAB NAVIGATION (4 TABS) ---
     function switchTab(tabId) {
       currentTab = tabId;
       const tabs = ['plan', 'timeline', 'budget', 'notes'];
@@ -686,7 +684,6 @@
       }
     }
 
-    // --- DREI-PUNKTE MENÜ LOGIK ---
     function toggleMoreMenu() {
       const menu = document.getElementById('moreMenuDropdown');
       if (menu) menu.classList.toggle('hidden');
@@ -700,7 +697,6 @@
       }
     });
 
-    // --- EINKLAPPBARES KONFIGURATIONS-PANEL ---
     function toggleConfigPanel() {
       const panel = document.getElementById('tripConfigSection');
       if (!panel) return;
@@ -716,7 +712,6 @@
       }
     }
 
-    // --- HEADLINE AKTUALISIERUNG ---
     function updateHeadline() {
       const titleEl = document.getElementById('headerTripTitle');
       const datesEl = document.getElementById('headerTripDates');
@@ -749,7 +744,6 @@
       }
     }
 
-    // --- INDEXEDDB LAYER ---
     function openDB() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
@@ -934,7 +928,6 @@
       if (banner) banner.classList.add('hidden');
     }
 
-    // --- UTC-SICHERE DATUMS-HELFER ---
     function parseISOParts(isoStr) {
       if (!isoStr || typeof isoStr !== 'string') return null;
       const parts = isoStr.split('-').map(Number);
@@ -964,7 +957,6 @@
       return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
     }
 
-    // --- THEME-VERWALTUNG ---
     function initTheme() {
       const saved = localStorage.getItem(THEME_KEY);
       setTheme(saved === 'light' ? 'light' : 'dark');
@@ -1059,7 +1051,6 @@
       }, 2500);
     }
 
-    // --- MULTI-UPLOAD & PDF-VERARBEITUNG ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
       const items = e.clipboardData.items;
@@ -1230,7 +1221,6 @@
       return 'https://' + trimmed;
     }
 
-    // --- CSV-EXPORT DER AUSGABEN ---
     function exportToCSV() {
       const rows = [
         ["Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (Original)", "Waehrung", "Euro-Aequivalent", "Status", "Hinweis / Link"]
@@ -1303,7 +1293,6 @@
       showToast("CSV-Export heruntergeladen");
     }
 
-    // --- ETAPPEN BERECHNUNG & VERTIKALE TIMELINE ---
     function getTripStops() {
       const days = tripData.days || [];
       const stops = [];
@@ -1493,7 +1482,7 @@
       }, 50);
     }
 
-    // --- ACCORDION-HELFER (Immer nur max. 1 Tag geöffnet) ---
+    // --- ACCORDION-HELFER (Immer maximal 1 Tag geöffnet) ---
     function openOnlyDay(dayIndex) {
       if (!Array.isArray(tripData.days)) return;
       const willOpen = tripData.days[dayIndex].isCollapsed;
@@ -1512,7 +1501,7 @@
       openOnlyDay(dayIndex);
     }
 
-    // --- MODAL & MODUS A / MODUS B STEUERUNG (TAGE EINFÜGEN & LÖSCHEN) ---
+    // --- MODAL & MODUS A / MODUS B STEUERUNG ---
     function openDayActionModal(type, dayIndex) {
       pendingModalAction = { type, dayIndex };
       const modal = document.getElementById('dayActionModal');
@@ -1663,7 +1652,6 @@
               for (let i = dayIndex + 1; i < bookedAbsIndex; i++) {
                 tripData.days[i].date = addDaysISO(tripData.days[i-1].date, 1);
               }
-              // Alle anderen Tage schließen
               tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
               normalizeDataModel();
               recordChangeForReminder();
@@ -1716,7 +1704,6 @@
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
     }
 
-    // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
     function moveTransportItem(dayIndex, itemIndex, direction) {
       const day = tripData.days[dayIndex];
       if (!day || !Array.isArray(day.transports)) return;
@@ -1745,7 +1732,6 @@
       showToast("Aktivitätsreihenfolge verschoben");
     }
 
-    // --- OFFLINE-KARTEN HELFER ---
     function openOfflineMaps(locationStr) {
       if (!locationStr || !locationStr.trim()) {
         showToast("Bitte zuerst einen Tagesort eingeben", true);
@@ -1755,7 +1741,6 @@
       window.location.href = `geo:0,0?q=${q}`;
     }
 
-    // --- SCHNELL-WÄHRUNGSRECHNER WIDGET ---
     function toggleQuickCalc() {
       const popup = document.getElementById('quickCalcPopup');
       if (popup) popup.classList.toggle('hidden');
@@ -1827,7 +1812,6 @@
       return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
     }
 
-    // --- CHECKLISTEN-LOGIK ---
     const DEFAULT_CHECKLIST = [
       "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
       "E-Visum beantragt & ausgedruckt",
@@ -1893,7 +1877,6 @@
       }
     }
 
-    // --- COUNTDOWN HELFER ---
     function updateTripCountdown() {
       const badge = document.getElementById('tripCountdownBadge');
       if (!badge) return;
@@ -1974,7 +1957,6 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
-    // --- FILTER & SUCHE ---
     function setFilter(filterType) {
       currentFilter = filterType;
       ['all', 'open_lodging', 'travel_days', 'pending_costs', 'with_attachments'].forEach(id => {
@@ -2008,24 +1990,6 @@
       if (!day || !day.lodging) return false;
       const s = (day.lodging.costStatus || '').toLowerCase();
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
-    }
-
-    function getTransportIcon(title, explicitCategory) {
-      if (explicitCategory) {
-        if (explicitCategory === 'flugzeug') return 'fa-plane';
-        if (explicitCategory === 'mietwagen') return 'fa-car';
-        if (explicitCategory === 'roller') return 'fa-motorcycle';
-        if (explicitCategory === 'taxi') return 'fa-taxi';
-      }
-      const t = (title || '').toLowerCase();
-      if (t.includes('flug') || t.includes('flight') || t.includes('airline') || t.includes('airport')) return 'fa-plane';
-      if (t.includes('roller') || t.includes('scooter') || t.includes('moped') || t.includes('motorroller') || t.includes('motorrad')) return 'fa-motorcycle';
-      if (t.includes('taxi') || t.includes('grab') || t.includes('bolt')) return 'fa-taxi';
-      if (t.includes('mietwagen') || t.includes('rental') || t.includes('auto') || t.includes('car') || t.includes('transfer')) return 'fa-car';
-      if (t.includes('zug') || t.includes('bahn') || t.includes('train') || t.includes('ice') || t.includes('rail')) return 'fa-train';
-      if (t.includes('bus') || t.includes('shuttle') || t.includes('van')) return 'fa-bus';
-      if (t.includes('boot') || t.includes('fähre') || t.includes('ferry') || t.includes('boat') || t.includes('speedboot')) return 'fa-ship';
-      return 'fa-route';
     }
 
     function getTransportEmoji(tr) {
@@ -2182,7 +2146,6 @@
       }
     }
 
-    // --- NORMALISIERUNG & SPEICHERUNG ---
     function normalizeDataModel() {
       if (!tripData || typeof tripData !== 'object') {
         tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
@@ -2202,7 +2165,7 @@
         if (!day || typeof day !== 'object') return;
         if (day.location === undefined) day.location = '';
         if (day.notes === undefined) day.notes = '';
-        if (day.isCollapsed === undefined) day.isCollapsed = true; // Standard: eingeklappt
+        if (day.isCollapsed === undefined) day.isCollapsed = true;
         if (!Array.isArray(day.images)) day.images = [];
 
         day.images = day.images.map(img => {
@@ -2483,7 +2446,7 @@
           newDays.push({
             date: iso,
             location: '',
-            isCollapsed: true, // Eingeklappt als kompakter Reading Mode
+            isCollapsed: true,
             lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
             transports: [],
             activities: [],
@@ -2508,7 +2471,7 @@
       showToast("Tage generiert & Reiseplan aktualisiert");
     }
 
-    // --- RENDERING TAGE (KOMPAKTER READING MODE & EXKLUSIVES ACCORDION) ---
+    // --- RENDERING TAGE ---
     function renderDays() {
       const container = document.getElementById('daysContainer');
       if (!container) return;
@@ -2560,21 +2523,24 @@
 
     function createDayElement(day, index, isToday) {
       const isBooked = isDayBooked(day);
-      const hasLocation = (day.location || '').trim() !== '';
       const visual = getDayVisualClasses(day, isToday);
       const { dayName, dayFormatted } = formatISODate(day.date);
       const dayCosts = getDayCostBreakdown(day);
       const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
       const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
       const images = Array.isArray(day.images) ? day.images : [];
+      const hasLocation = (day.location || '').trim() !== '';
 
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
 
-      // 1. KOMPAKTER READING MODE (Eingeklappt)
+      // 1. KOMPAKTER READING MODE (Eingeklappt) – Farben hängen jetzt 1:1 am visual.cardClass
       if (day.isCollapsed) {
-        card.className = 'day-card cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 transition flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 shadow-2xs ' + (isToday ? 'border-indigo-500 ring-2 ring-indigo-500/80 today-highlight' : '');
-        
+        card.className = 'day-card cursor-pointer border rounded-xl px-3.5 py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
+        card.setAttribute('data-action', 'toggle-collapse');
+        card.setAttribute('data-day-index', index);
+        card.title = "Klicken, um Tag zu öffnen";
+
         const shortDate = dayFormatted ? dayFormatted.slice(0, 5) : '--.--';
         const trText = (hasTransports) 
           ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') 
@@ -2582,27 +2548,28 @@
         
         let lodgingText = '—';
         if (day.lodging && (day.lodging.name || '').trim()) {
-          lodgingText = `🏨 ${day.lodging.name}${isBooked ? ' (gebucht)' : ''}`;
+          const statusText = day.lodging.costStatus === 'reserviert' ? ' (reserviert)' : (isBooked ? ' (gebucht)' : '');
+          lodgingText = `🏨 ${day.lodging.name}${statusText}`;
         }
 
         card.innerHTML = `
-          <div data-action="toggle-collapse" data-day-index="${index}" class="flex-1 flex items-center space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2">
+          <div class="flex-1 flex items-center space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2 pointer-events-none">
             <span class="font-black text-slate-900 dark:text-white">Tag ${index + 1}</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="text-slate-600 dark:text-slate-400 font-mono">${shortDate} (${dayName})</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="font-semibold text-slate-800 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="text-slate-600 dark:text-slate-400">${escapeHtml(trText)}</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="text-slate-600 dark:text-slate-400">${escapeHtml(lodgingText)}</span>
-            <span class="text-slate-300 dark:text-slate-600">|</span>
-            <span class="font-mono font-bold text-slate-900 dark:text-white">${formatEuro(dayCosts.total)}</span>
+            <span class="text-slate-400/70 dark:text-slate-500">|</span>
+            <span class="text-slate-700 dark:text-slate-300 font-mono">${shortDate} (${dayName})</span>
+            <span class="text-slate-400/70 dark:text-slate-500">|</span>
+            <span class="font-bold text-slate-900 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
+            <span class="text-slate-400/70 dark:text-slate-500">|</span>
+            <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trText)}</span>
+            <span class="text-slate-400/70 dark:text-slate-500">|</span>
+            <span class="text-slate-700 dark:text-slate-300">${escapeHtml(lodgingText)}</span>
+            <span class="text-slate-400/70 dark:text-slate-500">|</span>
+            <span class="font-mono font-black text-slate-900 dark:text-white">${formatEuro(dayCosts.total)}</span>
           </div>
-          <div class="flex items-center gap-1.5 shrink-0 no-print">
-            <button data-action="toggle-collapse" data-day-index="${index}" class="p-1 text-slate-400 hover:text-indigo-600 transition" title="Tag öffnen">
-              <i class="fa-solid fa-chevron-down text-xs pointer-events-none"></i>
-            </button>
+          <div class="flex items-center gap-1.5 shrink-0 no-print pointer-events-none">
+            <span class="p-1 text-slate-500 dark:text-slate-400">
+              <i class="fa-solid fa-chevron-down text-xs"></i>
+            </span>
           </div>
         `;
         return card;
@@ -2616,7 +2583,7 @@
       // --- HEADER DES GEÖFFNETEN TAGES ---
       html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass + '">';
       
-      html += '<div class="flex items-center gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="' + index + '">' +
+      html += '<div class="flex items-center gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="' + index + '" title="Tag zuklappen">' +
         '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
           '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
           '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
@@ -2666,7 +2633,7 @@
         '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
           '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Einklappen">' +
+        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Tag zuklappen">' +
           '<i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i>' +
         '</button>' +
       '</div>';
@@ -2688,7 +2655,7 @@
 
       html += '</div>';
 
-      // Kompakte Add-Buttons (keine leeren Boxen, wenn leer)
+      // Kompakte Add-Buttons (keine leeren Boxen gerendert)
       html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
       if (!hasTransports) {
         html += '<button data-action="add-transport" data-day-index="' + index + '" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-1.5">' +
@@ -2871,7 +2838,6 @@
       return html;
     }
 
-    // --- EVENT DELEGATION & GRANULARE DOM-UPDATES ---
     function setupEventDelegation() {
       const container = document.getElementById('daysContainer');
       const checklistCont = document.getElementById('checklistContainer');
@@ -3198,8 +3164,12 @@
       const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
 
-      if (card && !day.isCollapsed) {
-        card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+      if (card) {
+        if (day.isCollapsed) {
+          card.className = 'day-card cursor-pointer border rounded-xl px-3.5 py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
+        } else {
+          card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+        }
       }
       if (header) {
         header.className = 'px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass;
