@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.72</title>
+  <title>Reiseplaner Pro v1.73</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -60,15 +60,17 @@
       background-color: rgba(148, 163, 184, 0.4);
       border-radius: 4px;
     }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-20 transition-colors duration-200">
 
-  <!-- Header / Navigation mit präsenter Headline & Drei-Punkte-Menü -->
+  <!-- Header / Navigation mit Headline & Drei-Punkte-Menü -->
   <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
       
-      <!-- Linke Seite: Logo, präsenter Reisetitel & Zeitraum in Headline -->
+      <!-- Linke Seite: Logo, Reisetitel & Zeitraum -->
       <div class="flex items-center gap-3 min-w-0">
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
           <i class="fa-solid fa-map-location-dot text-lg"></i>
@@ -79,7 +81,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-xs transition" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.72</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.73</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -92,13 +94,8 @@
         </div>
       </div>
 
-      <!-- Rechte Seite: Neue Reise, Speichern, Theme & Drei-Punkte-Menü -->
+      <!-- Rechte Seite: Speichern, Theme & Drei-Punkte-Menü (Button "Neue Reise" ins Menü verschoben) -->
       <div class="flex items-center gap-2 no-print relative shrink-0">
-        <!-- Neuer Button: Neue Reise -->
-        <button onclick="createNewTrip()" class="px-3 py-1.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1.5" title="Neue Reise von Grund auf planen">
-          <i class="fa-solid fa-plus text-indigo-500"></i> <span class="hidden sm:inline">Neue Reise</span>
-        </button>
-
         <button onclick="saveToFile(false)" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
         </button>
@@ -114,7 +111,7 @@
           </button>
 
           <div id="moreMenuDropdown" class="hidden absolute right-0 top-10 w-60 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 z-50 text-xs">
-            <button onclick="createNewTrip(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
+            <button onclick="createNewTrip(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-950/40 flex items-center gap-2.5 text-indigo-600 dark:text-indigo-400 font-semibold transition">
               <i class="fa-solid fa-circle-plus text-indigo-500 w-4"></i> Neue Reise beginnen...
             </button>
             <button onclick="toggleConfigPanel(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
@@ -195,7 +192,7 @@
     <!-- ==================== TAB 1: 📅 REISEPLAN ==================== -->
     <div id="tabContent-plan" class="tab-content space-y-4">
       
-      <!-- Einklappbares Konfigurations-Panel (verschwindet nach Generierung / wird per Stift oder Menü ausgeklappt) -->
+      <!-- Einklappbares Konfigurations-Panel -->
       <section id="tripConfigSection" class="hidden bg-white dark:bg-slate-800 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 p-4 shadow-sm transition-colors duration-200 no-print">
         <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-700/60">
           <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
@@ -268,7 +265,7 @@
       </section>
 
       <!-- Liste der Reisetage -->
-      <div id="daysContainer" class="space-y-4"></div>
+      <div id="daysContainer" class="space-y-2"></div>
     </div>
 
     <!-- ==================== TAB 2: 📍 TIMELINE (VERTIKALE ETAPPEN-MINIMAP) ==================== -->
@@ -288,15 +285,12 @@
           </div>
         </div>
 
-        <!-- Vertikaler Timeline Container -->
         <div id="verticalTimelineContainer" class="space-y-4 py-2"></div>
       </section>
     </div>
 
     <!-- ==================== TAB 3: 💰 BUDGET & KURSE ==================== -->
     <div id="tabContent-budget" class="tab-content hidden space-y-5">
-      
-      <!-- Statistiken Kacheln -->
       <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
           <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-0.5"><i class="fa-solid fa-bed text-indigo-500"></i> Nächte</span>
@@ -324,7 +318,6 @@
         </div>
       </section>
 
-      <!-- Kategorie-Kostenverteilung & Tagesdurchschnitt -->
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/60 pb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -363,7 +356,6 @@
         </div>
       </section>
 
-      <!-- Wechselkurs-Einstellungen & CSV-Export Button -->
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-4">
         <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/60 pb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
@@ -393,10 +385,7 @@
 
     <!-- ==================== TAB 4: 🎒 CHECKLISTE & NOTIZEN ==================== -->
     <div id="tabContent-notes" class="tab-content hidden space-y-5">
-      
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        
-        <!-- Dokumenten-Notizen (Reisevorbereitung) -->
         <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3">
           <div class="flex items-center justify-between">
             <h2 class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-2">
@@ -407,13 +396,12 @@
           <textarea 
             id="generalNotes" 
             rows="8" 
-            placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..."
-            oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);"
+            placeholder="Infos zur Reisevorbereitung notieren (z. B. Visabestimmungen, Pass-Gültigkeit, Auslandskrankenversicherung, Impfungen, Notfallkontakte)..." 
+            oninput="autoResizeTextarea(this); saveGeneralNotes(this.value);" 
             class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded-xl p-3.5 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-500"
           ></textarea>
         </section>
 
-        <!-- Packliste -->
         <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-sm space-y-3 flex flex-col">
           <div class="flex items-center justify-between">
             <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
@@ -421,15 +409,13 @@
             </h2>
             <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
           </div>
-
           <div id="checklistContainer" class="space-y-1.5 max-h-56 overflow-y-auto pr-1 flex-1"></div>
-
           <div class="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700/60 no-print">
             <input 
               type="text" 
               id="newChecklistItemInput" 
               placeholder="Neuen Punkt hinzufügen..." 
-              onkeydown="if(event.key === 'Enter') addChecklistItem();"
+              onkeydown="if(event.key === 'Enter') addChecklistItem();" 
               class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
             >
             <button onclick="addChecklistItem()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 shadow-xs">
@@ -439,7 +425,6 @@
         </section>
       </div>
 
-      <!-- Notfall-Spickzettel (SOS) -->
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-rose-200 dark:border-rose-900/60 p-5 shadow-sm space-y-4">
         <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-2">
@@ -479,7 +464,7 @@
             id="emergencyNotesInput" 
             rows="3" 
             placeholder="z. B. Auslandskrankenversicherung: ERGO Nr. 1234567, Notfalltelefon: ..., Kontakt daheim: ..." 
-            oninput="saveEmergencyNotes(this.value)"
+            oninput="saveEmergencyNotes(this.value)" 
             class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
           ></textarea>
         </div>
@@ -535,7 +520,6 @@
       <div id="dayActionModalWarnings" class="hidden"></div>
 
       <div class="space-y-3">
-        <!-- Modus A -->
         <div class="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
           <div class="flex items-center justify-between">
             <span id="dayActionModalTitleA" class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"></span>
@@ -545,7 +529,6 @@
           <button id="dayActionModalBtnA" onclick="executeDayAction('A')"></button>
         </div>
 
-        <!-- Modus B -->
         <div class="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
           <div class="flex items-center justify-between">
             <span id="dayActionModalTitleB" class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"></span>
@@ -637,7 +620,6 @@
         await createRollingBackup();
       }
 
-      // State komplett auf leere Standard-Reise zurücksetzen
       tripData = {
         title: "",
         startDate: "",
@@ -654,7 +636,6 @@
       saveToStorage();
       updateFileStatus(null);
 
-      // Formular-Inputs leeren
       document.getElementById('tripTitle').value = "";
       document.getElementById('startDate').value = "";
       document.getElementById('endDate').value = "";
@@ -662,7 +643,6 @@
       const emNotes = document.getElementById('emergencyNotesInput');
       if (emNotes) emNotes.value = "";
 
-      // In Reiseplan-Tab wechseln und Konfigurations-Panel direkt öffnen
       switchTab('plan');
       const panel = document.getElementById('tripConfigSection');
       if (panel) {
@@ -676,7 +656,6 @@
       renderChecklist();
       updateStats();
 
-      // Fokus direkt ins Titelfeld setzen
       setTimeout(() => {
         const titleInput = document.getElementById('tripTitle');
         if (titleInput) titleInput.focus();
@@ -737,7 +716,7 @@
       }
     }
 
-    // --- PRÄSENTE HEADLINE AKTUALISIERUNG ---
+    // --- HEADLINE AKTUALISIERUNG ---
     function updateHeadline() {
       const titleEl = document.getElementById('headerTripTitle');
       const datesEl = document.getElementById('headerTripDates');
@@ -770,7 +749,7 @@
       }
     }
 
-    // --- INDEXEDDB SPEICHER-LAYER ---
+    // --- INDEXEDDB LAYER ---
     function openDB() {
       return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, 1);
@@ -879,7 +858,6 @@
       });
     }
 
-    // --- ONLINE / OFFLINE STATUS ANZEIGE ---
     function initNetworkStatus() {
       updateNetworkBadge();
       window.addEventListener('online', updateNetworkBadge);
@@ -903,7 +881,6 @@
       }
     }
 
-    // --- AUTO-EXPORT ERINNERUNG ---
     function initBackupReminderState() {
       const storedTime = localStorage.getItem(LAST_EXPORT_KEY);
       if (storedTime) {
@@ -996,7 +973,6 @@
     function setTheme(theme) {
       const html = document.documentElement;
       const icon = document.getElementById('themeToggleIcon');
-      const text = document.getElementById('themeToggleText');
       const metaTheme = document.querySelector('meta[name="theme-color"]');
 
       if (theme === 'light') {
@@ -1017,11 +993,13 @@
       setTheme(isDark ? 'light' : 'dark');
     }
 
-    // --- SERVICE WORKER & PERSISTENZ ---
     function initServiceWorker() {
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js')
-          .then(reg => console.log('Service Worker aktiv:', reg.scope))
+          .then(reg => {
+            reg.update();
+            console.log('Service Worker aktiv:', reg.scope);
+          })
           .catch(err => console.warn('Service Worker Info:', err));
       }
     }
@@ -1419,7 +1397,7 @@
                   min="1" 
                   max="60" 
                   value="${nights}" 
-                  onchange="updateStopNights(${i}, this.value)"
+                  onchange="updateStopNights(${i}, this.value)" 
                   class="w-14 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-xs text-slate-900 dark:text-white"
                   title="Anzahl der Nächte an diesem Ort anpassen"
                 >
@@ -1457,7 +1435,7 @@
           const srcDay = tripData.days[lastDayIdx + k];
           const clone = JSON.parse(JSON.stringify(srcDay));
           clone.date = addDaysISO(srcDay.date, 1);
-          clone.isCollapsed = false;
+          clone.isCollapsed = true;
           if (clone.lodging) {
             clone.lodging.costStatus = 'geplant';
             clone.lodging.isBooked = false;
@@ -1504,9 +1482,7 @@
       if (currentTab !== 'plan') {
         switchTab('plan');
       }
-      if (tripData.days[index] && tripData.days[index].isCollapsed) {
-        toggleDayCollapse(index);
-      }
+      openOnlyDay(index);
       setTimeout(() => {
         const el = document.getElementById('day-card-' + index);
         if (el) {
@@ -1515,6 +1491,25 @@
           setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 1800);
         }
       }, 50);
+    }
+
+    // --- ACCORDION-HELFER (Immer nur max. 1 Tag geöffnet) ---
+    function openOnlyDay(dayIndex) {
+      if (!Array.isArray(tripData.days)) return;
+      const willOpen = tripData.days[dayIndex].isCollapsed;
+      tripData.days.forEach((d, idx) => {
+        if (idx === dayIndex) {
+          d.isCollapsed = !willOpen;
+        } else {
+          d.isCollapsed = true;
+        }
+      });
+      saveToStorage();
+      renderDays();
+    }
+
+    function toggleDayCollapse(dayIndex) {
+      openOnlyDay(dayIndex);
     }
 
     // --- MODAL & MODUS A / MODUS B STEUERUNG (TAGE EINFÜGEN & LÖSCHEN) ---
@@ -1559,7 +1554,7 @@
         btnA.className = "w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
 
         titleB.innerText = "Modus B: Echtes Verkürzen (-1 Tag)";
-        descB.innerHTML = `Tag ${dayNum} wird komplett aus dem Plan entfernt. Alle Folgetage rücken kalendarisch um 1 Tag vor, und das Reise-Enddatum wird um 1 Tag verkürzt.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch bestehende Buchungsdaten!' : ''}`;
+        descB.innerText = `Tag ${dayNum} wird komplett aus dem Plan entfernt. Alle Folgetage rücken kalendarisch um 1 Tag vor, und das Reise-Enddatum wird um 1 Tag verkürzt.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch bestehende Buchungsdaten!' : ''}`;
         btnB.innerHTML = `<i class="fa-solid fa-calendar-minus"></i> Reise verkürzen (Modus B)`;
         btnB.className = "w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
       } else {
@@ -1582,7 +1577,7 @@
         btnA.className = "w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
 
         titleB.innerText = "Modus B: Echtes Verlängern (+1 Tag)";
-        descB.innerHTML = `Fügt einen neuen Tag ein. Alle Folgetage rücken kalendarisch um +1 Tag nach hinten und das Reise-Enddatum wird verlängert.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch nachfolgende Buchungstermine!' : ''}`;
+        descB.innerText = `Fügt einen neuen Tag ein. Alle Folgetage rücken kalendarisch um +1 Tag nach hinten und das Reise-Enddatum wird verlängert.${hasLaterBookings ? ' ⚠️ ACHTUNG: Verschiebt auch nachfolgende Buchungstermine!' : ''}`;
         btnB.innerHTML = `<i class="fa-solid fa-calendar-plus"></i> Alles nach hinten verschieben (Modus B)`;
         btnB.className = "w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
       }
@@ -1668,6 +1663,8 @@
               for (let i = dayIndex + 1; i < bookedAbsIndex; i++) {
                 tripData.days[i].date = addDaysISO(tripData.days[i-1].date, 1);
               }
+              // Alle anderen Tage schließen
+              tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
               normalizeDataModel();
               recordChangeForReminder();
               saveToStorage();
@@ -1710,50 +1707,13 @@
         const endEl = document.getElementById('endDate');
         if (endEl) endEl.value = tripData.endDate;
       }
+      tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
       normalizeDataModel();
       recordChangeForReminder();
       saveToStorage();
       renderDays();
       renderRouteTimeline();
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
-    }
-
-    // --- TAG DUPLIZIEREN ---
-    function duplicateDay(dayIndex) {
-      const src = tripData.days[dayIndex];
-      if (!src) return;
-
-      const clone = JSON.parse(JSON.stringify(src));
-      clone.date = addDaysISO(src.date, 1);
-      clone.isCollapsed = false;
-      if (clone.lodging) {
-        clone.lodging.costStatus = 'geplant';
-        clone.lodging.isBooked = false;
-      }
-      if (Array.isArray(clone.transports)) {
-        clone.transports.forEach(t => t.costStatus = 'geplant');
-      }
-      if (Array.isArray(clone.activities)) {
-        clone.activities.forEach(a => { a.costStatus = 'geplant'; a.done = false; });
-      }
-
-      tripData.days.splice(dayIndex + 1, 0, clone);
-
-      for (let i = dayIndex + 2; i < tripData.days.length; i++) {
-        tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
-      }
-      if (tripData.endDate) {
-        tripData.endDate = addDaysISO(tripData.endDate, 1);
-        const endEl = document.getElementById('endDate');
-        if (endEl) endEl.value = tripData.endDate;
-      }
-
-      normalizeDataModel();
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
-      renderRouteTimeline();
-      showToast(`Tag ${dayIndex + 1} dupliziert & als Tag ${dayIndex + 2} eingefügt`);
     }
 
     // --- REIHENFOLGE VERSCHIEBEN (UP / DOWN) ---
@@ -1833,7 +1793,6 @@
       saveToStorage();
     }
 
-    // --- WECHSELKURSE & UMRECHNUNG ---
     function updateRate(curr, val) {
       const num = parseFloat(val);
       if (!isNaN(num) && num > 0) {
@@ -1994,9 +1953,7 @@
         clearSearch();
       }
 
-      if (tripData.days[targetIndex].isCollapsed) {
-        toggleDayCollapse(targetIndex);
-      }
+      openOnlyDay(targetIndex);
 
       setTimeout(() => {
         const el = document.getElementById('day-card-' + targetIndex);
@@ -2047,7 +2004,6 @@
       renderDays();
     }
 
-    // --- KOSTEN- & STATUS-HELFER ---
     function isDayBooked(day) {
       if (!day || !day.lodging) return false;
       const s = (day.lodging.costStatus || '').toLowerCase();
@@ -2072,43 +2028,18 @@
       return 'fa-route';
     }
 
-    function getHeaderTransportLineContent(day) {
-      if (!day || !Array.isArray(day.transports) || day.transports.length === 0) return '';
-
-      let html = '<div class="flex flex-wrap items-center gap-1.5 pb-1">';
-      html += '<span class="text-[11px] font-bold text-cyan-600 dark:text-cyan-400 flex items-center gap-1 shrink-0 mr-0.5">' +
-        '<i class="fa-solid fa-route"></i> Transport:' +
-      '</span>';
-
-      day.transports.forEach(tr => {
-        const icon = getTransportIcon(tr.title, tr.category);
-        const titleText = (tr.title || 'Transport').trim();
-        const status = (tr.costStatus || 'geplant').toLowerCase();
-        
-        let badgeClass = 'bg-amber-50 text-amber-800 border-amber-300 dark:bg-amber-950/70 dark:text-amber-300 dark:border-amber-700/80';
-        let statusText = '⏳ Geplant';
-        if (status === 'bezahlt' || status === 'gebucht') {
-          badgeClass = 'bg-emerald-50 text-emerald-800 border-emerald-300 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-700/80';
-          statusText = '✅ Gebucht';
-        } else if (status === 'reserviert') {
-          badgeClass = 'bg-sky-50 text-sky-800 border-sky-300 dark:bg-sky-950/70 dark:text-sky-300 dark:border-sky-700/80';
-          statusText = '📌 Reserviert';
-        }
-
-        html += '<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium shadow-xs transition ' + badgeClass + '">' +
-          '<i class="fa-solid ' + icon + ' text-cyan-600 dark:text-cyan-400"></i>' +
-          '<span class="font-bold text-slate-800 dark:text-white">' + escapeHtml(titleText) + '</span>';
-
-        if (tr.hint && tr.hint.trim()) {
-          html += '<span class="text-[10px] opacity-80 border-l border-slate-300 dark:border-slate-700 pl-1.5 italic">' + escapeHtml(tr.hint.trim()) + '</span>';
-        }
-
-        html += '<span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-white/60 dark:bg-slate-900/60 border border-black/5 dark:border-white/10">' + statusText + '</span>';
-        html += '</span>';
-      });
-
-      html += '</div>';
-      return html;
+    function getTransportEmoji(tr) {
+      if (tr.category === 'flugzeug') return '✈️';
+      if (tr.category === 'mietwagen') return '🚗';
+      if (tr.category === 'roller') return '🛵';
+      if (tr.category === 'taxi') return '🚕';
+      const t = (tr.title || '').toLowerCase();
+      if (t.includes('flug')) return '✈️';
+      if (t.includes('roller') || t.includes('scooter')) return '🛵';
+      if (t.includes('zug') || t.includes('bahn')) return '🚆';
+      if (t.includes('boot') || t.includes('fähre')) return '🚤';
+      if (t.includes('bus')) return '🚌';
+      return '🚗';
     }
 
     function getDayCostBreakdown(day) {
@@ -2183,7 +2114,6 @@
       });
     }
 
-    // --- ROLLIERENDES BACKUP-SYSTEM (INDEXEDDB) ---
     async function createRollingBackup() {
       try {
         let backups = (await idbGet('backups')) || [];
@@ -2272,7 +2202,7 @@
         if (!day || typeof day !== 'object') return;
         if (day.location === undefined) day.location = '';
         if (day.notes === undefined) day.notes = '';
-        if (day.isCollapsed === undefined) day.isCollapsed = false;
+        if (day.isCollapsed === undefined) day.isCollapsed = true; // Standard: eingeklappt
         if (!Array.isArray(day.images)) day.images = [];
 
         day.images = day.images.map(img => {
@@ -2355,7 +2285,6 @@
             saved = JSON.parse(legacy);
             await idbSet('trip_data', saved);
             localStorage.removeItem('reiseplaner_pro_pwa_data');
-            console.log("Migration von localStorage zu IndexedDB erfolgreich abgeschlossen.");
           } catch (e) {}
         }
       }
@@ -2485,7 +2414,6 @@
       if (elUSD) elUSD.value = rates.USD || 1.08;
       if (elLAK) elLAK.value = rates.LAK || 24000;
 
-      // Panel sichtbar wenn noch keine Tage generiert wurden, sonst ausgeblendet
       const panel = document.getElementById('tripConfigSection');
       if (panel) {
         if (!tripData.days || tripData.days.length === 0) {
@@ -2518,7 +2446,6 @@
       saveToStorage();
     }
 
-    // --- TAGE GENERIEREN (UTC-BASIERT) ---
     function generateOrUpdateDays() {
       const start = document.getElementById('startDate').value;
       const end = document.getElementById('endDate').value;
@@ -2556,7 +2483,7 @@
           newDays.push({
             date: iso,
             location: '',
-            isCollapsed: false,
+            isCollapsed: true, // Eingeklappt als kompakter Reading Mode
             lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
             transports: [],
             activities: [],
@@ -2572,7 +2499,6 @@
       recordChangeForReminder();
       saveToStorage();
 
-      // Nach erfolgreicher Generierung: Panel einklappen & Headline präsent aktualisieren
       const panel = document.getElementById('tripConfigSection');
       if (panel) panel.classList.add('hidden');
       updateHeadline();
@@ -2582,7 +2508,7 @@
       showToast("Tage generiert & Reiseplan aktualisiert");
     }
 
-    // --- RENDERING TAGE ---
+    // --- RENDERING TAGE (KOMPAKTER READING MODE & EXKLUSIVES ACCORDION) ---
     function renderDays() {
       const container = document.getElementById('daysContainer');
       if (!container) return;
@@ -2644,14 +2570,53 @@
 
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
+
+      // 1. KOMPAKTER READING MODE (Eingeklappt)
+      if (day.isCollapsed) {
+        card.className = 'day-card cursor-pointer bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/70 border border-slate-200 dark:border-slate-700/80 rounded-xl px-3.5 py-2.5 transition flex items-center justify-between text-xs sm:text-sm text-slate-700 dark:text-slate-200 shadow-2xs ' + (isToday ? 'border-indigo-500 ring-2 ring-indigo-500/80 today-highlight' : '');
+        
+        const shortDate = dayFormatted ? dayFormatted.slice(0, 5) : '--.--';
+        const trText = (hasTransports) 
+          ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') 
+          : '—';
+        
+        let lodgingText = '—';
+        if (day.lodging && (day.lodging.name || '').trim()) {
+          lodgingText = `🏨 ${day.lodging.name}${isBooked ? ' (gebucht)' : ''}`;
+        }
+
+        card.innerHTML = `
+          <div data-action="toggle-collapse" data-day-index="${index}" class="flex-1 flex items-center space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2">
+            <span class="font-black text-slate-900 dark:text-white">Tag ${index + 1}</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span class="text-slate-600 dark:text-slate-400 font-mono">${shortDate} (${dayName})</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span class="font-semibold text-slate-800 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span class="text-slate-600 dark:text-slate-400">${escapeHtml(trText)}</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span class="text-slate-600 dark:text-slate-400">${escapeHtml(lodgingText)}</span>
+            <span class="text-slate-300 dark:text-slate-600">|</span>
+            <span class="font-mono font-bold text-slate-900 dark:text-white">${formatEuro(dayCosts.total)}</span>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0 no-print">
+            <button data-action="toggle-collapse" data-day-index="${index}" class="p-1 text-slate-400 hover:text-indigo-600 transition" title="Tag öffnen">
+              <i class="fa-solid fa-chevron-down text-xs pointer-events-none"></i>
+            </button>
+          </div>
+        `;
+        return card;
+      }
+
+      // 2. BEARBEITUNGS-MODUS (Geöffneter Tag)
       card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
 
       let html = '';
 
-      // --- HEADER ---
+      // --- HEADER DES GEÖFFNETEN TAGES ---
       html += '<div id="day-header-' + index + '" class="px-5 py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-4 border-b ' + visual.headerClass + '">';
       
-      html += '<div class="flex items-center gap-3">' +
+      html += '<div class="flex items-center gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="' + index + '">' +
         '<div class="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
           '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
           '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
@@ -2662,13 +2627,8 @@
         '</div></div>' +
       '</div>';
 
-      // Tagesort & Zeile vor Tagesort für Transport im eingeklappten Zustand
+      // Tagesort
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
-      
-      html += '<div id="day-header-transport-' + index + '" class="' + (day.isCollapsed && hasTransports ? '' : 'hidden') + '">' +
-        getHeaderTransportLineContent(day) +
-      '</div>';
-
       html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-2 border transition ' +
           (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
@@ -2706,14 +2666,14 @@
         '<button data-action="delete-day" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
           '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print">' +
-          '<i id="collapse-icon-' + index + '" class="fa-solid ' + (day.isCollapsed ? 'fa-chevron-down' : 'fa-chevron-up') + ' text-xs pointer-events-none"></i>' +
+        '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-8 h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Einklappen">' +
+          '<i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i>' +
         '</button>' +
       '</div>';
       html += '</div>';
 
       // --- DETAILS-BEREICH ---
-      html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5 ' + (day.isCollapsed ? 'hidden' : '') + '">';
+      html += '<div id="day-body-' + index + '" class="p-5 print-compact space-y-5">';
       
       // 1. Transport & Aktivitäten
       html += '<div id="day-modules-grid-' + index + '" class="' + ((hasTransports && hasActivities) ? 'grid grid-cols-1 lg:grid-cols-2 gap-5' : 'space-y-4') + '">';
@@ -2728,15 +2688,15 @@
 
       html += '</div>';
 
-      // Buttons
+      // Kompakte Add-Buttons (keine leeren Boxen, wenn leer)
       html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
       if (!hasTransports) {
-        html += '<button data-action="add-transport" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50 dark:bg-cyan-950/20 text-cyan-800 dark:text-cyan-300 text-xs font-semibold">' +
-          '<i class="fa-solid fa-plane-departure text-cyan-600 pointer-events-none"></i> + Transport hinzufügen</button>';
+        html += '<button data-action="add-transport" data-day-index="' + index + '" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-1.5">' +
+          '<i class="fa-solid fa-plus text-[10px] pointer-events-none"></i> + Transport hinzufügen</button>';
       }
       if (!hasActivities) {
-        html += '<button data-action="add-activity" data-day-index="' + index + '" class="px-3 py-1.5 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">' +
-          '<i class="fa-solid fa-ticket text-emerald-600 pointer-events-none"></i> + Aktivität hinzufügen</button>';
+        html += '<button data-action="add-activity" data-day-index="' + index + '" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition flex items-center justify-center gap-1.5">' +
+          '<i class="fa-solid fa-plus text-[10px] pointer-events-none"></i> + Aktivität hinzufügen</button>';
       }
       html += '</div>';
 
@@ -2809,11 +2769,9 @@
       card.innerHTML = html;
       
       setTimeout(() => updateImagesDOM(index), 0);
-
       return card;
     }
 
-    // Transport Modul mit Up/Down-Pfeilen & Kategorie-Icons: Flugzeug, Mietwagen, Roller, Taxi
     function renderTransportModuleHTML(day, index) {
       let html = '<div id="transport-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
         '<div class="flex items-center justify-between mb-3">' +
@@ -2831,13 +2789,11 @@
 
         html += '<div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">' +
           '<div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">' +
-            // Hoch/Runter Buttons
             '<div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">' +
               `<button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>` +
               `<button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>` +
             '</div>' +
 
-            // Transport Kategorie Dropdown mit Icons: Flugzeug, Mietwagen, Roller, Taxi
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">' +
               '<option value="" ' + (selectedCat === '' ? 'selected' : '') + '>Auto-Icon</option>' +
               '<option value="flugzeug" ' + (selectedCat === 'flugzeug' ? 'selected' : '') + '>✈️ Flugzeug</option>' +
@@ -2870,7 +2826,6 @@
       return html;
     }
 
-    // Aktivitäten Modul mit Up/Down-Pfeilen
     function renderActivityModuleHTML(day, index) {
       let html = '<div id="activity-box-' + index + '" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between"><div>' +
         '<div class="flex items-center justify-between mb-3">' +
@@ -3055,12 +3010,6 @@
             tripData.days[dayIdx].transports[trIdx][trField] = target.value;
             if (trField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            }
-            if (trField === 'category' || trField === 'title') {
-              const trLine = document.getElementById('day-header-transport-' + dayIdx);
-              if (trLine) {
-                trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIdx]);
-              }
             }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
@@ -3249,7 +3198,7 @@
       const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
 
-      if (card) {
+      if (card && !day.isCollapsed) {
         card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
       }
       if (header) {
@@ -3296,34 +3245,6 @@
       updateStats();
     }
 
-    function toggleDayCollapse(dayIndex) {
-      if (!tripData.days[dayIndex]) return;
-      tripData.days[dayIndex].isCollapsed = !tripData.days[dayIndex].isCollapsed;
-      saveToStorage();
-      
-      const body = document.getElementById('day-body-' + dayIndex);
-      const icon = document.getElementById('collapse-icon-' + dayIndex);
-      const trLine = document.getElementById('day-header-transport-' + dayIndex);
-      
-      if (body && icon) {
-        if (tripData.days[dayIndex].isCollapsed) {
-          body.classList.add('hidden');
-          icon.className = "fa-solid fa-chevron-down text-xs pointer-events-none";
-          if (trLine) {
-            trLine.innerHTML = getHeaderTransportLineContent(tripData.days[dayIndex]);
-            trLine.classList.toggle('hidden', !(tripData.days[dayIndex].transports && tripData.days[dayIndex].transports.length > 0));
-          }
-        } else {
-          body.classList.remove('hidden');
-          icon.className = "fa-solid fa-chevron-up text-xs pointer-events-none";
-          if (trLine) {
-            trLine.classList.add('hidden');
-          }
-          autoResizeAllTextareas();
-        }
-      }
-    }
-
     function toggleAllDays(expand) {
       if (!Array.isArray(tripData.days)) return;
       tripData.days.forEach(d => { if (d) d.isCollapsed = !expand; });
@@ -3365,7 +3286,6 @@
       renderDays();
     }
 
-    // --- STATISTIKEN & GESAMTSUMMEN ---
     function updateStats() {
       const days = Array.isArray(tripData.days) ? tripData.days : [];
       const total = days.length;
@@ -3439,7 +3359,6 @@
         .replace(/'/g, "&#039;");
     }
 
-    // Globale Verankerung
     window.saveToFile = saveToFile;
     window.openFile = openFile;
     window.generateOrUpdateDays = generateOrUpdateDays;
@@ -3447,6 +3366,7 @@
     window.toggleAllDays = toggleAllDays;
     window.toggleBookingStatus = toggleBookingStatus;
     window.toggleDayCollapse = toggleDayCollapse;
+    window.openOnlyDay = openOnlyDay;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
     window.removeTransportItem = removeTransportItem;
