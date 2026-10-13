@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.81</title>
+  <title>Reiseplaner Pro v1.84</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -53,24 +53,17 @@
     .today-highlight {
       box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.45);
     }
-    .timeline-scroll::-webkit-scrollbar {
-      height: 6px;
-    }
-    .timeline-scroll::-webkit-scrollbar-thumb {
-      background-color: rgba(148, 163, 184, 0.4);
-      border-radius: 4px;
-    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-24 sm:pb-20 transition-colors duration-200">
 
-  <!-- HEADER: Mobil extrem schlank (~44px), ab 'sm:' vollständige Ansicht -->
+  <!-- HEADER -->
   <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
       
-      <!-- Linke Seite: Kompakter Titel & Zeitraum -->
+      <!-- Linke Seite: Logo, Titel & Zeitraum -->
       <div class="flex items-center gap-2 sm:gap-3 min-w-0">
         <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-xs sm:shadow-md shrink-0">
           <i class="fa-solid fa-map-location-dot text-xs sm:text-lg"></i>
@@ -81,7 +74,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.81</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.84</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -94,7 +87,7 @@
         </div>
       </div>
 
-      <!-- Rechte Seite: Kompakte Aktionen -->
+      <!-- Rechte Seite: Aktionen & Menü -->
       <div class="flex items-center gap-1.5 sm:gap-2 no-print relative shrink-0">
         <button onclick="saveToFile(false)" class="w-8 h-8 sm:w-auto sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
@@ -104,7 +97,6 @@
           <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
         </button>
 
-        <!-- Drei-Punkte-Menü Button (⋮) -->
         <div class="relative">
           <button onclick="toggleMoreMenu()" id="moreMenuBtn" class="w-8 h-8 rounded-lg sm:rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm transition flex items-center justify-center" title="Weitere Aktionen">
             <i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i>
@@ -141,13 +133,41 @@
       </div>
     </div>
 
-    <!-- DESKTOP TABS (Auf Mobile ausgeblendet: 'hidden sm:flex') -->
+    <!-- FILTER- UND SUCHLEISTE IM HEADER -->
+    <div id="headerFilterBar" class="border-t border-slate-200/80 dark:border-slate-700/60 px-3 sm:px-4 py-1.5 bg-slate-50/60 dark:bg-slate-800/60 no-print transition-all duration-200">
+      <div class="max-w-6xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
+        <div class="relative shrink-0">
+          <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-2xs">
+            <option value="all">Alle Tage</option>
+            <option value="booked_lodging">Gebuchte Unterkünfte</option>
+            <option value="open_lodging">Offene Unterkünfte</option>
+            <option value="booked_flights">Gebuchte Flüge</option>
+            <option value="open_flights">Offene Flüge</option>
+          </select>
+        </div>
+
+        <div class="relative flex-1 min-w-0">
+          <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 dark:text-slate-500 text-[10px] sm:text-xs pointer-events-none"></i>
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Suchen..." 
+            oninput="handleSearch(this.value)"
+            class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-7 sm:pl-8 pr-6 py-1 sm:py-1.5 text-[11px] sm:text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-2xs"
+          >
+          <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-2 top-1 sm:top-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs leading-none">&times;</button>
+        </div>
+
+        <button onclick="jumpToToday()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-xs shrink-0" title="Zum heutigen Reisetag scrollen">
+          <i class="fa-solid fa-crosshairs text-[10px] sm:text-xs"></i> <span>Heute</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- DESKTOP TABS -->
     <div class="hidden sm:flex max-w-6xl mx-auto px-4 items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
       <button onclick="switchTab('plan')" id="deskTabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
-      </button>
-      <button onclick="switchTab('timeline')" id="deskTabBtn-timeline" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
-        <i class="fa-solid fa-route"></i> 📍 Timeline
       </button>
       <button onclick="switchTab('budget')" id="deskTabBtn-budget" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-wallet"></i> 💰 Budget & Kurse
@@ -226,70 +246,11 @@
         </div>
       </section>
 
-      <!-- Filter-Leiste & Suche -->
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3 sm:p-3.5 shadow-sm transition-colors duration-200 no-print flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
-        <div class="flex flex-wrap items-center gap-1.5 text-xs">
-          <button onclick="setFilter('all')" id="filter-all" class="px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow-xs text-[11px] sm:text-xs">
-            Alle Tage
-          </button>
-          <button onclick="setFilter('open_lodging')" id="filter-open_lodging" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] sm:text-xs">
-            ⚠️ Offene Unterkünfte
-          </button>
-          <button onclick="setFilter('travel_days')" id="filter-travel_days" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] sm:text-xs">
-            ✈️ Reisetage
-          </button>
-          <button onclick="setFilter('pending_costs')" id="filter-pending_costs" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] sm:text-xs">
-            ⏳ Ausstehend
-          </button>
-          <button onclick="setFilter('with_attachments')" id="filter-with_attachments" class="px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] sm:text-xs">
-            📎 Mit Belegen
-          </button>
-        </div>
-
-        <div class="flex items-center gap-2 w-full sm:w-auto">
-          <div class="relative flex-1 sm:w-56">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 dark:text-slate-500 text-xs"></i>
-            <input 
-              type="text" 
-              id="searchInput" 
-              placeholder="Ort, Hotel, Notiz suchen..." 
-              oninput="handleSearch(this.value)"
-              class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-8 pr-7 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
-            >
-            <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-2.5 top-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs">&times;</button>
-          </div>
-          <button onclick="jumpToToday()" class="px-3 py-1.5 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs shrink-0" title="Zum heutigen Reisetag scrollen">
-            <i class="fa-solid fa-crosshairs"></i> <span class="hidden sm:inline">Zu</span> heute
-          </button>
-        </div>
-      </section>
-
       <!-- Liste der Reisetage (Accordion) -->
       <div id="daysContainer" class="space-y-2"></div>
     </div>
 
-    <!-- ==================== TAB 2: 📍 TIMELINE (VERTIKALE ETAPPEN-MINIMAP) ==================== -->
-    <div id="tabContent-timeline" class="tab-content hidden space-y-4">
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/60 pb-3">
-          <div>
-            <h2 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <i class="fa-solid fa-route text-indigo-500"></i> Etappen-Minimap & Reiseroute (Vertikal)
-            </h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Gib die Nächte pro Etappe an. Ein Klick auf eine Etappe leitet dich direkt zum entsprechenden Tag im Reiseplan.
-            </p>
-          </div>
-          <div class="text-xs font-bold text-slate-600 dark:text-slate-400">
-            Gesamtreise: <span id="verticalTimelineTotalNights" class="text-indigo-600 dark:text-indigo-400 font-mono">0 Nächte</span>
-          </div>
-        </div>
-
-        <div id="verticalTimelineContainer" class="space-y-4 py-2"></div>
-      </section>
-    </div>
-
-    <!-- ==================== TAB 3: 💰 BUDGET & KURSE ==================== -->
+    <!-- ==================== TAB 2: 💰 BUDGET & KURSE ==================== -->
     <div id="tabContent-budget" class="tab-content hidden space-y-5">
       <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
@@ -383,7 +344,7 @@
       </section>
     </div>
 
-    <!-- ==================== TAB 4: 🎒 CHECKLISTE & NOTIZEN ==================== -->
+    <!-- ==================== TAB 3: 🎒 CHECKLISTE & NOTIZEN ==================== -->
     <div id="tabContent-notes" class="tab-content hidden space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-3">
@@ -473,60 +434,23 @@
 
   </main>
 
-  <!-- MOBILE BOTTOM NAVIGATION BAR (sm:hidden - daumenfreundlich) -->
-  <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 px-2 py-1 flex items-center justify-around shadow-lg no-print">
-    <button onclick="switchTab('plan')" id="mobTabBtn-plan" class="flex flex-col items-center justify-center py-1 px-3 text-indigo-600 dark:text-indigo-400 font-bold transition">
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
+  <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 px-3 py-1 flex items-center justify-around shadow-lg no-print">
+    <button onclick="switchTab('plan')" id="mobTabBtn-plan" class="flex flex-col items-center justify-center py-1 px-4 text-indigo-600 dark:text-indigo-400 font-bold transition">
       <i class="fa-solid fa-calendar-days text-base mb-0.5"></i>
       <span class="text-[10px]">Plan</span>
     </button>
-    <button onclick="switchTab('timeline')" id="mobTabBtn-timeline" class="flex flex-col items-center justify-center py-1 px-3 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
-      <i class="fa-solid fa-route text-base mb-0.5"></i>
-      <span class="text-[10px]">Route</span>
-    </button>
-    <button onclick="switchTab('budget')" id="mobTabBtn-budget" class="flex flex-col items-center justify-center py-1 px-3 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
+    <button onclick="switchTab('budget')" id="mobTabBtn-budget" class="flex flex-col items-center justify-center py-1 px-4 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
       <i class="fa-solid fa-wallet text-base mb-0.5"></i>
       <span class="text-[10px]">Budget</span>
     </button>
-    <button onclick="switchTab('notes')" id="mobTabBtn-notes" class="flex flex-col items-center justify-center py-1 px-3 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
+    <button onclick="switchTab('notes')" id="mobTabBtn-notes" class="flex flex-col items-center justify-center py-1 px-4 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
       <i class="fa-solid fa-list-check text-base mb-0.5"></i>
       <span class="text-[10px]">Notizen</span>
     </button>
   </nav>
 
-  <!-- SCHWEBENDER SCHNELL-WÄHRUNGSRECHNER (Mobil: bottom-20, Desktop: sm:bottom-6) -->
-  <aside id="quickCalcWidget" class="fixed bottom-20 sm:bottom-6 left-4 sm:left-6 z-40 no-print">
-    <button onclick="toggleQuickCalc()" class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white shadow-2xl flex items-center justify-center text-base sm:text-lg transition duration-200 hover:scale-105 active:scale-95" title="Schnell-Währungsrechner">
-      <i class="fa-solid fa-calculator"></i>
-    </button>
-
-    <div id="quickCalcPopup" class="hidden absolute bottom-14 left-0 w-72 sm:w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-2xl space-y-3">
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-2">
-        <span class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-          <i class="fa-solid fa-coins text-amber-500"></i> Schnell-Währungsrechner
-        </span>
-        <button onclick="toggleQuickCalc()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white text-base font-bold">&times;</button>
-      </div>
-
-      <div class="space-y-2.5">
-        <div class="flex items-center gap-1.5">
-          <input type="number" id="quickCalcAmount" placeholder="Betrag..." oninput="runQuickCalc()" class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white font-mono">
-          <select id="quickCalcCurr" onchange="runQuickCalc()" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 dark:text-white">
-            <option value="THB">THB</option>
-            <option value="LAK">LAK</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR ➔ Lokal</option>
-          </select>
-        </div>
-
-        <div class="p-3 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800/80 text-center">
-          <span id="quickCalcResultLabel" class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400 block mb-0.5">Euro-Gegenwert (ca.)</span>
-          <b id="quickCalcResult" class="text-base sm:text-lg font-black text-indigo-600 dark:text-indigo-400">0,00 €</b>
-        </div>
-      </div>
-    </div>
-  </aside>
-
-  <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
+  <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN -->
   <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -596,7 +520,7 @@
     </div>
   </div>
 
-  <!-- Benachrichtigungs-Toast (Mobil: bottom-20, Desktop: sm:bottom-6) -->
+  <!-- Benachrichtigungs-Toast -->
   <div id="toast" class="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white text-xs px-4 py-3 rounded-xl shadow-2xl transition duration-300 opacity-0 pointer-events-none flex items-center gap-2 z-50 no-print">
     <i id="toastIcon" class="fa-solid fa-check text-emerald-500 dark:text-emerald-400 text-sm"></i>
     <span id="toastMsg">Gespeichert</span>
@@ -846,7 +770,6 @@
 
       updateHeadline();
       renderDays();
-      renderRouteTimeline();
       renderChecklist();
       updateStats();
 
@@ -858,10 +781,10 @@
       showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
     }
 
-    // --- TAB NAVIGATION (SYNCHRON FÜR DESKTOP- & BOTTOM-BAR) ---
+    // --- TAB NAVIGATION (3 TABS) ---
     function switchTab(tabId) {
       currentTab = tabId;
-      const tabs = ['plan', 'timeline', 'budget', 'notes'];
+      const tabs = ['plan', 'budget', 'notes'];
       tabs.forEach(t => {
         const content = document.getElementById('tabContent-' + t);
         const deskBtn = document.getElementById('deskTabBtn-' + t);
@@ -873,25 +796,26 @@
           content.classList.toggle('hidden', !isActive);
         }
 
-        // Desktop Button Styling
         if (deskBtn) {
           deskBtn.className = isActive
             ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0"
             : "px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0";
         }
 
-        // Mobile Bottom Bar Styling
         if (mobBtn) {
           mobBtn.className = isActive
-            ? "flex flex-col items-center justify-center py-1 px-3 text-indigo-600 dark:text-indigo-400 font-bold transition"
-            : "flex flex-col items-center justify-center py-1 px-3 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition";
+            ? "flex flex-col items-center justify-center py-1 px-4 text-indigo-600 dark:text-indigo-400 font-bold transition"
+            : "flex flex-col items-center justify-center py-1 px-4 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition";
         }
       });
 
+      const filterBar = document.getElementById('headerFilterBar');
+      if (filterBar) {
+        filterBar.classList.toggle('hidden', tabId !== 'plan');
+      }
+
       if (tabId === 'plan') {
         autoResizeAllTextareas();
-      } else if (tabId === 'timeline') {
-        renderVerticalTimeline();
       }
     }
 
@@ -1216,7 +1140,7 @@
       }, 2500);
     }
 
-    // --- BELEGE & MEDIEN (BINÄRE BLOBS IN MEDIA_STORE) ---
+    // --- BELEGE & MEDIEN (MEDIA_STORE) ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
       const items = e.clipboardData.items;
@@ -1428,6 +1352,7 @@
       return 'https://' + trimmed;
     }
 
+    // --- CSV-EXPORT DER AUSGABEN ---
     function exportToCSV() {
       const rows = [
         ["Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (Original)", "Waehrung", "Euro-Aequivalent", "Status", "Hinweis / Link"]
@@ -1500,208 +1425,6 @@
       showToast("CSV-Export heruntergeladen");
     }
 
-    function getTripStops() {
-      const days = tripData.days || [];
-      const stops = [];
-      let currentStop = null;
-
-      days.forEach((day, idx) => {
-        const rawLoc = (day.location || '').trim();
-        const displayLoc = rawLoc || 'Tag ' + (idx + 1);
-
-        if (!currentStop || currentStop.location !== displayLoc) {
-          currentStop = {
-            stopIndex: stops.length,
-            location: displayLoc,
-            isDefined: rawLoc !== '',
-            startDay: idx + 1,
-            endDay: idx + 1,
-            targetIndex: idx,
-            dayIndices: [idx]
-          };
-          stops.push(currentStop);
-        } else {
-          currentStop.endDay = idx + 1;
-          currentStop.dayIndices.push(idx);
-        }
-      });
-
-      return stops;
-    }
-
-    function renderRouteTimeline() {
-      renderVerticalTimeline();
-    }
-
-    function renderVerticalTimeline() {
-      const container = document.getElementById('verticalTimelineContainer');
-      const totalNightsEl = document.getElementById('verticalTimelineTotalNights');
-      if (!container) return;
-
-      const stops = getTripStops();
-      const totalDays = (tripData.days || []).length;
-      if (totalNightsEl) {
-        totalNightsEl.innerText = `${totalDays} Nacht${totalDays === 1 ? '' : 'e'}`;
-      }
-
-      if (stops.length === 0) {
-        container.innerHTML = '<p class="text-xs text-slate-500 italic p-4 text-center">Noch keine Reisetage vorhanden.</p>';
-        return;
-      }
-
-      let html = '';
-      stops.forEach((stop, i) => {
-        const nights = stop.dayIndices.length;
-        const isLast = i === stops.length - 1;
-        const sDay = stop.startDay;
-        const eDay = stop.endDay;
-        const dayLabel = sDay === eDay ? `Tag ${sDay}` : `Tag ${sDay} – ${eDay}`;
-        const dayObj = tripData.days[stop.targetIndex];
-        const { dayFormatted } = formatISODate(dayObj ? dayObj.date : '');
-
-        const badgeColor = stop.isDefined
-          ? 'bg-amber-100/80 border-amber-300 text-amber-900 dark:bg-amber-950/70 dark:border-amber-800 dark:text-amber-200'
-          : 'bg-rose-100/70 border-rose-300 text-rose-800 dark:bg-rose-950/60 dark:border-rose-900/60 dark:text-rose-300';
-
-        html += `
-          <div class="relative flex items-start gap-3 sm:gap-4">
-            <div class="flex flex-col items-center">
-              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-md shrink-0 z-10">
-                ${i + 1}
-              </div>
-              ${!isLast ? '<div class="w-0.5 bg-indigo-200 dark:bg-indigo-900/80 my-1 h-14"></div>' : ''}
-            </div>
-
-            <div class="flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-3 sm:p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 shadow-xs hover:border-indigo-400 transition">
-              <div onclick="scrollToDay(${stop.targetIndex})" class="cursor-pointer flex-1 space-y-1">
-                <div class="flex items-center gap-2">
-                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}">
-                    ${dayLabel}
-                  </span>
-                  <span class="text-xs text-slate-400 font-mono">${dayFormatted}</span>
-                </div>
-                <div class="text-sm font-black text-slate-900 dark:text-white flex items-center gap-1.5 hover:text-indigo-600 dark:hover:text-indigo-400 transition">
-                  <i class="fa-solid fa-location-dot text-indigo-500 text-xs"></i> ${escapeHtml(stop.location)}
-                </div>
-                <p class="text-[11px] text-slate-500 dark:text-slate-400">Klicken, um direkt im Reiseplan zu öffnen &rarr;</p>
-              </div>
-
-              <div class="flex items-center gap-2 self-start sm:self-auto shrink-0 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
-                <span class="text-xs font-semibold text-slate-600 dark:text-slate-400"><i class="fa-solid fa-bed text-indigo-500"></i> Nächte:</span>
-                <input 
-                  type="number" 
-                  min="1" 
-                  max="60" 
-                  value="${nights}" 
-                  onchange="updateStopNights(${i}, this.value)" 
-                  class="w-14 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1 text-center font-bold text-xs text-slate-900 dark:text-white"
-                  title="Anzahl der Nächte an diesem Ort anpassen"
-                >
-                <button onclick="scrollToDay(${stop.targetIndex})" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition flex items-center gap-1 shadow-xs" title="Im Reiseplan anzeigen">
-                  Öffnen <i class="fa-solid fa-arrow-right text-[10px]"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-
-      container.innerHTML = html;
-    }
-
-    function updateStopNights(stopIndex, newNightsVal) {
-      const stops = getTripStops();
-      const stop = stops[stopIndex];
-      if (!stop) return;
-
-      const targetNights = parseInt(newNightsVal, 10);
-      if (isNaN(targetNights) || targetNights < 1) {
-        renderVerticalTimeline();
-        return;
-      }
-
-      const curNights = stop.dayIndices.length;
-      const diff = targetNights - curNights;
-
-      if (diff === 0) return;
-
-      if (diff > 0) {
-        const lastDayIdx = stop.dayIndices[stop.dayIndices.length - 1];
-        for (let k = 0; k < diff; k++) {
-          const srcDay = tripData.days[lastDayIdx + k];
-          const clone = JSON.parse(JSON.stringify(srcDay));
-          clone.date = addDaysISO(srcDay.date, 1);
-          clone.isCollapsed = true;
-          clone.images = [];
-          if (clone.lodging) {
-            clone.lodging.costStatus = 'geplant';
-            clone.lodging.isBooked = false;
-          }
-          tripData.days.splice(lastDayIdx + k + 1, 0, clone);
-        }
-
-        for (let i = lastDayIdx + diff + 1; i < tripData.days.length; i++) {
-          tripData.days[i].date = addDaysISO(tripData.days[i].date, diff);
-        }
-        if (tripData.endDate) {
-          tripData.endDate = addDaysISO(tripData.endDate, diff);
-          const endEl = document.getElementById('endDate');
-          if (endEl) endEl.value = tripData.endDate;
-        }
-
-        showToast(`${diff} Nacht/Nächte zu "${stop.location}" hinzugefügt`);
-      } else {
-        const removeCount = Math.abs(diff);
-        const lastDayIdx = stop.dayIndices[stop.dayIndices.length - 1];
-        
-        for (let r = 0; r < removeCount; r++) {
-          const dToDel = tripData.days[lastDayIdx - r];
-          if (dToDel && dToDel.images) {
-            dToDel.images.forEach(img => {
-              if (img && img.id) {
-                revokeMediaBlobUrl(img.id);
-                mediaStoreDelete(img.id);
-              }
-            });
-          }
-        }
-
-        tripData.days.splice(lastDayIdx - removeCount + 1, removeCount);
-
-        for (let i = lastDayIdx - removeCount + 1; i < tripData.days.length; i++) {
-          tripData.days[i].date = addDaysISO(tripData.days[i].date, -removeCount);
-        }
-        if (tripData.endDate) {
-          tripData.endDate = addDaysISO(tripData.endDate, -removeCount);
-          const endEl = document.getElementById('endDate');
-          if (endEl) endEl.value = tripData.endDate;
-        }
-
-        showToast(`${removeCount} Nacht/Nächte von "${stop.location}" entfernt`);
-      }
-
-      normalizeDataModel();
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
-      renderVerticalTimeline();
-    }
-
-    function scrollToDay(index) {
-      if (currentTab !== 'plan') {
-        switchTab('plan');
-      }
-      openOnlyDay(index);
-      setTimeout(() => {
-        const el = document.getElementById('day-card-' + index);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          el.classList.add('ring-4', 'ring-indigo-400');
-          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 1800);
-        }
-      }, 50);
-    }
-
     function openOnlyDay(dayIndex) {
       if (!Array.isArray(tripData.days)) return;
       const willOpen = tripData.days[dayIndex].isCollapsed;
@@ -1720,6 +1443,7 @@
       openOnlyDay(dayIndex);
     }
 
+    // --- MODAL & MODUS A / MODUS B STEUERUNG ---
     function openDayActionModal(type, dayIndex) {
       pendingModalAction = { type, dayIndex };
       const modal = document.getElementById('dayActionModal');
@@ -1824,7 +1548,6 @@
           recordChangeForReminder();
           saveToStorage();
           renderDays();
-          renderRouteTimeline();
           showToast(`Tag ${dayIndex + 1} geleert & als Puffer erhalten (Modus A)`);
         } else {
           tripData.days.splice(dayIndex, 1);
@@ -1840,7 +1563,6 @@
           recordChangeForReminder();
           saveToStorage();
           renderDays();
-          renderRouteTimeline();
           showToast(`Tag ${dayIndex + 1} gelöscht & Reise verkürzt (Modus B)`);
         }
       } else if (type === 'insert') {
@@ -1884,7 +1606,6 @@
               recordChangeForReminder();
               saveToStorage();
               renderDays();
-              renderRouteTimeline();
               showToast(`Tag eingefügt (Puffertag genutzt, Buchung geschützt)`);
             } else {
               alert(`Modus A blockiert: An Tag ${bookedAbsIndex + 1} liegt eine feste Buchung. Dazwischen existiert kein freier Puffertag.\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
@@ -1927,7 +1648,6 @@
       recordChangeForReminder();
       saveToStorage();
       renderDays();
-      renderRouteTimeline();
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
     }
 
@@ -1968,37 +1688,6 @@
       window.location.href = `geo:0,0?q=${q}`;
     }
 
-    function toggleQuickCalc() {
-      const popup = document.getElementById('quickCalcPopup');
-      if (popup) popup.classList.toggle('hidden');
-    }
-
-    function runQuickCalc() {
-      const amt = parseFloat(document.getElementById('quickCalcAmount').value);
-      const curr = document.getElementById('quickCalcCurr').value;
-      const resEl = document.getElementById('quickCalcResult');
-      const labelEl = document.getElementById('quickCalcResultLabel');
-      if (!resEl) return;
-
-      if (isNaN(amt) || amt <= 0) {
-        resEl.innerText = '0,00 €';
-        return;
-      }
-
-      if (curr === 'EUR') {
-        const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
-        labelEl.innerText = "Lokale Währungen für " + formatEuro(amt);
-        const thb = (amt * (rates.THB || 38)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
-        const lak = (amt * (rates.LAK || 24000)).toLocaleString('de-DE', { maximumFractionDigits: 0 });
-        const usd = (amt * (rates.USD || 1.08)).toFixed(2);
-        resEl.innerHTML = `<span class="text-xs font-mono font-bold">${thb} THB &bull; ${lak} LAK &bull; $${usd}</span>`;
-      } else {
-        labelEl.innerText = "Euro-Gegenwert (ca.)";
-        const eur = convertToEur(amt, curr);
-        resEl.innerText = formatEuro(eur);
-      }
-    }
-
     function saveEmergencyNotes(val) {
       tripData.emergencyNotes = val;
       recordChangeForReminder();
@@ -2013,7 +1702,6 @@
         recordChangeForReminder();
         saveToStorage();
         updateAllCostDisplays();
-        runQuickCalc();
       }
     }
 
@@ -2184,16 +1872,33 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
+    function isFlightTransport(t) {
+      if (!t) return false;
+      if (t.category === 'flugzeug') return true;
+      const title = (t.title || '').toLowerCase();
+      return title.includes('flug') || title.includes('flight') || title.includes('airline') || title.includes('airport');
+    }
+
+    function hasBookedFlight(day) {
+      return Array.isArray(day.transports) && day.transports.some(t => {
+        if (!isFlightTransport(t)) return false;
+        const s = (t.costStatus || '').toLowerCase();
+        return s === 'gebucht' || s === 'bezahlt' || s === 'reserviert';
+      });
+    }
+
+    function hasOpenFlight(day) {
+      return Array.isArray(day.transports) && day.transports.some(t => {
+        if (!isFlightTransport(t)) return false;
+        const s = (t.costStatus || '').toLowerCase();
+        return s === 'geplant' || (!s && s !== 'gebucht' && s !== 'bezahlt' && s !== 'reserviert');
+      });
+    }
+
     function setFilter(filterType) {
       currentFilter = filterType;
-      ['all', 'open_lodging', 'travel_days', 'pending_costs', 'with_attachments'].forEach(id => {
-        const btn = document.getElementById('filter-' + id);
-        if (btn) {
-          btn.className = (id === filterType)
-            ? "px-2.5 py-1.5 rounded-lg border font-semibold transition bg-indigo-600 text-white border-indigo-500 shadow-xs text-[11px] sm:text-xs"
-            : "px-2.5 py-1.5 rounded-lg border font-medium transition bg-slate-100 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-[11px] sm:text-xs";
-        }
-      });
+      const select = document.getElementById('filterSelect');
+      if (select) select.value = filterType;
       renderDays();
     }
 
@@ -2622,8 +2327,6 @@
       updateHeadline();
       renderChecklist();
       renderDays();
-      renderRouteTimeline();
-      runQuickCalc();
     }
 
     function saveMetaData() {
@@ -2633,7 +2336,6 @@
       recordChangeForReminder();
       saveToStorage();
       updateHeadline();
-      renderRouteTimeline();
     }
 
     function saveGeneralNotes(val) {
@@ -2700,7 +2402,6 @@
       updateHeadline();
 
       renderDays();
-      renderRouteTimeline();
       showToast("Tage generiert & Reiseplan aktualisiert");
     }
 
@@ -2722,10 +2423,10 @@
 
       tripData.days.forEach((day, index) => {
         let matchesFilter = true;
-        if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
-        else if (currentFilter === 'travel_days') matchesFilter = Array.isArray(day.transports) && day.transports.length > 0;
-        else if (currentFilter === 'pending_costs') matchesFilter = getDayCostBreakdown(day).pending > 0;
-        else if (currentFilter === 'with_attachments') matchesFilter = Array.isArray(day.images) && day.images.length > 0;
+        if (currentFilter === 'booked_lodging') matchesFilter = isDayBooked(day);
+        else if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
+        else if (currentFilter === 'booked_flights') matchesFilter = hasBookedFlight(day);
+        else if (currentFilter === 'open_flights') matchesFilter = hasOpenFlight(day);
 
         let matchesSearch = true;
         if (searchQuery) {
@@ -2746,7 +2447,7 @@
 
       if (matchCount === 0) {
         container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 sm:p-8 text-center text-slate-600 dark:text-slate-400 no-print">' +
-          '<p class="text-xs sm:text-sm font-semibold">Keine Tage gefunden</p>' +
+          '<p class="text-xs sm:text-sm font-semibold">Keine Tage für diesen Filter/Suche gefunden</p>' +
           '<button onclick="setFilter(\'all\'); clearSearch();" class="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Filter zurücksetzen</button></div>';
       }
 
@@ -2808,23 +2509,23 @@
         return card;
       }
 
-      // 2. BEARBEITUNGS-MODUS (Geöffneter Tag)
-      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+      // 2. BEARBEITUNGS-MODUS (Geöffneter Tag - relative & ohne overflow-hidden für sticky Datumspille)
+      card.className = 'day-card rounded-2xl border transition-all duration-200 relative shadow-sm dark:shadow-md ' + visual.cardClass;
 
       let html = '';
 
-      // Header des geöffneten Tages
       html += '<div id="day-header-' + index + '" class="px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ' + visual.headerClass + '">';
       
-      html += '<div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="' + index + '" title="Tag zuklappen">' +
-        '<div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
-          '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
-          '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
+      // VARIANTE 2: SCHWEBENDE DATUMS-PILLE BEIM SCROLLEN
+      html += '<div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer sticky top-[80px] sm:top-[128px] z-20 self-start" data-action="toggle-collapse" data-day-index="' + index + '" title="Tag zuklappen">' +
+        '<div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-800 dark:text-slate-200 text-center border border-slate-300 dark:border-slate-600 shadow-md shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50/95 dark:bg-indigo-950/90' : '') + '">' +
+          '<div class="text-[10px] uppercase font-black text-indigo-600 dark:text-indigo-400">' + dayName + '</div>' +
+          '<div class="text-xs font-black">' + dayFormatted + '</div>' +
         '</div>' +
-        '<div><div class="flex items-center gap-1.5">' +
-          '<span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
-          (isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
-        '</div></div>' +
+        '<div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-300 dark:border-slate-600 shadow-sm flex items-center gap-1.5">' +
+          '<span class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
+          (isToday ? '<span class="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
+        '</div>' +
       '</div>';
 
       // Tagesort
@@ -2884,7 +2585,6 @@
       }
       html += '</div>';
 
-      // Kompakte Add-Buttons (leere Boxen bleiben ausgeblendet)
       html += '<div id="day-add-buttons-' + index + '" class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 no-print ' + ((hasTransports && hasActivities) ? 'hidden' : '') + '">';
       if (!hasTransports) {
         html += '<button data-action="add-transport" data-day-index="' + index + '" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-1.5">' +
@@ -2896,7 +2596,6 @@
       }
       html += '</div>';
 
-      // Notizen & Belege
       html += '<div class="space-y-2.5 sm:space-y-3">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
@@ -2920,7 +2619,6 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
@@ -3266,7 +2964,6 @@
             updateDayCardVisualStatus(dayIdx);
             recordChangeForReminder();
             saveToStorage();
-            renderRouteTimeline();
           } else if (field === 'notes') {
             tripData.days[dayIdx].notes = target.value;
             recordChangeForReminder();
@@ -3397,7 +3094,7 @@
         if (day.isCollapsed) {
           card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
         } else {
-          card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+          card.className = 'day-card rounded-2xl border transition-all duration-200 relative shadow-sm dark:shadow-md ' + visual.cardClass;
         }
       }
       if (header) {
@@ -3597,7 +3294,6 @@
     window.openLightbox = openLightbox;
     window.closeLightbox = closeLightbox;
     window.exportToCSV = exportToCSV;
-    window.scrollToDay = scrollToDay;
     window.openDayActionModal = openDayActionModal;
     window.closeDayActionModal = closeDayActionModal;
     window.executeDayAction = executeDayAction;
@@ -3605,10 +3301,6 @@
     window.toggleMoreMenu = toggleMoreMenu;
     window.toggleConfigPanel = toggleConfigPanel;
     window.switchTab = switchTab;
-    window.toggleQuickCalc = toggleQuickCalc;
-    window.runQuickCalc = runQuickCalc;
-    window.renderVerticalTimeline = renderVerticalTimeline;
-    window.updateStopNights = updateStopNights;
     window.createNewTrip = createNewTrip;
   </script>
 </body>
