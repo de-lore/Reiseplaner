@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.83</title>
+  <title>Reiseplaner Pro v1.84</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -74,7 +74,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.83</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.84</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -97,7 +97,6 @@
           <i id="themeToggleIcon" class="fa-solid fa-sun"></i>
         </button>
 
-        <!-- Drei-Punkte-Menü Button (⋮) -->
         <div class="relative">
           <button onclick="toggleMoreMenu()" id="moreMenuBtn" class="w-8 h-8 rounded-lg sm:rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-sm transition flex items-center justify-center" title="Weitere Aktionen">
             <i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i>
@@ -134,11 +133,9 @@
       </div>
     </div>
 
-    <!-- IN HEADER VERSCHOBENE FILTER-, SUCH- & HEUTE-LEISTE (Ultra-schlank für Android & PC) -->
+    <!-- FILTER- UND SUCHLEISTE IM HEADER -->
     <div id="headerFilterBar" class="border-t border-slate-200/80 dark:border-slate-700/60 px-3 sm:px-4 py-1.5 bg-slate-50/60 dark:bg-slate-800/60 no-print transition-all duration-200">
       <div class="max-w-6xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
-        
-        <!-- Schlankes Filter-Dropdown -->
         <div class="relative shrink-0">
           <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-2xs">
             <option value="all">Alle Tage</option>
@@ -149,7 +146,6 @@
           </select>
         </div>
 
-        <!-- Schlanke Suche -->
         <div class="relative flex-1 min-w-0">
           <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 dark:text-slate-500 text-[10px] sm:text-xs pointer-events-none"></i>
           <input 
@@ -162,14 +158,13 @@
           <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-2 top-1 sm:top-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs leading-none">&times;</button>
         </div>
 
-        <!-- Schlanker "Heute" Button -->
         <button onclick="jumpToToday()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-xs shrink-0" title="Zum heutigen Reisetag scrollen">
           <i class="fa-solid fa-crosshairs text-[10px] sm:text-xs"></i> <span>Heute</span>
         </button>
       </div>
     </div>
 
-    <!-- DESKTOP TABS (Auf Mobile ausgeblendet: 'hidden sm:flex') -->
+    <!-- DESKTOP TABS -->
     <div class="hidden sm:flex max-w-6xl mx-auto px-4 items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
       <button onclick="switchTab('plan')" id="deskTabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
@@ -439,7 +434,7 @@
 
   </main>
 
-  <!-- MOBILE BOTTOM NAVIGATION BAR (sm:hidden - daumenfreundlich) -->
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
   <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 px-3 py-1 flex items-center justify-around shadow-lg no-print">
     <button onclick="switchTab('plan')" id="mobTabBtn-plan" class="flex flex-col items-center justify-center py-1 px-4 text-indigo-600 dark:text-indigo-400 font-bold transition">
       <i class="fa-solid fa-calendar-days text-base mb-0.5"></i>
@@ -455,7 +450,7 @@
     </button>
   </nav>
 
-  <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
+  <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN -->
   <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -814,7 +809,6 @@
         }
       });
 
-      // Filterleiste nur im Reiseplan-Tab anzeigen
       const filterBar = document.getElementById('headerFilterBar');
       if (filterBar) {
         filterBar.classList.toggle('hidden', tabId !== 'plan');
@@ -1878,7 +1872,6 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
-    // --- FILTER-HELFER FÜR FLÜGE & UNTERKÜNFTE ---
     function isFlightTransport(t) {
       if (!t) return false;
       if (t.category === 'flugzeug') return true;
@@ -2516,22 +2509,23 @@
         return card;
       }
 
-      // 2. BEARBEITUNGS-MODUS (Geöffneter Tag)
-      card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+      // 2. BEARBEITUNGS-MODUS (Geöffneter Tag - relative & ohne overflow-hidden für sticky Datumspille)
+      card.className = 'day-card rounded-2xl border transition-all duration-200 relative shadow-sm dark:shadow-md ' + visual.cardClass;
 
       let html = '';
 
       html += '<div id="day-header-' + index + '" class="px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ' + visual.headerClass + '">';
       
-      html += '<div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="' + index + '" title="Tag zuklappen">' +
-        '<div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : '') + '">' +
-          '<div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">' + dayName + '</div>' +
-          '<div class="text-xs font-bold">' + dayFormatted + '</div>' +
+      // VARIANTE 2: SCHWEBENDE DATUMS-PILLE BEIM SCROLLEN
+      html += '<div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer sticky top-[80px] sm:top-[128px] z-20 self-start" data-action="toggle-collapse" data-day-index="' + index + '" title="Tag zuklappen">' +
+        '<div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-md text-slate-800 dark:text-slate-200 text-center border border-slate-300 dark:border-slate-600 shadow-md shrink-0 ' + (isToday ? 'border-indigo-500 bg-indigo-50/95 dark:bg-indigo-950/90' : '') + '">' +
+          '<div class="text-[10px] uppercase font-black text-indigo-600 dark:text-indigo-400">' + dayName + '</div>' +
+          '<div class="text-xs font-black">' + dayFormatted + '</div>' +
         '</div>' +
-        '<div><div class="flex items-center gap-1.5">' +
-          '<span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
-          (isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
-        '</div></div>' +
+        '<div class="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-300 dark:border-slate-600 shadow-sm flex items-center gap-1.5">' +
+          '<span class="text-xs font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wider">Tag ' + (index + 1) + '</span>' +
+          (isToday ? '<span class="px-1.5 py-0.2 rounded-full text-[9px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : '') +
+        '</div>' +
       '</div>';
 
       // Tagesort
@@ -2602,7 +2596,6 @@
       }
       html += '</div>';
 
-      // Notizen & Belege
       html += '<div class="space-y-2.5 sm:space-y-3">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
@@ -2626,7 +2619,6 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
@@ -3102,7 +3094,7 @@
         if (day.isCollapsed) {
           card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
         } else {
-          card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
+          card.className = 'day-card rounded-2xl border transition-all duration-200 relative shadow-sm dark:shadow-md ' + visual.cardClass;
         }
       }
       if (header) {
