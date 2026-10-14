@@ -360,11 +360,16 @@
         </section>
 
         <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-3 flex flex-col">
-          <div class="flex items-center justify-between">
+          <div class="flex items-center justify-between gap-2">
             <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
               <i class="fa-solid fa-list-check"></i> Packliste
             </h2>
-            <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
+            <div class="flex items-center gap-2.5">
+              <button onclick="resetChecklistDone()" id="resetChecklistBtn" class="hidden text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline no-print flex items-center gap-1" title="Alle erledigten Punkte wieder öffnen">
+                <i class="fa-solid fa-rotate-left text-[10px]"></i> Alle Haken zurücksetzen
+              </button>
+              <span id="checklistProgress" class="text-[11px] font-semibold text-slate-400">0/0 erledigt</span>
+            </div>
           </div>
           <div id="checklistContainer" class="space-y-1.5 max-h-56 overflow-y-auto pr-1 flex-1"></div>
           <div class="flex items-center gap-2 pt-3 border-t border-slate-200 dark:border-slate-700/60 no-print">
@@ -487,11 +492,28 @@
     </div>
   </div>
 
-  <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX) -->
+  <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX INKL. BLÄTTERN & DATEINAME) -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeLightbox()">
-    <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
-      <img id="lightboxImg" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-slate-700" alt="Vollbild-Vorschau">
-      <button onclick="closeLightbox()" class="absolute -top-10 right-0 text-white text-xl font-bold hover:text-rose-400 transition">&times; Schließen</button>
+    <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
+      <div class="w-full flex items-center justify-between mb-2 px-1">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="lightboxCounter" class="px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 border border-slate-700 text-xs font-mono font-bold shrink-0">1 / 1</span>
+          <span id="lightboxCaption" class="text-white text-xs sm:text-sm font-semibold truncate">Screenshot.jpg</span>
+        </div>
+        <button onclick="closeLightbox()" class="text-white text-sm sm:text-base font-bold hover:text-rose-400 transition shrink-0 ml-3">&times; Schließen</button>
+      </div>
+
+      <div class="relative w-full flex items-center justify-center">
+        <button id="lightboxPrevBtn" onclick="navigateLightbox(-1)" class="hidden absolute left-2 sm:left-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Vorheriges Bild (←)">
+          <i class="fa-solid fa-chevron-left"></i>
+        </button>
+
+        <img id="lightboxImg" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-slate-700" alt="Vollbild-Vorschau">
+
+        <button id="lightboxNextBtn" onclick="navigateLightbox(1)" class="hidden absolute right-2 sm:right-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Nächstes Bild (→)">
+          <i class="fa-solid fa-chevron-right"></i>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -552,6 +574,9 @@
     let saveDebounceTimer = null;
     let pendingModalAction = null;
     let prePrintCollapsedStates = null;
+
+    let currentLightboxList = [];
+    let currentLightboxIndex = 0;
 
     let unsavedChangesCount = 0;
     let lastExportTimestamp = Date.now();
@@ -1071,6 +1096,21 @@
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
           saveToFile(false);
+          return;
+        }
+
+        const lbModal = document.getElementById('lightboxModal');
+        if (lbModal && !lbModal.classList.contains('hidden')) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            closeLightbox();
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            navigateLightbox(-1);
+          } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            navigateLightbox(1);
+          }
         }
       });
     }
@@ -1454,7 +1494,7 @@
 
         return `
           <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex items-center justify-center">
-            <img id="thumb-${item.id}" data-action="open-lightbox" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern" src="" alt="Lade...">
+            <img id="thumb-${item.id}" data-action="open-lightbox" data-day-index="${dayIndex}" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="${escapeHtml(fileName)} – Klicken zum Vergrößern" src="" alt="${escapeHtml(fileName)}">
             <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
           </div>
         `;
@@ -1471,20 +1511,68 @@
       }));
     }
 
-    async function openLightbox(mediaId) {
+    // --- GALERIE-LIGHTBOX MIT VOR-/ZURÜCK-NAVIGATION & DATEINAME ---
+    async function renderLightboxCurrentSlide() {
+      const item = currentLightboxList[currentLightboxIndex];
+      if (!item) return;
+
+      const img = document.getElementById('lightboxImg');
+      const caption = document.getElementById('lightboxCaption');
+      const counter = document.getElementById('lightboxCounter');
+      const prevBtn = document.getElementById('lightboxPrevBtn');
+      const nextBtn = document.getElementById('lightboxNextBtn');
+
+      const url = await getMediaBlobUrl(item.id);
+      if (!url) {
+        showToast("Bild konnte nicht geladen werden", true);
+        return;
+      }
+
+      if (img) img.src = url;
+      if (caption) caption.innerText = item.name || 'Screenshot.jpg';
+      if (counter) counter.innerText = `${currentLightboxIndex + 1} / ${currentLightboxList.length}`;
+
+      const hasMultiple = currentLightboxList.length > 1;
+      if (prevBtn) {
+        prevBtn.classList.toggle('hidden', !hasMultiple);
+        prevBtn.classList.toggle('flex', hasMultiple);
+      }
+      if (nextBtn) {
+        nextBtn.classList.toggle('hidden', !hasMultiple);
+        nextBtn.classList.toggle('flex', hasMultiple);
+      }
+    }
+
+    async function openLightbox(mediaId, dayIndex) {
       if (!mediaId) return;
       const modal = document.getElementById('lightboxModal');
-      const img = document.getElementById('lightboxImg');
-      if (modal && img) {
-        const url = await getMediaBlobUrl(mediaId);
-        if (url) {
-          img.src = url;
-          modal.classList.remove('hidden');
-          modal.classList.add('flex');
-        } else {
-          showToast("Bild konnte nicht geladen werden", true);
-        }
+      if (!modal) return;
+
+      let imageItems = [];
+      if (dayIndex !== undefined && !isNaN(dayIndex) && tripData.days[dayIndex]) {
+        imageItems = (tripData.days[dayIndex].images || []).filter(it => it && it.type !== 'pdf' && it.id);
       }
+      if (imageItems.length === 0) {
+        (tripData.days || []).forEach(d => {
+          (d?.images || []).forEach(it => {
+            if (it && it.type !== 'pdf' && it.id) imageItems.push(it);
+          });
+        });
+      }
+
+      currentLightboxList = imageItems.length > 0 ? imageItems : [{ id: mediaId, name: 'Screenshot.jpg' }];
+      const foundIdx = currentLightboxList.findIndex(it => it.id === mediaId);
+      currentLightboxIndex = foundIdx !== -1 ? foundIdx : 0;
+
+      await renderLightboxCurrentSlide();
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    async function navigateLightbox(step) {
+      if (!currentLightboxList || currentLightboxList.length <= 1) return;
+      currentLightboxIndex = (currentLightboxIndex + step + currentLightboxList.length) % currentLightboxList.length;
+      await renderLightboxCurrentSlide();
     }
 
     function closeLightbox() {
@@ -1495,6 +1583,8 @@
         modal.classList.remove('flex');
       }
       if (img) img.src = '';
+      currentLightboxList = [];
+      currentLightboxIndex = 0;
     }
 
     function formatSafeUrl(urlStr) {
@@ -1618,6 +1708,52 @@
       const anyCollapsed = days.length === 0 || days.some(d => d && d.isCollapsed);
       icon.className = anyCollapsed ? "fa-solid fa-angles-down text-[10px] sm:text-xs" : "fa-solid fa-angles-up text-[10px] sm:text-xs";
       text.innerText = anyCollapsed ? "Alle öffnen" : "Alle schließen";
+    }
+
+    // --- TAGESINHALT MIT VOR-/FOLGETAG TAUSCHEN (KALENDERDATEN BLEIBEN FEST) ---
+    async function swapDayWithAdjacent(dayIndex, direction) {
+      if (!Array.isArray(tripData.days)) return;
+      const targetIndex = dayIndex + direction;
+      if (targetIndex < 0 || targetIndex >= tripData.days.length) return;
+
+      const dayA = tripData.days[dayIndex];
+      const dayB = tripData.days[targetIndex];
+      if (!dayA || !dayB) return;
+
+      if (hasDayAnyFixedBooking(dayA) || hasDayAnyFixedBooking(dayB)) {
+        const { dayFormatted: fA } = formatISODate(dayA.date);
+        const { dayFormatted: fB } = formatISODate(dayB.date);
+        const ok = confirm(
+          `Hinweis: Mindestens einer der beiden Tage (Tag ${dayIndex + 1} am ${fA} oder Tag ${targetIndex + 1} am ${fB}) enthält bereits eine feste Buchung.\n\n` +
+          `Sollen die Inhalte von Tag ${dayIndex + 1} und Tag ${targetIndex + 1} trotzdem getauscht werden (die Kalenderdaten bleiben fest)?`
+        );
+        if (!ok) return;
+      }
+
+      await createRollingBackup();
+
+      const fixedDateA = dayA.date;
+      const fixedDateB = dayB.date;
+
+      tripData.days[dayIndex] = dayB;
+      tripData.days[targetIndex] = dayA;
+
+      tripData.days[dayIndex].date = fixedDateA;
+      tripData.days[targetIndex].date = fixedDateB;
+
+      tripData.days[dayIndex].isCollapsed = true;
+      tripData.days[targetIndex].isCollapsed = false;
+
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + targetIndex);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 60);
+
+      showToast(`Tag ${dayIndex + 1} mit Tag ${targetIndex + 1} getauscht`);
     }
 
     // --- ORT & UNTERKUNFT AUF NÄCHSTEN TAG KOPIEREN ---
@@ -2048,10 +2184,19 @@
       return isNaN(num) ? 0 : num;
     }
 
+    // --- PACKLISTE MIT AUTO-SORTIERUNG & RESET ---
+    function sortChecklistInPlace() {
+      if (!Array.isArray(tripData.checklist)) return;
+      tripData.checklist.sort((a, b) => Number(Boolean(a?.done)) - Number(Boolean(b?.done)));
+    }
+
     function renderChecklist() {
       const container = document.getElementById('checklistContainer');
       const progress = document.getElementById('checklistProgress');
+      const resetBtn = document.getElementById('resetChecklistBtn');
       if (!container) return;
+
+      sortChecklistInPlace();
 
       container.innerHTML = '';
       const list = tripData.checklist || [];
@@ -2059,6 +2204,9 @@
 
       if (progress) {
         progress.innerText = doneCount + '/' + list.length + ' erledigt';
+      }
+      if (resetBtn) {
+        resetBtn.classList.toggle('hidden', doneCount === 0);
       }
 
       list.forEach((item, idx) => {
@@ -2077,10 +2225,20 @@
     function toggleChecklistItem(idx) {
       if (tripData.checklist && tripData.checklist[idx]) {
         tripData.checklist[idx].done = !tripData.checklist[idx].done;
+        sortChecklistInPlace();
         recordChangeForReminder();
         saveToStorage();
         renderChecklist();
       }
+    }
+
+    function resetChecklistDone() {
+      if (!Array.isArray(tripData.checklist) || !tripData.checklist.some(i => i.done)) return;
+      tripData.checklist.forEach(item => { if (item) item.done = false; });
+      recordChangeForReminder();
+      saveToStorage();
+      renderChecklist();
+      showToast("Alle Haken der Packliste zurückgesetzt");
     }
 
     function addChecklistItem() {
@@ -2088,6 +2246,7 @@
       if (!input || !input.value.trim()) return;
       if (!Array.isArray(tripData.checklist)) tripData.checklist = [];
       tripData.checklist.push({ text: input.value.trim(), done: false });
+      sortChecklistInPlace();
       input.value = '';
       recordChangeForReminder();
       saveToStorage();
@@ -2250,6 +2409,9 @@
 
     function getTransportEmoji(tr) {
       if (tr.category === 'flugzeug') return '✈️';
+      if (tr.category === 'zug') return '🚆';
+      if (tr.category === 'bus') return '🚌';
+      if (tr.category === 'boot') return '🚤';
       if (tr.category === 'mietwagen') return '🚗';
       if (tr.category === 'roller') return '🛵';
       if (tr.category === 'taxi') return '🚕';
@@ -2886,6 +3048,7 @@
       const hasNotes = (day.notes || '').trim().length > 0;
       const hasLocation = (day.location || '').trim() !== '';
       const hasHotelQuery = getHotelSearchQuery(day) !== '';
+      const hasPrevDay = index > 0;
       const hasNextDay = index < (tripData.days.length - 1);
 
       const card = document.createElement('div');
@@ -3000,6 +3163,12 @@
         '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
           '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
         '</button>' +
+        '<button data-action="swap-day-prev" data-day-index="' + index + '" ' + (!hasPrevDay ? 'disabled' : '') + ' class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ' + (hasPrevDay ? 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed') + '" title="' + (hasPrevDay ? 'Tagesinhalt mit Tag ' + index + ' tauschen (Datum bleibt fest)' : 'Erster Reisetag') + '">' +
+          '<i class="fa-solid fa-arrow-up text-xs pointer-events-none"></i>' +
+        '</button>' +
+        '<button data-action="swap-day-next" data-day-index="' + index + '" ' + (!hasNextDay ? 'disabled' : '') + ' class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ' + (hasNextDay ? 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed') + '" title="' + (hasNextDay ? 'Tagesinhalt mit Tag ' + (index + 2) + ' tauschen (Datum bleibt fest)' : 'Letzter Reisetag') + '">' +
+          '<i class="fa-solid fa-arrow-down text-xs pointer-events-none"></i>' +
+        '</button>' +
         (hasNextDay ? (
           '<button data-action="copy-to-next-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Ort & Unterkunft auf nächsten Tag (Tag ' + (index + 2) + ') übertragen">' +
             '<i class="fa-solid fa-copy text-xs pointer-events-none"></i>' +
@@ -3064,7 +3233,7 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung (inkl. Hotel-Maps-Button & "Keine Übernachtung nötig")
+      // Übernachtung (inkl. Hotel-Maps-Button, inputmode="decimal" & "Keine Übernachtung nötig")
       let lodgingStatusText = '○ Unterkunft noch nicht gebucht';
       let lodgingStatusColor = 'text-amber-600 dark:text-amber-400';
       if (noLodging) {
@@ -3109,7 +3278,7 @@
           '</div>' +
           '<div class="md:col-span-3 flex items-center gap-1.5">' +
             '<div class="relative flex-1 flex items-center">' +
-              '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
+              '<input type="text" inputmode="decimal" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
                 'data-day-index="' + index + '" data-field="lodging.price" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-sm text-slate-900 dark:text-white font-mono text-right focus:border-indigo-500">' +
               '<span class="absolute right-2.5 text-xs font-bold text-slate-400 pointer-events-none">€</span>' +
             '</div>' +
@@ -3165,6 +3334,9 @@
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">' +
               '<option value="" ' + (selectedCat === '' ? 'selected' : '') + '>Auto-Icon</option>' +
               '<option value="flugzeug" ' + (selectedCat === 'flugzeug' ? 'selected' : '') + '>✈️ Flugzeug</option>' +
+              '<option value="zug" ' + (selectedCat === 'zug' ? 'selected' : '') + '>🚆 Zug / Bahn</option>' +
+              '<option value="bus" ' + (selectedCat === 'bus' ? 'selected' : '') + '>🚌 Bus</option>' +
+              '<option value="boot" ' + (selectedCat === 'boot' ? 'selected' : '') + '>🚤 Boot / Fähre</option>' +
               '<option value="mietwagen" ' + (selectedCat === 'mietwagen' ? 'selected' : '') + '>🚗 Mietwagen</option>' +
               '<option value="roller" ' + (selectedCat === 'roller' ? 'selected' : '') + '>🛵 Roller</option>' +
               '<option value="taxi" ' + (selectedCat === 'taxi' ? 'selected' : '') + '>🚕 Taxi / Grab</option>' +
@@ -3172,7 +3344,7 @@
 
             '<input type="text" placeholder="Art (z. B. 08:30 Flug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
             '<div class="relative flex items-center w-24 shrink-0">' +
-              '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+              '<input type="text" inputmode="decimal" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
               '<span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>' +
             '</div>' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
@@ -3216,7 +3388,7 @@
             '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
             '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
             '<div class="relative flex items-center w-24 shrink-0">' +
-              '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+              '<input type="text" inputmode="decimal" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
               '<span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>' +
             '</div>' +
             '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
@@ -3268,6 +3440,14 @@
           }
           case 'toggle-booking': {
             toggleBookingStatus(dayIdx);
+            break;
+          }
+          case 'swap-day-prev': {
+            swapDayWithAdjacent(dayIdx, -1);
+            break;
+          }
+          case 'swap-day-next': {
+            swapDayWithAdjacent(dayIdx, 1);
             break;
           }
           case 'copy-to-next-day': {
@@ -3331,7 +3511,7 @@
           }
           case 'open-lightbox': {
             const mediaId = target.getAttribute('data-media-id');
-            if (mediaId) openLightbox(mediaId);
+            if (mediaId) openLightbox(mediaId, dayIdx);
             break;
           }
           case 'open-pdf': {
@@ -3770,6 +3950,7 @@
     window.toggleBookingStatus = toggleBookingStatus;
     window.toggleDayCollapse = toggleDayCollapse;
     window.openOnlyDay = openOnlyDay;
+    window.swapDayWithAdjacent = swapDayWithAdjacent;
     window.copyLocationAndLodgingToNextDay = copyLocationAndLodgingToNextDay;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
@@ -3796,11 +3977,13 @@
     window.toggleTheme = toggleTheme;
     window.setTheme = setTheme;
     window.toggleChecklistItem = toggleChecklistItem;
+    window.resetChecklistDone = resetChecklistDone;
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
     window.handleDayPaste = handleDayPaste;
     window.handleDocFileSelect = handleDocFileSelect;
     window.openLightbox = openLightbox;
+    window.navigateLightbox = navigateLightbox;
     window.closeLightbox = closeLightbox;
     window.exportToCSV = exportToCSV;
     window.openDayActionModal = openDayActionModal;
