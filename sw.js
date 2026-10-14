@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-cache-v1.851';
+const CACHE_NAME = 'reiseplaner-cache-v1.852';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
