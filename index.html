@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.85</title>
+  <title>Reiseplaner Pro v1.86</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -53,6 +53,11 @@
     .today-highlight {
       box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.45);
     }
+    .drop-active {
+      border-color: #6366f1 !important;
+      background-color: rgba(99, 102, 241, 0.08) !important;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
@@ -74,7 +79,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.85</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.86</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -140,13 +145,13 @@
       </div>
     </div>
 
-    <!-- IN HEADER VERSCHOBENE FILTER-, SUCH-, HEUTE- & ALLE-AUF/ZU-LEISTE -->
+    <!-- FILTER-, SUCH-, HEUTE- & ALLE-AUF/ZU-LEISTE -->
     <div id="headerFilterBar" class="border-t border-slate-200/80 dark:border-slate-700/60 px-3 sm:px-4 py-1.5 bg-slate-50/60 dark:bg-slate-800/60 no-print transition-all duration-200">
       <div class="max-w-6xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
         
         <!-- Schlankes Filter-Dropdown -->
         <div class="relative shrink-0">
-          <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-sm">
+          <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-sm transition">
             <option value="all">Alle Tage</option>
             <option value="booked_lodging">Gebuchte Unterkünfte</option>
             <option value="open_lodging">Offene Unterkünfte</option>
@@ -181,7 +186,7 @@
       </div>
     </div>
 
-    <!-- DESKTOP TABS (Auf Mobile ausgeblendet: 'hidden sm:flex') -->
+    <!-- DESKTOP TABS -->
     <div class="hidden sm:flex max-w-6xl mx-auto px-4 items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
       <button onclick="switchTab('plan')" id="deskTabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
@@ -190,7 +195,7 @@
         <i class="fa-solid fa-wallet"></i> 💰 Budget
       </button>
       <button onclick="switchTab('notes')" id="deskTabBtn-notes" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
-        <i class="fa-solid fa-list-check"></i> 🎒 Checkliste & Notizen
+        <i class="fa-solid fa-list-check"></i> 🎒 Checkliste, Belege & SOS
       </button>
     </div>
   </header>
@@ -340,7 +345,7 @@
       </section>
     </div>
 
-    <!-- ==================== TAB 3: 🎒 CHECKLISTE & NOTIZEN ==================== -->
+    <!-- ==================== TAB 3: 🎒 CHECKLISTE, BELEGE & NOTIZEN ==================== -->
     <div id="tabContent-notes" class="tab-content hidden space-y-5">
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
         <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-3">
@@ -386,6 +391,17 @@
           </div>
         </section>
       </div>
+
+      <!-- NEU IN V1.86: ZENTRALE BELEG-ÜBERSICHT (ALLE TAGE) -->
+      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 p-4 sm:p-5 shadow-sm space-y-3.5">
+        <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
+            <i class="fa-solid fa-folder-tree"></i> Zentrale Beleg-Übersicht (Tickets, Buchungen & PDFs)
+          </h2>
+          <span id="allAttachmentsCountBadge" class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">0 Belege</span>
+        </div>
+        <div id="allAttachmentsOverview" class="space-y-3"></div>
+      </section>
 
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-rose-200 dark:border-rose-900/60 p-4 sm:p-5 shadow-sm space-y-4">
         <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-3">
@@ -435,7 +451,7 @@
 
   </main>
 
-  <!-- MOBILE BOTTOM NAVIGATION BAR (sm:hidden - daumenfreundlich) -->
+  <!-- MOBILE BOTTOM NAVIGATION BAR -->
   <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 px-3 py-1 flex items-center justify-around shadow-lg no-print">
     <button onclick="switchTab('plan')" id="mobTabBtn-plan" class="flex flex-col items-center justify-center py-1 px-4 text-indigo-600 dark:text-indigo-400 font-bold transition">
       <i class="fa-solid fa-calendar-days text-base mb-0.5"></i>
@@ -447,9 +463,62 @@
     </button>
     <button onclick="switchTab('notes')" id="mobTabBtn-notes" class="flex flex-col items-center justify-center py-1 px-4 text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800 dark:hover:text-slate-200 transition">
       <i class="fa-solid fa-list-check text-base mb-0.5"></i>
-      <span class="text-[10px]">Notizen</span>
+      <span class="text-[10px]">Belege & SOS</span>
     </button>
   </nav>
+
+  <!-- NEU IN V1.86: MODAL FÜR MEHRERE FOLGENÄCHTE KOPIEREN -->
+  <div id="copyLodgingModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeCopyLodgingModal()">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-copy text-indigo-500"></i> Ort & Unterkunft auf Folgetage übertragen
+          </h3>
+          <p id="copyLodgingModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
+        </div>
+        <button onclick="closeCopyLodgingModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            Auf wie viele direkt folgende Tage übertragen?
+          </label>
+          <select id="copyLodgingNightsSelect" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500"></select>
+        </div>
+
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900/70 border border-slate-200 dark:border-slate-700 space-y-2.5">
+          <div class="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-coins text-amber-500"></i> Wie soll der Preis behandelt werden?
+          </div>
+          <label class="flex items-start gap-2.5 cursor-pointer">
+            <input type="radio" name="copyPriceMode" value="first_only" checked class="mt-0.5 text-indigo-600 focus:ring-0">
+            <div>
+              <span class="font-bold text-slate-800 dark:text-slate-200 block">Gesamtpreis nur am 1. Tag zählen (Empfohlen)</span>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Folgenächte erhalten 0,00 € und den Hinweis „Preis inkl. in Tag X“, damit das Budget nicht mehrfach belastet wird.</span>
+            </div>
+          </label>
+          <label class="flex items-start gap-2.5 cursor-pointer pt-1 border-t border-slate-200/70 dark:border-slate-800">
+            <input type="radio" name="copyPriceMode" value="each_night" class="mt-0.5 text-indigo-600 focus:ring-0">
+            <div>
+              <span class="font-bold text-slate-800 dark:text-slate-200 block">Preis pro Nacht auf jeden Folgetag kopieren</span>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Jede kopierte Nacht übernimmt denselben Übernachtungspreis ins Budget.</span>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeCopyLodgingModal()" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">
+          Abbrechen
+        </button>
+        <button onclick="confirmCopyLodgingToNextDays()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5">
+          <i class="fa-solid fa-check"></i> Jetzt übertragen
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
   <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
@@ -492,8 +561,8 @@
     </div>
   </div>
 
-  <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX INKL. BLÄTTERN & DATEINAME) -->
-  <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeLightbox()">
+  <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX INKL. BLÄTTERN, SWIPE & DATEINAME) -->
+  <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4 select-none" onclick="closeLightbox()">
     <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
       <div class="w-full flex items-center justify-between mb-2 px-1">
         <div class="flex items-center gap-2 min-w-0">
@@ -503,17 +572,18 @@
         <button onclick="closeLightbox()" class="text-white text-sm sm:text-base font-bold hover:text-rose-400 transition shrink-0 ml-3">&times; Schließen</button>
       </div>
 
-      <div class="relative w-full flex items-center justify-center">
-        <button id="lightboxPrevBtn" onclick="navigateLightbox(-1)" class="hidden absolute left-2 sm:left-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Vorheriges Bild (←)">
+      <div id="lightboxTouchArea" class="relative w-full flex items-center justify-center">
+        <button id="lightboxPrevBtn" onclick="navigateLightbox(-1)" class="hidden absolute left-2 sm:left-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Vorheriges Bild (← oder Wischen)">
           <i class="fa-solid fa-chevron-left"></i>
         </button>
 
-        <img id="lightboxImg" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-slate-700" alt="Vollbild-Vorschau">
+        <img id="lightboxImg" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-slate-700 transition-transform duration-150" alt="Vollbild-Vorschau">
 
-        <button id="lightboxNextBtn" onclick="navigateLightbox(1)" class="hidden absolute right-2 sm:right-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Nächstes Bild (→)">
+        <button id="lightboxNextBtn" onclick="navigateLightbox(1)" class="hidden absolute right-2 sm:right-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Nächstes Bild (→ oder Wischen)">
           <i class="fa-solid fa-chevron-right"></i>
         </button>
       </div>
+      <div class="text-[10px] text-slate-400 mt-2 sm:hidden">Tipp: Nach links oder rechts wischen zum Blättern</div>
     </div>
   </div>
 
@@ -543,7 +613,6 @@
     <i id="toastIcon" class="fa-solid fa-check text-emerald-500 dark:text-emerald-400 text-sm"></i>
     <span id="toastMsg">Gespeichert</span>
   </div>
-
   <script>
     // --- STANDARD-CHECKLISTE ---
     const DEFAULT_CHECKLIST = [
@@ -573,10 +642,13 @@
     let searchQuery = '';
     let saveDebounceTimer = null;
     let pendingModalAction = null;
+    let pendingCopyDayIndex = null;
     let prePrintCollapsedStates = null;
 
     let currentLightboxList = [];
     let currentLightboxIndex = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
 
     let unsavedChangesCount = 0;
     let lastExportTimestamp = Date.now();
@@ -585,16 +657,18 @@
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
     const CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
 
-    // --- INDEXEDDB: GETRENNTE STORES ---
+    // --- INDEXEDDB: GETRENNTE STORES MIT VERBINDUNGS-CACHE ---
     const DB_NAME = 'ReiseplanerPro_DB_v2';
     const DB_VERSION = 1;
     const TRIPS_STORE = 'trips_store';
     const MEDIA_STORE = 'media_store';
 
     const activeMediaObjectUrls = new Map();
+    let dbInstancePromise = null;
 
     function openDB() {
-      return new Promise((resolve, reject) => {
+      if (dbInstancePromise) return dbInstancePromise;
+      dbInstancePromise = new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
           const db = e.target.result;
@@ -605,9 +679,20 @@
             db.createObjectStore(MEDIA_STORE, { keyPath: 'id' });
           }
         };
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const db = req.result;
+          db.onversionchange = () => {
+            db.close();
+            dbInstancePromise = null;
+          };
+          resolve(db);
+        };
+        req.onerror = () => {
+          dbInstancePromise = null;
+          reject(req.error);
+        };
       });
+      return dbInstancePromise;
     }
 
     async function tripsGet(key) {
@@ -685,7 +770,6 @@
       }
     }
 
-    // Löscht ein Medium nur dann physisch aus dem media_store, wenn es weder im aktuellen Plan noch in einem der 3 Backups referenziert wird
     async function safeDeleteMedia(mediaId) {
       if (!mediaId) return;
       revokeMediaBlobUrl(mediaId);
@@ -756,7 +840,6 @@
       });
     }
 
-    // Bettet alle Blobs aus dem media_store als Base64-Strings in eine Kopie von tripData für den JSON-Export ein
     async function buildExportPayload() {
       const clone = JSON.parse(JSON.stringify(tripData));
       if (!Array.isArray(clone.days)) return clone;
@@ -778,7 +861,6 @@
       return clone;
     }
 
-    // Extrahiert Base64-Medien (aus JSON-Import oder Legacy-Ständen) in den media_store und hält tripData schlank
     async function migrateImagesToMediaStore(days) {
       if (!Array.isArray(days)) return days;
       for (const day of days) {
@@ -859,6 +941,7 @@
       updateHeadline();
       renderDays();
       renderChecklist();
+      renderAllAttachmentsOverview();
       updateStats();
 
       setTimeout(() => {
@@ -869,7 +952,7 @@
       showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
     }
 
-    // --- DRUCKANSICHT (Alle Tage temporär aufklappen & Bilder vorab laden) ---
+    // --- DRUCKANSICHT ---
     async function prepareForPrint() {
       if (!Array.isArray(tripData.days) || tripData.days.length === 0) return;
       if (prePrintCollapsedStates !== null) return;
@@ -933,6 +1016,10 @@
       const filterBar = document.getElementById('headerFilterBar');
       if (filterBar) {
         filterBar.classList.toggle('hidden', tabId !== 'plan');
+      }
+
+      if (tabId === 'notes') {
+        renderAllAttachmentsOverview();
       }
 
       if (tabId === 'plan' || tabId === 'notes') {
@@ -1045,7 +1132,6 @@
       };
     }
 
-    // Status-Umrandung des Tagesortes in Rot / Gelb / Grün analog zum Tagesstatus
     function getLocationBoxClasses(day) {
       const isSettled = isDayLodgingSettled(day);
       const hasLocation = (day?.location || '').trim() !== '';
@@ -1081,6 +1167,7 @@
         initServiceWorker();
         initPersistentStorage();
         setupKeyboardShortcuts();
+        setupLightboxSwipeGestures();
         setupLifecycleSaveFlush();
         setupEventDelegation();
         checkBackupReminder();
@@ -1115,7 +1202,32 @@
       });
     }
 
-    // Sofortiges Speichern ausstehender Debounce-Änderungen beim Verlassen/Minimieren der App
+    // --- NEU IN V1.86: SWIPE-GESTEN IN DER LIGHTBOX ---
+    function setupLightboxSwipeGestures() {
+      const touchArea = document.getElementById('lightboxTouchArea');
+      if (!touchArea) return;
+
+      touchArea.addEventListener('touchstart', (e) => {
+        if (!e.changedTouches || e.changedTouches.length === 0) return;
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+      }, { passive: true });
+
+      touchArea.addEventListener('touchend', (e) => {
+        if (!e.changedTouches || e.changedTouches.length === 0) return;
+        const diffX = e.changedTouches[0].screenX - touchStartX;
+        const diffY = e.changedTouches[0].screenY - touchStartY;
+
+        if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY)) {
+          if (diffX < 0) {
+            navigateLightbox(1);
+          } else {
+            navigateLightbox(-1);
+          }
+        }
+      }, { passive: true });
+    }
+
     function flushPendingSave() {
       if (saveDebounceTimer) {
         clearTimeout(saveDebounceTimer);
@@ -1332,12 +1444,12 @@
       }, 2500);
     }
 
-    // --- BELEGE & MEDIEN (MEDIA_STORE) ---
+    // --- BELEGE, DRAG & DROP & MEDIEN (MEDIA_STORE) ---
     function handleDayPaste(e, dayIndex) {
       if (!e.clipboardData || !e.clipboardData.items) return;
       const items = e.clipboardData.items;
       for (let i = 0; i < items.length; i++) {
-        if (items[i].type.indexOf('image') !== -1) {
+        if (items[i].type.indexOf('image') !== -1 || items[i].type === 'application/pdf') {
           e.preventDefault();
           const file = items[i].getAsFile();
           if (file) {
@@ -1345,6 +1457,32 @@
           }
           return;
         }
+      }
+    }
+
+    function handleDayDragOver(e, dayIndex) {
+      e.preventDefault();
+      e.stopPropagation();
+      const dropZone = document.getElementById('notes-dropzone-' + dayIndex);
+      if (dropZone) dropZone.classList.add('drop-active');
+    }
+
+    function handleDayDragLeave(e, dayIndex) {
+      e.preventDefault();
+      e.stopPropagation();
+      const dropZone = document.getElementById('notes-dropzone-' + dayIndex);
+      if (dropZone) dropZone.classList.remove('drop-active');
+    }
+
+    function handleDayDrop(e, dayIndex) {
+      e.preventDefault();
+      e.stopPropagation();
+      const dropZone = document.getElementById('notes-dropzone-' + dayIndex);
+      if (dropZone) dropZone.classList.remove('drop-active');
+
+      const files = e.dataTransfer?.files;
+      if (files && files.length > 0) {
+        Array.from(files).forEach(file => processAndAddAttachment(file, dayIndex));
       }
     }
 
@@ -1375,6 +1513,7 @@
           recordChangeForReminder();
           saveToStorage();
           updateImagesDOM(dayIndex);
+          if (currentTab === 'notes') renderAllAttachmentsOverview();
           showToast("PDF-Beleg gespeichert");
         } else {
           showToast("Fehler beim Speichern des PDFs", true);
@@ -1419,6 +1558,7 @@
                 recordChangeForReminder();
                 saveToStorage();
                 updateImagesDOM(dayIndex);
+                if (currentTab === 'notes') renderAllAttachmentsOverview();
                 showToast("Screenshot gespeichert");
               } else {
                 showToast("Fehler beim Speichern des Bildes", true);
@@ -1443,6 +1583,7 @@
       recordChangeForReminder();
       saveToStorage();
       updateImagesDOM(dayIndex);
+      if (currentTab === 'notes') renderAllAttachmentsOverview();
       showToast("Beleg entfernt");
     }
 
@@ -1511,7 +1652,110 @@
       }));
     }
 
-    // --- GALERIE-LIGHTBOX MIT VOR-/ZURÜCK-NAVIGATION & DATEINAME ---
+    // --- NEU IN V1.86: ZENTRALE BELEG-ÜBERSICHT IM NOTIZEN-TAB ---
+    async function renderAllAttachmentsOverview() {
+      const container = document.getElementById('allAttachmentsOverview');
+      const countBadge = document.getElementById('allAttachmentsCountBadge');
+      if (!container) return;
+
+      const days = Array.isArray(tripData.days) ? tripData.days : [];
+      let totalAttachments = 0;
+      const daysWithAttachments = [];
+
+      days.forEach((d, dayIdx) => {
+        if (d && Array.isArray(d.images) && d.images.length > 0) {
+          totalAttachments += d.images.length;
+          daysWithAttachments.push({ day: d, dayIdx });
+        }
+      });
+
+      if (countBadge) {
+        countBadge.innerText = `${totalAttachments} ${totalAttachments === 1 ? 'Beleg' : 'Belege'}`;
+      }
+
+      if (daysWithAttachments.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400">
+            <i class="fa-regular fa-folder-open text-2xl mb-1.5 text-slate-400 block"></i>
+            Noch keine Belege oder Screenshots an den Reisetagen hinterlegt. Ziehe Bilder oder PDFs einfach per Drag & Drop in das Notizfeld eines Tages.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = daysWithAttachments.map(({ day, dayIdx }) => {
+        const { dayName, dayFormatted } = formatISODate(day.date);
+        const itemsHtml = day.images.map((item, itemIdx) => {
+          const isPdf = item.type === 'pdf';
+          const fileName = item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg');
+          if (isPdf) {
+            return `
+              <div onclick="openPdfAttachment('${item.id}', '${escapeHtml(fileName)}')" class="cursor-pointer rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2.5 max-w-[220px] shadow-sm hover:brightness-95 transition" title="PDF öffnen">
+                <i class="fa-solid fa-file-pdf text-xl text-rose-600 dark:text-rose-400 shrink-0"></i>
+                <div class="overflow-hidden flex-1">
+                  <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(fileName)}</span>
+                  <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">PDF öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
+                </div>
+              </div>
+            `;
+          }
+          return `
+            <div onclick="openLightbox('${item.id}', ${dayIdx})" class="cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex flex-col items-center justify-center relative group" title="${escapeHtml(fileName)} vergrößern">
+              <img id="overview-thumb-${item.id}" src="" alt="${escapeHtml(fileName)}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
+              <span class="absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${escapeHtml(fileName)}</span>
+            </div>
+          `;
+        }).join('');
+
+        return `
+          <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black">Tag ${dayIdx + 1}</span>
+                <span class="font-mono text-slate-500 dark:text-slate-400">${dayFormatted} (${dayName})</span>
+                <span>• 📍 ${escapeHtml(day.location || 'Ohne Ort')}</span>
+                ${day.lodging?.name ? `<span class="text-slate-500 dark:text-slate-400">• 🏨 ${escapeHtml(day.lodging.name)}</span>` : ''}
+              </div>
+              <button onclick="jumpToSpecificDay(${dayIdx})" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-indigo-500 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 shrink-0 transition no-print">
+                Zum Tag <i class="fa-solid fa-arrow-right text-[10px]"></i>
+              </button>
+            </div>
+            <div class="flex flex-wrap gap-2.5">${itemsHtml}</div>
+          </div>
+        `;
+      }).join('');
+
+      for (const { day } of daysWithAttachments) {
+        for (const item of day.images) {
+          if (item && item.type !== 'pdf' && item.id) {
+            const imgEl = document.getElementById('overview-thumb-' + item.id);
+            if (imgEl) {
+              const url = await getMediaBlobUrl(item.id);
+              if (url) imgEl.src = url;
+            }
+          }
+        }
+      }
+    }
+
+    function jumpToSpecificDay(dayIndex) {
+      switchTab('plan');
+      if (currentFilter !== 'all' || searchQuery !== '') {
+        setFilter('all');
+        clearSearch();
+      }
+      openOnlyDay(dayIndex);
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + dayIndex);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.classList.add('ring-4', 'ring-indigo-400');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 1800);
+        }
+      }, 100);
+    }
+
+    // --- GALERIE-LIGHTBOX ---
     async function renderLightboxCurrentSlide() {
       const item = currentLightboxList[currentLightboxIndex];
       if (!item) return;
@@ -1682,7 +1926,6 @@
       openOnlyDay(dayIndex);
     }
 
-    // --- ALLE TAGE AUF-/ZUKLAPPEN ---
     function toggleAllDays(expand) {
       if (!Array.isArray(tripData.days) || tripData.days.length === 0) return;
       tripData.days.forEach(d => { if (d) d.isCollapsed = !expand; });
@@ -1710,7 +1953,6 @@
       text.innerText = anyCollapsed ? "Alle öffnen" : "Alle schließen";
     }
 
-    // --- TAGESINHALT MIT VOR-/FOLGETAG TAUSCHEN (KALENDERDATEN BLEIBEN FEST) ---
     async function swapDayWithAdjacent(dayIndex, direction) {
       if (!Array.isArray(tripData.days)) return;
       const targetIndex = dayIndex + direction;
@@ -1756,18 +1998,17 @@
       showToast(`Tag ${dayIndex + 1} mit Tag ${targetIndex + 1} getauscht`);
     }
 
-    // --- ORT & UNTERKUNFT AUF NÄCHSTEN TAG KOPIEREN ---
-    async function copyLocationAndLodgingToNextDay(dayIndex) {
+    // --- NEU IN V1.86: ORT & UNTERKUNFT AUF MEHRERE FOLGETAGE KOPIEREN (INKL. PREIS-OPTION) ---
+    function copyLocationAndLodgingToNextDay(dayIndex) {
       const currentDay = tripData.days[dayIndex];
       if (!currentDay) return;
 
-      const nextIndex = dayIndex + 1;
-      if (nextIndex >= tripData.days.length) {
+      const remainingDays = tripData.days.length - 1 - dayIndex;
+      if (remainingDays <= 0) {
         showToast("Kein Folgetag vorhanden (Ende der Reise)", true);
         return;
       }
 
-      const nextDay = tripData.days[nextIndex];
       const hasSourceData = (currentDay.location || '').trim() !== '' ||
         (currentDay.lodging && (
           (currentDay.lodging.name || '').trim() !== '' ||
@@ -1782,37 +2023,112 @@
         return;
       }
 
-      const nextHasData = (nextDay.location || '').trim() !== '' ||
-        (nextDay.lodging && (
-          (nextDay.lodging.name || '').trim() !== '' ||
-          (nextDay.lodging.price || '').trim() !== '' ||
-          (nextDay.lodging.hint || '').trim() !== '' ||
-          (nextDay.lodging.link || '').trim() !== '' ||
-          (nextDay.lodging.notes || '').trim() !== ''
-        ));
+      pendingCopyDayIndex = dayIndex;
+      const modal = document.getElementById('copyLodgingModal');
+      const subtitle = document.getElementById('copyLodgingModalSubtitle');
+      const select = document.getElementById('copyLodgingNightsSelect');
+      if (!modal || !select) return;
 
-      if (nextHasData) {
-        const { dayFormatted } = formatISODate(nextDay.date);
-        const existingInfo = [nextDay.location, nextDay.lodging?.name].filter(Boolean).join(' / ');
+      const { dayFormatted } = formatISODate(currentDay.date);
+      if (subtitle) {
+        subtitle.innerText = `Quelle: Tag ${dayIndex + 1} (${dayFormatted}) • ${currentDay.location || 'Ohne Ort'} ${currentDay.lodging?.name ? '– ' + currentDay.lodging.name : ''}`;
+      }
+
+      select.innerHTML = '';
+      const maxNights = Math.min(remainingDays, 14);
+      for (let count = 1; count <= maxNights; count++) {
+        const targetEndIdx = dayIndex + count;
+        const { dayFormatted: endF } = formatISODate(tripData.days[targetEndIdx].date);
+        const label = count === 1
+          ? `1 Folgetag (nur Tag ${targetEndIdx + 1} am ${endF})`
+          : `${count} Folgetage (Tag ${dayIndex + 2} bis Tag ${targetEndIdx + 1} am ${endF})`;
+        const opt = document.createElement('option');
+        opt.value = String(count);
+        opt.innerText = label;
+        select.appendChild(opt);
+      }
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeCopyLodgingModal() {
+      const modal = document.getElementById('copyLodgingModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      pendingCopyDayIndex = null;
+    }
+
+    async function confirmCopyLodgingToNextDays() {
+      if (pendingCopyDayIndex === null || !tripData.days[pendingCopyDayIndex]) return;
+      const dayIndex = pendingCopyDayIndex;
+      const currentDay = tripData.days[dayIndex];
+
+      const select = document.getElementById('copyLodgingNightsSelect');
+      const count = parseInt(select?.value || '1', 10);
+      const priceModeEl = document.querySelector('input[name="copyPriceMode"]:checked');
+      const priceMode = priceModeEl ? priceModeEl.value : 'first_only';
+
+      const targetIndices = [];
+      for (let i = 1; i <= count; i++) {
+        if (dayIndex + i < tripData.days.length) {
+          targetIndices.push(dayIndex + i);
+        }
+      }
+
+      const daysWithExistingData = targetIndices.filter(idx => {
+        const d = tripData.days[idx];
+        return (d.location || '').trim() !== '' ||
+          (d.lodging && (
+            (d.lodging.name || '').trim() !== '' ||
+            (d.lodging.price || '').trim() !== '' ||
+            (d.lodging.hint || '').trim() !== '' ||
+            (d.lodging.link || '').trim() !== '' ||
+            (d.lodging.notes || '').trim() !== ''
+          ));
+      });
+
+      if (daysWithExistingData.length > 0) {
+        const dayNumbers = daysWithExistingData.map(idx => `Tag ${idx + 1}`).join(', ');
         const ok = confirm(
-          `Tag ${nextIndex + 1} (${dayFormatted}) enthält bereits Angaben (${existingInfo || 'Ort/Unterkunft'}).\n\n` +
-          `Sollen Ort und Unterkunft von Tag ${dayIndex + 1} auf Tag ${nextIndex + 1} übertragen und überschrieben werden?`
+          `Hinweis: ${dayNumbers} enthält/enthalten bereits Angaben zu Ort oder Unterkunft.\n\n` +
+          `Sollen diese Daten überschrieben werden?`
         );
         if (!ok) return;
       }
 
+      closeCopyLodgingModal();
       await createRollingBackup();
 
-      nextDay.location = currentDay.location || '';
-      nextDay.lodging = JSON.parse(JSON.stringify(currentDay.lodging || {
-        name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: ''
-      }));
-      nextDay.lodging.isBooked = isDayBooked(nextDay);
+      const hasOriginalPrice = parseFlexibleNumber(currentDay.lodging?.price) > 0;
+
+      targetIndices.forEach(targetIdx => {
+        const nextDay = tripData.days[targetIdx];
+        nextDay.location = currentDay.location || '';
+        const clonedLodging = JSON.parse(JSON.stringify(currentDay.lodging || {
+          name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: ''
+        }));
+
+        if (priceMode === 'first_only' && hasOriginalPrice) {
+          clonedLodging.price = '0';
+          const refNote = `Preis inkl. in Tag ${dayIndex + 1}`;
+          if (!clonedLodging.hint) {
+            clonedLodging.hint = refNote;
+          } else if (!clonedLodging.hint.includes(refNote)) {
+            clonedLodging.hint = `${clonedLodging.hint} (${refNote})`;
+          }
+        }
+
+        nextDay.lodging = clonedLodging;
+        nextDay.lodging.isBooked = isDayBooked(nextDay);
+      });
 
       recordChangeForReminder();
       saveToStorage();
       renderDays();
-      showToast(`Ort & Unterkunft auf Tag ${nextIndex + 1} übertragen`);
+      showToast(`Ort & Unterkunft auf ${targetIndices.length} Folgetag(e) übertragen`);
     }
 
     // --- HELFER FÜR BUCHUNGSSCHUTZ & PUFFER-ERKENNUNG (MODUS A / B) ---
@@ -1851,7 +2167,6 @@
       return false;
     }
 
-    // Ein Tag gilt nur dann als löschbarer Puffertag, wenn er KEINE Buchung und KEINERLEI eingetragene Daten/Notizen/Belege enthält
     function isTrueBufferDay(day) {
       if (!day) return false;
       if (hasDayAnyFixedBooking(day)) return false;
@@ -1860,7 +2175,6 @@
       return loc === '' || loc.includes('puffer');
     }
 
-    // --- MODAL & MODUS A / MODUS B STEUERUNG ---
     function openDayActionModal(type, dayIndex) {
       pendingModalAction = { type, dayIndex };
       const modal = document.getElementById('dayActionModal');
@@ -1975,7 +2289,14 @@
           for (let i = dayIndex; i < tripData.days.length; i++) {
             tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
           }
-          if (tripData.endDate) {
+          if (tripData.days.length === 0) {
+            tripData.startDate = '';
+            tripData.endDate = '';
+            const startEl = document.getElementById('startDate');
+            const endEl = document.getElementById('endDate');
+            if (startEl) startEl.value = '';
+            if (endEl) endEl.value = '';
+          } else if (tripData.endDate) {
             tripData.endDate = addDaysISO(tripData.endDate, -1);
             const endEl = document.getElementById('endDate');
             if (endEl) endEl.value = tripData.endDate;
@@ -2149,6 +2470,7 @@
       if (val === null || val === undefined || val === '') return 0;
       if (typeof val === 'number') return isNaN(val) ? 0 : val;
       let s = String(val).trim().replace(/[^0-9.,-]/g, '');
+      s = s.replace(/(?!^)-/g, '');
       if (!s) return 0;
 
       const hasComma = s.includes(',');
@@ -2158,10 +2480,8 @@
         const lastComma = s.lastIndexOf(',');
         const lastDot = s.lastIndexOf('.');
         if (lastComma > lastDot) {
-          // Deutsches Format: 1.234,56
           s = s.replace(/\./g, '').replace(',', '.');
         } else {
-          // Englisches Format: 1,234.56
           s = s.replace(/,/g, '');
         }
       } else if (hasComma) {
@@ -2372,7 +2692,14 @@
     function setFilter(filterType) {
       currentFilter = filterType;
       const select = document.getElementById('filterSelect');
-      if (select) select.value = filterType;
+      if (select) {
+        select.value = filterType;
+        if (filterType !== 'all') {
+          select.className = "bg-indigo-600 text-white border border-indigo-600 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-bold focus:outline-none cursor-pointer shadow-sm transition";
+        } else {
+          select.className = "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-sm transition";
+        }
+      }
       renderDays();
     }
 
@@ -2838,6 +3165,7 @@
 
       updateHeadline();
       renderChecklist();
+      renderAllAttachmentsOverview();
       renderDays();
     }
 
@@ -2894,6 +3222,8 @@
       }
 
       const newDays = [];
+      const oldMediaIds = new Set();
+      (tripData.days || []).forEach(d => (d?.images || []).forEach(img => { if (img?.id) oldMediaIds.add(img.id); }));
 
       if (hasExistingDays && shiftRouteWithNewStart) {
         if (newTotalDays < tripData.days.length) {
@@ -2973,6 +3303,11 @@
       tripData.endDate = end;
       tripData.days = newDays;
       normalizeDataModel();
+
+      for (const id of oldMediaIds) {
+        await safeDeleteMedia(id);
+      }
+
       recordChangeForReminder();
       saveToStorage();
 
@@ -3022,7 +3357,11 @@
 
         if (matchesFilter && matchesSearch) {
           matchCount++;
-          container.appendChild(createDayElement(day, index, day.date === todayIso));
+          const cardEl = createDayElement(day, index, day.date === todayIso);
+          container.appendChild(cardEl);
+          if (!day.isCollapsed) {
+            updateImagesDOM(index);
+          }
         }
       });
 
@@ -3124,7 +3463,6 @@
         '</div></div>' +
       '</div>';
 
-      // Tagesort (mit farblicher Status-Umrandung in Rot, Gelb oder Grün)
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
       html += '<div id="loc-box-' + index + '" class="' + getLocationBoxClasses(day) + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
@@ -3170,7 +3508,7 @@
           '<i class="fa-solid fa-arrow-down text-xs pointer-events-none"></i>' +
         '</button>' +
         (hasNextDay ? (
-          '<button data-action="copy-to-next-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Ort & Unterkunft auf nächsten Tag (Tag ' + (index + 2) + ') übertragen">' +
+          '<button data-action="copy-to-next-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Ort & Unterkunft auf Folgetag(e) übertragen">' +
             '<i class="fa-solid fa-copy text-xs pointer-events-none"></i>' +
           '</button>'
         ) : '') +
@@ -3209,8 +3547,8 @@
       }
       html += '</div>';
 
-      // Notizen & Belege
-      html += '<div class="space-y-2.5 sm:space-y-3">' +
+      // Notizen & Belege (inkl. Drag & Drop Zone)
+      html += '<div id="notes-dropzone-' + index + '" ondragover="handleDayDragOver(event, ' + index + ')" ondragleave="handleDayDragLeave(event, ' + index + ')" ondrop="handleDayDrop(event, ' + index + ')" class="space-y-2.5 sm:space-y-3 rounded-xl transition-all p-1 -m-1">' +
         '<div class="flex items-center justify-between">' +
           '<span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">' +
             '<i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)' +
@@ -3220,10 +3558,10 @@
             '<button type="button" data-action="trigger-file-upload" data-day-index="' + index + '" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">' +
               '<i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen' +
             '</button>' +
-            '<span class="text-[10px] text-slate-400 hidden sm:inline">(oder Strg+V)</span>' +
+            '<span class="text-[10px] text-slate-400 hidden sm:inline">(Drag & Drop oder Strg+V)</span>' +
           '</div>' +
         '</div>' +
-        '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshot direkt per Strg + V einfügen)" ' +
+        '<textarea rows="2" placeholder="Notizen für diesen Tag... (Screenshots per Strg+V einfügen oder PDF/Bild hierher ziehen)" ' +
           'onpaste="handleDayPaste(event, ' + index + ')" ' +
           'data-day-index="' + index + '" data-field="notes" ' +
           'class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">' +
@@ -3233,7 +3571,7 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung (inkl. Hotel-Maps-Button, inputmode="decimal" & "Keine Übernachtung nötig")
+      // Übernachtung
       let lodgingStatusText = '○ Unterkunft noch nicht gebucht';
       let lodgingStatusColor = 'text-amber-600 dark:text-amber-400';
       if (noLodging) {
@@ -3254,8 +3592,8 @@
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung</h3>' +
           '<div class="flex flex-wrap items-center gap-2">' +
             (hasNextDay ? (
-              '<button type="button" data-action="copy-to-next-day" data-day-index="' + index + '" class="no-print px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold transition flex items-center gap-1.5 shadow-sm" title="Kopiert Tagesort und alle Unterkunftsdaten auf Tag ' + (index + 2) + '">' +
-                '<i class="fa-solid fa-copy pointer-events-none"></i> <span>Ort & Unterkunft auf Tag ' + (index + 2) + ' übertragen</span>' +
+              '<button type="button" data-action="copy-to-next-day" data-day-index="' + index + '" class="no-print px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold transition flex items-center gap-1.5 shadow-sm" title="Kopiert Tagesort und Unterkunftsdaten auf 1 oder mehrere Folgetage">' +
+                '<i class="fa-solid fa-copy pointer-events-none"></i> <span>Ort & Unterkunft auf Folgetag(e) übertragen...</span>' +
               '</button>'
             ) : '') +
             '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
@@ -3304,8 +3642,6 @@
 
       html += '</div>';
       card.innerHTML = html;
-      
-      setTimeout(() => { updateImagesDOM(index); }, 0);
       return card;
     }
 
@@ -3837,9 +4173,14 @@
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].transports)) tripData.days[dayIndex].transports = [];
       tripData.days[dayIndex].transports.push({ title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' });
+      const newIdx = tripData.days[dayIndex].transports.length - 1;
       recordChangeForReminder();
       saveToStorage();
       renderDays();
+      setTimeout(() => {
+        const inp = document.querySelector(`input[data-day-index="${dayIndex}"][data-tr-index="${newIdx}"][data-tr-field="title"]`);
+        if (inp) inp.focus();
+      }, 50);
     }
 
     function removeTransportItem(dayIndex, itemIndex) {
@@ -3854,9 +4195,14 @@
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].activities)) tripData.days[dayIndex].activities = [];
       tripData.days[dayIndex].activities.push({ title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false });
+      const newIdx = tripData.days[dayIndex].activities.length - 1;
       recordChangeForReminder();
       saveToStorage();
       renderDays();
+      setTimeout(() => {
+        const inp = document.getElementById(`act-title-input-${dayIndex}-${newIdx}`);
+        if (inp) inp.focus();
+      }, 50);
     }
 
     function removeActivityItem(dayIndex, itemIndex) {
@@ -3952,6 +4298,8 @@
     window.openOnlyDay = openOnlyDay;
     window.swapDayWithAdjacent = swapDayWithAdjacent;
     window.copyLocationAndLodgingToNextDay = copyLocationAndLodgingToNextDay;
+    window.closeCopyLodgingModal = closeCopyLodgingModal;
+    window.confirmCopyLodgingToNextDays = confirmCopyLodgingToNextDays;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
     window.removeTransportItem = removeTransportItem;
@@ -3967,6 +4315,7 @@
     window.handleSearch = handleSearch;
     window.clearSearch = clearSearch;
     window.jumpToToday = jumpToToday;
+    window.jumpToSpecificDay = jumpToSpecificDay;
     window.openGoogleMaps = openGoogleMaps;
     window.openOfflineMaps = openOfflineMaps;
     window.openHotelMaps = openHotelMaps;
@@ -3981,10 +4330,15 @@
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
     window.handleDayPaste = handleDayPaste;
+    window.handleDayDragOver = handleDayDragOver;
+    window.handleDayDragLeave = handleDayDragLeave;
+    window.handleDayDrop = handleDayDrop;
     window.handleDocFileSelect = handleDocFileSelect;
     window.openLightbox = openLightbox;
     window.navigateLightbox = navigateLightbox;
     window.closeLightbox = closeLightbox;
+    window.openPdfAttachment = openPdfAttachment;
+    window.renderAllAttachmentsOverview = renderAllAttachmentsOverview;
     window.exportToCSV = exportToCSV;
     window.openDayActionModal = openDayActionModal;
     window.closeDayActionModal = closeDayActionModal;
