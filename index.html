@@ -60,12 +60,12 @@
 <body class="bg-slate-100 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white pb-24 sm:pb-20 transition-colors duration-200">
 
   <!-- HEADER -->
-  <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-xs transition-colors duration-200">
+  <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
       
       <!-- Linke Seite: Logo, Titel & Zeitraum -->
       <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-xs sm:shadow-md shrink-0">
+        <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-sm sm:shadow-md shrink-0">
           <i class="fa-solid fa-map-location-dot text-xs sm:text-lg"></i>
         </div>
         <div class="min-w-0 flex-1">
@@ -82,7 +82,7 @@
           </div>
           <div id="headerTripSubtitle" class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1.5 sm:gap-2 truncate">
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
-            <span id="headerTripDaysCount" class="hidden px-1.5 py-0.2 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
+            <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
           </div>
         </div>
@@ -90,7 +90,7 @@
 
       <!-- Rechte Seite: Aktionen & Menü -->
       <div class="flex items-center gap-1.5 sm:gap-2 no-print relative shrink-0">
-        <button onclick="saveToFile(false)" class="w-8 h-8 sm:w-auto sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-xs shadow-indigo-600/30" title="Direkt sichern inkl. Belege (Strg + S)">
+        <button onclick="saveToFile(false)" class="w-8 h-8 sm:w-auto sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-600/30" title="Direkt sichern inkl. Belege (Strg + S)">
           <i class="fa-solid fa-floppy-disk"></i> <span class="hidden sm:inline">Speichern</span>
         </button>
 
@@ -146,7 +146,7 @@
         
         <!-- Schlankes Filter-Dropdown -->
         <div class="relative shrink-0">
-          <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-2xs">
+          <select id="filterSelect" onchange="setFilter(this.value)" class="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-sm">
             <option value="all">Alle Tage</option>
             <option value="booked_lodging">Gebuchte Unterkünfte</option>
             <option value="open_lodging">Offene Unterkünfte</option>
@@ -163,13 +163,13 @@
             id="searchInput" 
             placeholder="Suchen..." 
             oninput="handleSearch(this.value)"
-            class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-7 sm:pl-8 pr-6 py-1 sm:py-1.5 text-[11px] sm:text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-2xs"
+            class="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl pl-7 sm:pl-8 pr-6 py-1 sm:py-1.5 text-[11px] sm:text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
           >
           <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-2 top-1 sm:top-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs leading-none">&times;</button>
         </div>
 
         <!-- Schlanker "Heute" Button -->
-        <button onclick="jumpToToday()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-xs shrink-0" title="Zum heutigen Reisetag scrollen">
+        <button onclick="jumpToToday()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-sm shrink-0" title="Zum heutigen Reisetag scrollen">
           <i class="fa-solid fa-crosshairs text-[10px] sm:text-xs"></i> <span>Heute</span>
         </button>
       </div>
@@ -177,7 +177,7 @@
 
     <!-- DESKTOP TABS (Auf Mobile ausgeblendet: 'hidden sm:flex') -->
     <div class="hidden sm:flex max-w-6xl mx-auto px-4 items-center gap-2 border-t border-slate-200 dark:border-slate-700/60 no-print overflow-x-auto text-xs py-1.5">
-      <button onclick="switchTab('plan')" id="deskTabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0">
+      <button onclick="switchTab('plan')" id="deskTabBtn-plan" class="px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
       </button>
       <button onclick="switchTab('budget')" id="deskTabBtn-budget" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
@@ -199,7 +199,7 @@
         <div>
           <h2 class="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
             Backup-Erinnerung
-            <span id="backupReminderCounter" class="text-[10px] px-1.5 py-0.2 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-mono font-semibold">10 Änderungen</span>
+            <span id="backupReminderCounter" class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-mono font-semibold">10 Änderungen</span>
           </h2>
           <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
             Neue Änderungen erfasst. Neues JSON-Backup (inkl. Belege) auf OneDrive/Festplatte sichern?
@@ -210,7 +210,7 @@
         <button onclick="dismissBackupReminder()" class="px-2.5 py-1.5 rounded-xl text-xs font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition">
           Später
         </button>
-        <button onclick="saveToFile(false); dismissBackupReminder();" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+        <button onclick="saveToFile(false); dismissBackupReminder();" class="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
           <i class="fa-solid fa-floppy-disk"></i> Jetzt sichern
         </button>
       </div>
@@ -247,7 +247,7 @@
             <input type="date" id="endDate" onchange="updateHeadline(); updateTripCountdown();" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500">
           </div>
           <div class="flex items-end gap-2">
-            <button onclick="generateOrUpdateDays()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-3 py-2 text-xs font-semibold transition shadow-xs flex items-center justify-center gap-1.5">
+            <button onclick="generateOrUpdateDays()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl px-3 py-2 text-xs font-semibold transition shadow-sm flex items-center justify-center gap-1.5">
               <i class="fa-solid fa-calendar-days"></i> Tage generieren
             </button>
             <button onclick="toggleConfigPanel()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-300 transition" title="Fertig">
@@ -264,27 +264,27 @@
     <!-- ==================== TAB 2: 💰 BUDGET & KURSE ==================== -->
     <div id="tabContent-budget" class="tab-content hidden space-y-5">
       <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-slate-500 dark:text-slate-400 block mb-0.5"><i class="fa-solid fa-bed text-indigo-500"></i> Nächte</span>
           <b id="statTotal" class="text-base sm:text-lg font-black text-slate-900 dark:text-white">0</b>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block mb-0.5"><i class="fa-solid fa-circle-check"></i> Gebucht/Res.</span>
           <b id="statBooked" class="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">0</b>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-amber-600 dark:text-amber-400 block mb-0.5"><i class="fa-solid fa-circle-exclamation"></i> Offen</span>
           <b id="statOpen" class="text-base sm:text-lg font-black text-amber-600 dark:text-amber-400">0</b>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-violet-600 dark:text-violet-400 block mb-0.5"><i class="fa-solid fa-wallet"></i> Gesamtbudget</span>
           <b id="statCostTotal" class="text-base sm:text-lg font-black text-slate-900 dark:text-white">0,00 €</b>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 block mb-0.5"><i class="fa-solid fa-money-bill-wave"></i> Bereits bezahlt</span>
           <b id="statCostPaid" class="text-base sm:text-lg font-black text-emerald-600 dark:text-emerald-400">0,00 €</b>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-xs">
+        <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
           <span class="text-[11px] font-semibold text-sky-600 dark:text-sky-400 block mb-0.5"><i class="fa-solid fa-hourglass-half"></i> Ausstehend</span>
           <b id="statCostPending" class="text-base sm:text-lg font-black text-sky-600 dark:text-sky-400">0,00 €</b>
         </div>
@@ -333,7 +333,7 @@
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <i class="fa-solid fa-coins text-amber-500"></i> Wechselkurse (1 € =)
           </h2>
-          <button onclick="exportToCSV()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-xs">
+          <button onclick="exportToCSV()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
             <i class="fa-solid fa-file-csv"></i> Gesamte Ausgaben als CSV (Excel) exportieren
           </button>
         </div>
@@ -390,7 +390,7 @@
               onkeydown="if(event.key === 'Enter') addChecklistItem();" 
               class="flex-1 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"
             >
-            <button onclick="addChecklistItem()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 shadow-xs">
+            <button onclick="addChecklistItem()" class="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shrink-0 shadow-sm">
               <i class="fa-solid fa-plus"></i> Hinzufügen
             </button>
           </div>
@@ -462,7 +462,7 @@
   </nav>
 
   <!-- MODAL FÜR TAGE EINFÜGEN / LÖSCHEN (MODUS A & MODUS B) -->
-  <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
+  <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
         <div>
@@ -503,16 +503,16 @@
   </div>
 
   <!-- VOLLBILD-BILDVORSCHAU (LIGHTBOX) -->
-  <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" onclick="closeLightbox()">
+  <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeLightbox()">
     <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
-      <img id="lightboxImg" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-slate-700">
+      <img id="lightboxImg" class="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-slate-700" alt="Vollbild-Vorschau">
       <button onclick="closeLightbox()" class="absolute -top-10 right-0 text-white text-xl font-bold hover:text-rose-400 transition">&times; Schließen</button>
     </div>
   </div>
 
   <!-- WIEDERHERSTELLEN / BACKUP MODAL -->
-  <div id="restoreModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 no-print">
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+  <div id="restoreModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeRestoreModal()">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
         <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
           <i class="fa-solid fa-rotate-left text-amber-600 dark:text-amber-400"></i> Speicherstand wiederherstellen
@@ -538,6 +538,17 @@
   </div>
 
   <script>
+    // --- STANDARD-CHECKLISTE ---
+    const DEFAULT_CHECKLIST = [
+      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
+      "E-Visum beantragt & ausgedruckt",
+      "Auslandskrankenversicherung & Notfallnummer",
+      "Kreditkarten für gebührenfreie Abhebungen (2x)",
+      "eSIM oder lokale SIM-Karte vorbereitet",
+      "Reiseadapter (Typ C/G für SE-Asien)",
+      "Reiseapotheke & Mückenschutz (DEET)"
+    ];
+
     // --- STATE DEFINITION ---
     let tripData = {
       title: "",
@@ -546,7 +557,7 @@
       generalNotes: "",
       emergencyNotes: "",
       exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
-      checklist: [],
+      checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
       days: []
     };
 
@@ -662,6 +673,27 @@
       } catch (e) {
         console.error("MediaStore Delete Fehler:", e);
         return false;
+      }
+    }
+
+    // Löscht ein Medium nur dann physisch aus dem media_store, wenn es weder im aktuellen Plan noch in einem der 3 Backups referenziert wird
+    async function safeDeleteMedia(mediaId) {
+      if (!mediaId) return;
+      revokeMediaBlobUrl(mediaId);
+
+      const usedInCurrent = Array.isArray(tripData.days) && tripData.days.some(d =>
+        Array.isArray(d?.images) && d.images.some(img => img && img.id === mediaId)
+      );
+      if (usedInCurrent) return;
+
+      const backups = (await tripsGet('backups')) || [];
+      const usedInBackups = Array.isArray(backups) && backups.some(b =>
+        Array.isArray(b?.data?.days) && b.data.days.some(d =>
+          Array.isArray(d?.images) && d.images.some(img => img && img.id === mediaId)
+        )
+      );
+      if (!usedInBackups) {
+        await mediaStoreDelete(mediaId);
       }
     }
 
@@ -798,7 +830,7 @@
       };
 
       activeFileHandle = null;
-      unsavedChangesCount = 0;
+      resetBackupReminder();
       saveToStorage();
       updateFileStatus(null);
 
@@ -829,13 +861,14 @@
       showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
     }
 
-    // --- DRUCKANSICHT (Alle Tage temporär aufklappen) ---
-    function prepareForPrint() {
+    // --- DRUCKANSICHT (Alle Tage temporär aufklappen & Bilder vorab laden) ---
+    async function prepareForPrint() {
       if (!Array.isArray(tripData.days) || tripData.days.length === 0) return;
       if (prePrintCollapsedStates !== null) return;
       prePrintCollapsedStates = tripData.days.map(d => d.isCollapsed);
       tripData.days.forEach(d => { if (d) d.isCollapsed = false; });
       renderDays();
+      await Promise.all(tripData.days.map((_, idx) => updateImagesDOM(idx)));
       autoResizeAllTextareas();
     }
 
@@ -850,18 +883,15 @@
       renderDays();
     }
 
-    function printTripPlan() {
-      prepareForPrint();
+    async function printTripPlan() {
+      await prepareForPrint();
       setTimeout(() => {
         autoResizeAllTextareas();
         window.print();
-        setTimeout(() => {
-          restoreAfterPrint();
-        }, 300);
-      }, 250);
+      }, 300);
     }
 
-    window.addEventListener('beforeprint', prepareForPrint);
+    window.addEventListener('beforeprint', () => { prepareForPrint(); });
     window.addEventListener('afterprint', restoreAfterPrint);
 
     // --- TAB NAVIGATION (3 TABS) ---
@@ -881,7 +911,7 @@
 
         if (deskBtn) {
           deskBtn.className = isActive
-            ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-xs transition flex items-center gap-2 shrink-0"
+            ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0"
             : "px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0";
         }
 
@@ -926,6 +956,13 @@
         panel.classList.remove('hidden');
         panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
+        // Falls Datumsfelder geändert, aber nicht per "Tage generieren" übernommen wurden, auf gespeicherten Stand synchronisieren
+        const startEl = document.getElementById('startDate');
+        const endEl = document.getElementById('endDate');
+        if (startEl) startEl.value = tripData.startDate || '';
+        if (endEl) endEl.value = tripData.endDate || '';
+        updateHeadline();
+        updateTripCountdown();
         panel.classList.add('hidden');
       }
     }
@@ -1356,11 +1393,10 @@
     async function deleteDayAttachment(dayIndex, itemIdx) {
       if (!tripData.days[dayIndex] || !Array.isArray(tripData.days[dayIndex].images)) return;
       const item = tripData.days[dayIndex].images[itemIdx];
-      if (item && item.id) {
-        revokeMediaBlobUrl(item.id);
-        await mediaStoreDelete(item.id);
-      }
       tripData.days[dayIndex].images.splice(itemIdx, 1);
+      if (item && item.id) {
+        await safeDeleteMedia(item.id);
+      }
       recordChangeForReminder();
       saveToStorage();
       updateImagesDOM(dayIndex);
@@ -1385,7 +1421,7 @@
       }
     }
 
-    function updateImagesDOM(dayIndex) {
+    async function updateImagesDOM(dayIndex) {
       const container = document.getElementById('images-container-' + dayIndex);
       if (!container) return;
       const items = tripData.days[dayIndex]?.images || [];
@@ -1402,7 +1438,7 @@
 
         if (isPdf) {
           return `
-            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-xs">
+            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-sm">
               <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
               <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-media-id="${item.id}" data-file-name="${escapeHtml(fileName)}" title="PDF ansehen">
                 <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(fileName)}</span>
@@ -1414,14 +1450,14 @@
         }
 
         return `
-          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-xs w-20 h-20 flex items-center justify-center">
+          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex items-center justify-center">
             <img id="thumb-${item.id}" data-action="open-lightbox" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern" src="" alt="Lade...">
             <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
           </div>
         `;
       }).join('');
 
-      items.forEach(async (item) => {
+      await Promise.all(items.map(async (item) => {
         if (item.type !== 'pdf' && item.id) {
           const imgEl = document.getElementById('thumb-' + item.id);
           if (imgEl) {
@@ -1429,7 +1465,7 @@
             if (url) imgEl.src = url;
           }
         }
-      });
+      }));
     }
 
     async function openLightbox(mediaId) {
@@ -1441,6 +1477,7 @@
         if (url) {
           img.src = url;
           modal.classList.remove('hidden');
+          modal.classList.add('flex');
         } else {
           showToast("Bild konnte nicht geladen werden", true);
         }
@@ -1450,7 +1487,10 @@
     function closeLightbox() {
       const modal = document.getElementById('lightboxModal');
       const img = document.getElementById('lightboxImg');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
       if (img) img.src = '';
     }
 
@@ -1729,11 +1769,15 @@
       }
 
       modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
     function closeDayActionModal() {
       const modal = document.getElementById('dayActionModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
       pendingModalAction = null;
     }
 
@@ -1747,14 +1791,9 @@
 
       if (type === 'delete') {
         const day = tripData.days[dayIndex];
-        if (day && day.images) {
-          day.images.forEach(img => {
-            if (img && img.id) {
-              revokeMediaBlobUrl(img.id);
-              mediaStoreDelete(img.id);
-            }
-          });
-        }
+        const removedMediaIds = (day && Array.isArray(day.images))
+          ? day.images.map(img => img?.id).filter(Boolean)
+          : [];
 
         if (mode === 'A') {
           // Exakt auf Zustand eines neu generierten Tages zurücksetzen (leerer Ort + offener Zustand)
@@ -1764,6 +1803,9 @@
           day.activities = [];
           day.notes = '';
           day.images = [];
+          for (const id of removedMediaIds) {
+            await safeDeleteMedia(id);
+          }
           recordChangeForReminder();
           saveToStorage();
           renderDays();
@@ -1777,6 +1819,9 @@
             tripData.endDate = addDaysISO(tripData.endDate, -1);
             const endEl = document.getElementById('endDate');
             if (endEl) endEl.value = tripData.endDate;
+          }
+          for (const id of removedMediaIds) {
+            await safeDeleteMedia(id);
           }
           normalizeDataModel();
           recordChangeForReminder();
@@ -1946,7 +1991,7 @@
           // Mehrere Punkte: 1.000.000 -> Tausenderpunkte
           s = s.replace(/\./g, '');
         } else if (parts.length === 2 && parts[1].length === 3 && parts[0].length >= 1 && parts[0] !== '0') {
-          // Einzelner Punkt mit exakt 3 Nachkommastellen (z. B. 480.000 LAK oder 1.200 EUR) -> Tausenderpunkt
+          // Einzelner Punkt mit exakt 3 Nachkommastellen bei Preisen (z. B. 480.000 LAK oder 1.200 EUR) -> Tausenderpunkt
           s = s.replace(/\./g, '');
         }
       }
@@ -1956,8 +2001,8 @@
     }
 
     function updateRate(curr, val) {
-      const num = parseFlexibleNumber(val);
-      if (num > 0) {
+      const num = parseFloat(String(val).replace(',', '.'));
+      if (!isNaN(num) && num > 0) {
         if (!tripData.exchangeRates) tripData.exchangeRates = {};
         tripData.exchangeRates[curr] = num;
         recordChangeForReminder();
@@ -1985,16 +2030,6 @@
       if (eur === 0) return '';
       return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
     }
-
-    const DEFAULT_CHECKLIST = [
-      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
-      "E-Visum beantragt & ausgedruckt",
-      "Auslandskrankenversicherung & Notfallnummer",
-      "Kreditkarten für gebührenfreie Abhebungen (2x)",
-      "eSIM oder lokale SIM-Karte vorbereitet",
-      "Reiseadapter (Typ C/G für SE-Asien)",
-      "Reiseapotheke & Mückenschutz (DEET)"
-    ];
 
     function renderChecklist() {
       const container = document.getElementById('checklistContainer');
@@ -2288,8 +2323,20 @@
           data: JSON.parse(currentSnapshot)
         });
 
+        const droppedBackups = backups.length > 3 ? backups.slice(3) : [];
         if (backups.length > 3) backups = backups.slice(0, 3);
         await tripsSet('backups', backups);
+
+        // Bereinige Medien aus herausrotierten Backups, sofern sie nirgends mehr benötigt werden
+        for (const oldB of droppedBackups) {
+          for (const d of (oldB.data?.days || [])) {
+            for (const img of (d?.images || [])) {
+              if (img && img.id) {
+                await safeDeleteMedia(img.id);
+              }
+            }
+          }
+        }
       } catch (e) {
         console.warn("Backup-Fehler:", e);
       }
@@ -2316,11 +2363,15 @@
         });
       }
       modal.classList.remove('hidden');
+      modal.classList.add('flex');
     }
 
     function closeRestoreModal() {
       const modal = document.getElementById('restoreModal');
-      if (modal) modal.classList.add('hidden');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
     }
 
     async function restoreBackup(idx) {
@@ -2344,12 +2395,21 @@
 
     function normalizeDataModel() {
       if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 }, checklist: [], days: [] };
+        tripData = {
+          title: "",
+          startDate: "",
+          endDate: "",
+          generalNotes: "",
+          emergencyNotes: "",
+          exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
+          checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
+          days: []
+        };
       }
       if (tripData.generalNotes === undefined) tripData.generalNotes = "";
       if (tripData.emergencyNotes === undefined) tripData.emergencyNotes = "";
       if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000 };
-      if (!Array.isArray(tripData.checklist) || tripData.checklist.length === 0) {
+      if (!Array.isArray(tripData.checklist)) {
         tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
       }
       if (!Array.isArray(tripData.days)) {
@@ -2807,7 +2867,7 @@
 
       // 1. KOMPAKTER READING MODE (Eingeklappt)
       if (day.isCollapsed) {
-        card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
+        card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
         card.setAttribute('data-action', 'toggle-collapse');
         card.setAttribute('data-day-index', index);
         card.title = "Klicken, um Tag zu öffnen";
@@ -2864,7 +2924,7 @@
         '</div></div>' +
       '</div>';
 
-      // Tagesort (mit farblicher Status-Umrandung in Rot, Gelb oder Grün – ohne "Festgelegt"-Badge)
+      // Tagesort (mit farblicher Status-Umrandung in Rot, Gelb oder Grün)
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
       html += '<div id="loc-box-' + index + '" class="' + getLocationBoxClasses(day) + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
@@ -2974,7 +3034,7 @@
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung</h3>' +
           '<div class="flex flex-wrap items-center gap-2">' +
             (hasNextDay ? (
-              '<button type="button" data-action="copy-to-next-day" data-day-index="' + index + '" class="no-print px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Kopiert Tagesort und alle Unterkunftsdaten auf Tag ' + (index + 2) + '">' +
+              '<button type="button" data-action="copy-to-next-day" data-day-index="' + index + '" class="no-print px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold transition flex items-center gap-1.5 shadow-sm" title="Kopiert Tagesort und alle Unterkunftsdaten auf Tag ' + (index + 2) + '">' +
                 '<i class="fa-solid fa-copy pointer-events-none"></i> <span>Ort & Unterkunft auf Tag ' + (index + 2) + ' übertragen</span>' +
               '</button>'
             ) : '') +
@@ -3015,7 +3075,7 @@
       html += '</div>';
       card.innerHTML = html;
       
-      setTimeout(() => updateImagesDOM(index), 0);
+      setTimeout(() => { updateImagesDOM(index); }, 0);
       return card;
     }
 
@@ -3448,7 +3508,7 @@
 
       if (card) {
         if (day.isCollapsed) {
-          card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-2xs hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
+          card.className = 'day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ' + visual.cardClass;
         } else {
           card.className = 'day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ' + visual.cardClass;
         }
