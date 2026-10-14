@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.84</title>
+  <title>Reiseplaner Pro v1.85</title>
   
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
@@ -74,7 +74,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.84</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.85</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -999,6 +999,33 @@
       };
     }
 
+    // Status-Umrandung des Tagesortes in Rot / Gelb / Grün analog zum Tagesstatus
+    function getLocationBoxClasses(day) {
+      const isBooked = isDayBooked(day);
+      const hasLocation = (day?.location || '').trim() !== '';
+
+      if (isBooked) {
+        return 'relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border-2 transition bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 dark:bg-emerald-950/50 dark:border-emerald-500';
+      }
+      if (hasLocation) {
+        return 'relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border-2 transition bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/20 dark:bg-amber-950/50 dark:border-amber-500';
+      }
+      return 'relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border-2 transition bg-rose-50/90 border-rose-400 ring-2 ring-rose-400/20 dark:bg-rose-950/40 dark:border-rose-500/80';
+    }
+
+    function getLocationMapsIconClasses(day) {
+      const isBooked = isDayBooked(day);
+      const hasLocation = (day?.location || '').trim() !== '';
+
+      if (!hasLocation) {
+        return 'mr-2 shrink-0 transition no-print text-rose-400 dark:text-rose-500 cursor-not-allowed';
+      }
+      if (isBooked) {
+        return 'mr-2 shrink-0 transition no-print text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer';
+      }
+      return 'mr-2 shrink-0 transition no-print text-amber-600 dark:text-amber-400 hover:text-amber-800 cursor-pointer';
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
       try {
         initTheme();
@@ -1528,6 +1555,65 @@
       openOnlyDay(dayIndex);
     }
 
+    // --- ORT & UNTERKUNFT AUF NÄCHSTEN TAG KOPIEREN ---
+    async function copyLocationAndLodgingToNextDay(dayIndex) {
+      const currentDay = tripData.days[dayIndex];
+      if (!currentDay) return;
+
+      const nextIndex = dayIndex + 1;
+      if (nextIndex >= tripData.days.length) {
+        showToast("Kein Folgetag vorhanden (Ende der Reise)", true);
+        return;
+      }
+
+      const nextDay = tripData.days[nextIndex];
+      const hasSourceData = (currentDay.location || '').trim() !== '' ||
+        (currentDay.lodging && (
+          (currentDay.lodging.name || '').trim() !== '' ||
+          (currentDay.lodging.price || '').trim() !== '' ||
+          (currentDay.lodging.hint || '').trim() !== '' ||
+          (currentDay.lodging.link || '').trim() !== '' ||
+          (currentDay.lodging.notes || '').trim() !== ''
+        ));
+
+      if (!hasSourceData) {
+        showToast("Bitte zuerst Ort oder Unterkunft eintragen", true);
+        return;
+      }
+
+      const nextHasData = (nextDay.location || '').trim() !== '' ||
+        (nextDay.lodging && (
+          (nextDay.lodging.name || '').trim() !== '' ||
+          (nextDay.lodging.price || '').trim() !== '' ||
+          (nextDay.lodging.hint || '').trim() !== '' ||
+          (nextDay.lodging.link || '').trim() !== '' ||
+          (nextDay.lodging.notes || '').trim() !== ''
+        ));
+
+      if (nextHasData) {
+        const { dayFormatted } = formatISODate(nextDay.date);
+        const existingInfo = [nextDay.location, nextDay.lodging?.name].filter(Boolean).join(' / ');
+        const ok = confirm(
+          `Tag ${nextIndex + 1} (${dayFormatted}) enthält bereits Angaben (${existingInfo || 'Ort/Unterkunft'}).\n\n` +
+          `Sollen Ort und Unterkunft von Tag ${dayIndex + 1} auf Tag ${nextIndex + 1} übertragen und überschrieben werden?`
+        );
+        if (!ok) return;
+      }
+
+      await createRollingBackup();
+
+      nextDay.location = currentDay.location || '';
+      nextDay.lodging = JSON.parse(JSON.stringify(currentDay.lodging || {
+        name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: ''
+      }));
+      nextDay.lodging.isBooked = isDayBooked(nextDay);
+
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+      showToast(`Ort & Unterkunft auf Tag ${nextIndex + 1} übertragen`);
+    }
+
     // --- HELFER FÜR BUCHUNGSSCHUTZ & PUFFER-ERKENNUNG (MODUS A / B) ---
     function hasDayAnyFixedBooking(day) {
       if (!day) return false;
@@ -1597,7 +1683,7 @@
       const hasLaterBookings = bookedLater.length > 0;
 
       if (type === 'delete') {
-        titleEl.innerHTML = `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayNum} entfernen / anpassen`;
+        titleEl.innerHTML = `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayNum} entfernen / zurücksetzen`;
         descEl.innerHTML = `Datum: <b>${dayFormatted} (${dayName})</b> &bull; Ort: <b>${escapeHtml(day.location || 'Ohne Ort')}</b>`;
 
         if (hasLaterBookings) {
@@ -1609,8 +1695,8 @@
         }
 
         titleA.innerText = "Modus A: Feste Buchungen geschützt (Empfohlen)";
-        descA.innerText = `Tag ${dayNum} wird nicht aus dem Kalender gerissen. Der Inhalt wird geleert und als „Freier Tag / Puffer“ am selben Kalendertag markiert. Alle nachfolgenden Tage und gebuchten Hotels/Transporte/Tickets behalten exakt ihr festes Datum.`;
-        btnA.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Als Puffer leeren (Modus A)`;
+        descA.innerText = `Tag ${dayNum} bleibt im Kalender erhalten, wird aber komplett auf den Zustand eines neu generierten Tages zurückgesetzt (ohne Ort, Status offen). Alle nachfolgenden Tage und Buchungen behalten exakt ihr festes Datum.`;
+        btnA.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Tag zurücksetzen / leeren (Modus A)`;
         btnA.className = "w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
 
         titleB.innerText = "Modus B: Echtes Verkürzen (-1 Tag)";
@@ -1623,7 +1709,7 @@
 
         if (hasLaterBookings) {
           warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
-          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Achtung bei Buchungen:</b> An ${bookedLater.length} Folgetag(en) liegen feste Buchungen vor. In <b>Modus A</b> werden nur komplett leere Puffertage genutzt, damit keine Buchungen oder Inhalte verloren gehen.</div>`;
+          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Achtung bei Buchungen:</b> An ${bookedLater.length} Folgetag(en) liegen feste Buchungen vor. In <b>Modus A</b> werden nur komplett leere Tage genutzt, damit keine Buchungen oder Inhalte verloren gehen.</div>`;
           warningsEl.classList.remove('hidden');
         } else {
           warningsEl.classList.add('hidden');
@@ -1631,7 +1717,7 @@
 
         titleA.innerText = "Modus A: Buchungsschutz prüfen";
         descA.innerText = hasLaterBookings
-          ? `Prüft, ob vor der nächsten festen Buchung ein komplett leerer Puffertag genutzt werden kann, ohne das Datum der Buchung zu verändern oder Inhalte zu überschreiben.`
+          ? `Prüft, ob vor der nächsten festen Buchung ein komplett leerer Tag genutzt werden kann, ohne das Datum der Buchung zu verändern oder Inhalte zu überschreiben.`
           : `Fügt einen neuen Tag ein. Da keine nachfolgenden Buchungen betroffen sind, wird die Reise sicher um 1 Tag erweitert.`;
         btnA.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Geschützt einfügen (Modus A)`;
         btnA.className = "w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5";
@@ -1671,7 +1757,8 @@
         }
 
         if (mode === 'A') {
-          day.location = 'Freier Tag / Puffer';
+          // Exakt auf Zustand eines neu generierten Tages zurücksetzen (leerer Ort + offener Zustand)
+          day.location = '';
           day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
           day.transports = [];
           day.activities = [];
@@ -1680,7 +1767,7 @@
           recordChangeForReminder();
           saveToStorage();
           renderDays();
-          showToast(`Tag ${dayIndex + 1} geleert & als Puffer erhalten (Modus A)`);
+          showToast(`Tag ${dayIndex + 1} zurückgesetzt (Modus A)`);
         } else {
           tripData.days.splice(dayIndex, 1);
           for (let i = dayIndex; i < tripData.days.length; i++) {
@@ -1736,9 +1823,9 @@
               recordChangeForReminder();
               saveToStorage();
               renderDays();
-              showToast(`Tag eingefügt (leerer Puffertag genutzt, Buchung geschützt)`);
+              showToast(`Tag eingefügt (leerer Tag genutzt, Buchung geschützt)`);
             } else {
-              alert(`Modus A blockiert: An Tag ${bookedAbsIndex + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Puffertag (Tage mit bereits eingetragenen Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
+              alert(`Modus A blockiert: An Tag ${bookedAbsIndex + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Tag (Tage mit bereits eingetragenen Orten, Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
             }
           } else {
             executeInsertModeB(dayIndex);
@@ -2566,7 +2653,6 @@
       const newDays = [];
 
       if (hasExistingDays && shiftRouteWithNewStart) {
-        // Sicherheitsabfrage, falls am Ende Tage mit Inhalt abgeschnitten würden
         if (newTotalDays < tripData.days.length) {
           const droppedDays = tripData.days.slice(newTotalDays);
           const droppedWithContent = droppedDays.filter(d => hasDayAnyContent(d));
@@ -2599,7 +2685,6 @@
           }
         }
       } else {
-        // Zuordnung über Kalenderdatum + Schutzprüfung für wegfallende Tage
         const existingMap = new Map();
         tripData.days.forEach(d => { if (d && d.date) existingMap.set(d.date, d); });
 
@@ -2715,6 +2800,7 @@
       const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
       const images = Array.isArray(day.images) ? day.images : [];
       const hasLocation = (day.location || '').trim() !== '';
+      const hasNextDay = index < (tripData.days.length - 1);
 
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
@@ -2778,12 +2864,11 @@
         '</div></div>' +
       '</div>';
 
-      // Tagesort
+      // Tagesort (mit farblicher Status-Umrandung in Rot, Gelb oder Grün – ohne "Festgelegt"-Badge)
       html += '<div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">';
-      html += '<div id="loc-box-' + index + '" class="relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border transition ' +
-          (hasLocation ? 'bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50' : 'bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700') + '">' +
+      html += '<div id="loc-box-' + index + '" class="' + getLocationBoxClasses(day) + '">' +
           '<button type="button" data-action="open-maps" data-day-index="' + index + '" ' +
-            'class="mr-2 shrink-0 transition no-print ' + (hasLocation ? 'text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer' : 'text-slate-400 cursor-not-allowed') + '" ' +
+            'class="' + getLocationMapsIconClasses(day) + '" ' +
             'title="' + (hasLocation ? 'In Google Maps öffnen' : 'Tagesort eintragen') + '">' +
             '<i class="fa-solid fa-map-location-dot text-base sm:text-lg pointer-events-none"></i>' +
           '</button>' +
@@ -2794,7 +2879,6 @@
           '</button>' +
           '<input type="text" value="' + escapeHtml(day.location || '') + '" placeholder="Tagesort / Etappe eintragen..." ' +
             'data-day-index="' + index + '" data-field="location" class="w-full bg-transparent text-base sm:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">' +
-          '<span id="loc-badge-' + index + '" class="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-600 text-white shrink-0 ml-2 no-print ' + (hasLocation ? '' : 'hidden') + '">📍 Festgelegt</span>' +
         '</div>' +
       '</div>';
 
@@ -2816,10 +2900,15 @@
         '<button data-action="toggle-booking" data-day-index="' + index + '" id="day-booking-btn-' + index + '" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ' + visual.btnClass + '">' +
           '<i class="fa-solid ' + statusIcon + ' pointer-events-none"></i> <span>' + statusLabel + '</span>' +
         '</button>' +
+        (hasNextDay ? (
+          '<button data-action="copy-to-next-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Ort & Unterkunft auf nächsten Tag (Tag ' + (index + 2) + ') übertragen">' +
+            '<i class="fa-solid fa-copy text-xs pointer-events-none"></i>' +
+          '</button>'
+        ) : '') +
         '<button data-action="insert-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen (+1 Tag)">' +
           '<i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>' +
         '</button>' +
-        '<button data-action="delete-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / anpassen">' +
+        '<button data-action="delete-day" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag löschen / zurücksetzen">' +
           '<i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>' +
         '</button>' +
         '<button data-action="toggle-collapse" data-day-index="' + index + '" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Tag zuklappen">' +
@@ -2875,15 +2964,22 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung
+      // Übernachtung (inkl. Button zum Kopieren von Ort & Unterkunft auf den Folgetag)
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
 
       html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
-        '<div class="flex items-center justify-between mb-3">' +
+        '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">' +
           '<h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-bed text-indigo-500"></i> Übernachtung</h3>' +
-          '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
+          '<div class="flex flex-wrap items-center gap-2">' +
+            (hasNextDay ? (
+              '<button type="button" data-action="copy-to-next-day" data-day-index="' + index + '" class="no-print px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-semibold transition flex items-center gap-1.5 shadow-2xs" title="Kopiert Tagesort und alle Unterkunftsdaten auf Tag ' + (index + 2) + '">' +
+                '<i class="fa-solid fa-copy pointer-events-none"></i> <span>Ort & Unterkunft auf Tag ' + (index + 2) + ' übertragen</span>' +
+              '</button>'
+            ) : '') +
+            '<span id="lodging-status-label-' + index + '" class="text-[11px] font-semibold ' + lodgingStatusColor + '">' + lodgingStatusText + '</span>' +
+          '</div>' +
         '</div>' +
         '<div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 mb-3">' +
           '<div class="md:col-span-5">' +
@@ -3045,6 +3141,10 @@
           }
           case 'toggle-booking': {
             toggleBookingStatus(dayIdx);
+            break;
+          }
+          case 'copy-to-next-day': {
+            copyLocationAndLodgingToNextDay(dayIdx);
             break;
           }
           case 'insert-day': {
@@ -3210,35 +3310,6 @@
         if (field) {
           if (field === 'location') {
             tripData.days[dayIdx].location = target.value;
-            const box = document.getElementById('loc-box-' + dayIdx);
-            const badge = document.getElementById('loc-badge-' + dayIdx);
-            const mapsBtn = box ? box.querySelector('[data-action="open-maps"]') : null;
-            const offlineMapsBtn = box ? box.querySelector('[data-action="open-offline-maps"]') : null;
-            const hasLoc = (target.value || '').trim() !== '';
-
-            if (box && badge) {
-              if (hasLoc) {
-                box.className = "relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border transition bg-indigo-50 border-indigo-400 ring-1 ring-indigo-400/50 dark:bg-indigo-950/40 dark:border-indigo-500 dark:ring-indigo-500/50";
-                badge.classList.remove('hidden');
-                if (mapsBtn) {
-                  mapsBtn.className = "mr-2 shrink-0 transition no-print text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 cursor-pointer";
-                  mapsBtn.title = "In Google Maps öffnen";
-                }
-                if (offlineMapsBtn) {
-                  offlineMapsBtn.className = "mr-2.5 shrink-0 transition no-print sm:hidden text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer";
-                }
-              } else {
-                box.className = "relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border transition bg-white/80 border-slate-300 border-dashed dark:bg-slate-900/60 dark:border-slate-700";
-                badge.classList.add('hidden');
-                if (mapsBtn) {
-                  mapsBtn.className = "mr-2 shrink-0 transition no-print text-slate-400 cursor-not-allowed";
-                  mapsBtn.title = "Tagesort eintragen";
-                }
-                if (offlineMapsBtn) {
-                  offlineMapsBtn.className = "mr-2.5 shrink-0 transition no-print sm:hidden hidden";
-                }
-              }
-            }
             updateDayCardVisualStatus(dayIdx);
             recordChangeForReminder();
             saveToStorage();
@@ -3355,6 +3426,11 @@
       recordChangeForReminder();
       saveToStorage();
       updateDayCardVisualStatus(dayIndex);
+      const statusSelect = document.querySelector(`select[data-day-index="${dayIndex}"][data-field="lodging.costStatus"]`);
+      if (statusSelect) {
+        statusSelect.value = tripData.days[dayIndex].lodging.costStatus;
+        statusSelect.className = 'w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(statusSelect.value);
+      }
     }
 
     function updateDayCardVisualStatus(dayIndex) {
@@ -3362,11 +3438,13 @@
       if (!day) return;
       const isToday = day.date === getTodayIso();
       const visual = getDayVisualClasses(day, isToday);
+      const hasLoc = (day.location || '').trim() !== '';
 
       const card = document.getElementById('day-card-' + dayIndex);
       const header = document.getElementById('day-header-' + dayIndex);
       const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
+      const locBox = document.getElementById('loc-box-' + dayIndex);
 
       if (card) {
         if (day.isCollapsed) {
@@ -3377,6 +3455,21 @@
       }
       if (header) {
         header.className = 'px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ' + visual.headerClass;
+      }
+
+      if (locBox) {
+        locBox.className = getLocationBoxClasses(day);
+        const mapsBtn = locBox.querySelector('[data-action="open-maps"]');
+        const offlineMapsBtn = locBox.querySelector('[data-action="open-offline-maps"]');
+        if (mapsBtn) {
+          mapsBtn.className = getLocationMapsIconClasses(day);
+          mapsBtn.title = hasLoc ? "In Google Maps öffnen" : "Tagesort eintragen";
+        }
+        if (offlineMapsBtn) {
+          offlineMapsBtn.className = hasLoc
+            ? "mr-2.5 shrink-0 transition no-print sm:hidden text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer"
+            : "mr-2.5 shrink-0 transition no-print sm:hidden hidden";
+        }
       }
 
       let statusLabel = 'Übernachtung offen';
@@ -3542,6 +3635,7 @@
     window.toggleBookingStatus = toggleBookingStatus;
     window.toggleDayCollapse = toggleDayCollapse;
     window.openOnlyDay = openOnlyDay;
+    window.copyLocationAndLodgingToNextDay = copyLocationAndLodgingToNextDay;
     window.refreshDayHeaderCost = refreshDayHeaderCost;
     window.addTransportRow = addTransportRow;
     window.removeTransportItem = removeTransportItem;
