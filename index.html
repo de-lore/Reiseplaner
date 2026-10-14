@@ -181,7 +181,7 @@
         <i class="fa-solid fa-calendar-days"></i> 📅 Reiseplan
       </button>
       <button onclick="switchTab('budget')" id="deskTabBtn-budget" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
-        <i class="fa-solid fa-wallet"></i> 💰 Budget & Kurse
+        <i class="fa-solid fa-wallet"></i> 💰 Budget
       </button>
       <button onclick="switchTab('notes')" id="deskTabBtn-notes" class="px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0">
         <i class="fa-solid fa-list-check"></i> 🎒 Checkliste & Notizen
@@ -261,7 +261,7 @@
       <div id="daysContainer" class="space-y-2"></div>
     </div>
 
-    <!-- ==================== TAB 2: 💰 BUDGET & KURSE ==================== -->
+    <!-- ==================== TAB 2: 💰 BUDGET ==================== -->
     <div id="tabContent-budget" class="tab-content hidden space-y-5">
       <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         <div class="bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-center shadow-sm">
@@ -291,13 +291,18 @@
       </section>
 
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 dark:border-slate-700/60 pb-3">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/60 pb-3">
           <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
             <i class="fa-solid fa-chart-pie text-violet-500"></i> Kostenverteilung nach Kategorien
           </h2>
-          <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
-            Ø Kosten pro Reisetag: <b id="statCostPerDay" class="text-indigo-600 dark:text-indigo-400 font-mono">0,00 €</b>
-          </span>
+          <div class="flex flex-wrap items-center gap-3">
+            <span class="text-xs font-bold text-slate-700 dark:text-slate-300">
+              Ø Kosten pro Reisetag: <b id="statCostPerDay" class="text-indigo-600 dark:text-indigo-400 font-mono">0,00 €</b>
+            </span>
+            <button onclick="exportToCSV()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm no-print">
+              <i class="fa-solid fa-file-csv"></i> Als CSV (Excel) exportieren
+            </button>
+          </div>
         </div>
 
         <div class="w-full h-3.5 rounded-full bg-slate-100 dark:bg-slate-900 overflow-hidden flex shadow-inner">
@@ -324,32 +329,6 @@
               <i class="fa-solid fa-ticket"></i> Aktivitäten & Tickets
             </div>
             <div id="breakdownActivity" class="text-sm font-black text-slate-900 dark:text-white font-mono">0,00 € (0%)</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 sm:p-5 shadow-sm space-y-4">
-        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-700/60 pb-3">
-          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
-            <i class="fa-solid fa-coins text-amber-500"></i> Wechselkurse (1 € =)
-          </h2>
-          <button onclick="exportToCSV()" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
-            <i class="fa-solid fa-file-csv"></i> Gesamte Ausgaben als CSV (Excel) exportieren
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">THB (Thailand Baht):</span>
-            <input type="number" id="rateTHB" step="0.1" value="38" oninput="updateRate('THB', this.value)" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">USD (US-Dollar):</span>
-            <input type="number" id="rateUSD" step="0.01" value="1.08" oninput="updateRate('USD', this.value)" class="w-24 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
-          </div>
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-2">
-            <span class="text-xs font-bold text-slate-600 dark:text-slate-400">LAK (Laos Kip):</span>
-            <input type="number" id="rateLAK" step="100" value="24000" oninput="updateRate('LAK', this.value)" class="w-28 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-slate-900 dark:text-white font-mono text-center text-xs">
           </div>
         </div>
       </section>
@@ -556,7 +535,6 @@
       endDate: "",
       generalNotes: "",
       emergencyNotes: "",
-      exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
       checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
       days: []
     };
@@ -824,7 +802,6 @@
         endDate: "",
         generalNotes: "",
         emergencyNotes: "",
-        exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
         checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
         days: []
       };
@@ -956,7 +933,6 @@
         panel.classList.remove('hidden');
         panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       } else {
-        // Falls Datumsfelder geändert, aber nicht per "Tage generieren" übernommen wurden, auf gespeicherten Stand synchronisieren
         const startEl = document.getElementById('startDate');
         const endEl = document.getElementById('endDate');
         if (startEl) startEl.value = tripData.startDate || '';
@@ -1504,10 +1480,10 @@
       return 'https://' + trimmed;
     }
 
-    // --- CSV-EXPORT DER AUSGABEN ---
+    // --- CSV-EXPORT DER AUSGABEN (IN EURO) ---
     function exportToCSV() {
       const rows = [
-        ["Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (Original)", "Waehrung", "Euro-Aequivalent", "Status", "Hinweis / Link"]
+        ["Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (EUR)", "Status", "Hinweis / Link"]
       ];
 
       (tripData.days || []).forEach((d, idx) => {
@@ -1515,48 +1491,42 @@
         const loc = d.location || '';
         
         if (d.lodging && (d.lodging.name || d.lodging.price)) {
-          const eur = convertToEur(d.lodging.price, d.lodging.currency);
+          const eur = parseFlexibleNumber(d.lodging.price);
           rows.push([
             dayNr,
             d.date || '',
             loc,
             "Unterkunft",
             d.lodging.name || '',
-            d.lodging.price || '0',
-            d.lodging.currency || 'EUR',
-            eur.toFixed(2),
+            eur.toFixed(2).replace('.', ','),
             d.lodging.costStatus || 'geplant',
             (d.lodging.hint || '') + (d.lodging.link ? ' | ' + d.lodging.link : '')
           ]);
         }
 
         (d.transports || []).forEach(tr => {
-          const eur = convertToEur(tr.cost, tr.currency);
+          const eur = parseFlexibleNumber(tr.cost);
           rows.push([
             dayNr,
             d.date || '',
             loc,
             "Transport",
             tr.title || '',
-            tr.cost || '0',
-            tr.currency || 'EUR',
-            eur.toFixed(2),
+            eur.toFixed(2).replace('.', ','),
             tr.costStatus || 'geplant',
             (tr.hint || '') + (tr.link ? ' | ' + tr.link : '')
           ]);
         });
 
         (d.activities || []).forEach(act => {
-          const eur = convertToEur(act.cost, act.currency);
+          const eur = parseFlexibleNumber(act.cost);
           rows.push([
             dayNr,
             d.date || '',
             loc,
             "Aktivitaet",
             act.title || '',
-            act.cost || '0',
-            act.currency || 'EUR',
-            eur.toFixed(2),
+            eur.toFixed(2).replace('.', ','),
             act.costStatus || 'geplant',
             (act.hint || '') + (act.link ? ' | ' + act.link : '')
           ]);
@@ -1644,7 +1614,7 @@
 
       nextDay.location = currentDay.location || '';
       nextDay.lodging = JSON.parse(JSON.stringify(currentDay.lodging || {
-        name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: ''
+        name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: ''
       }));
       nextDay.lodging.isBooked = isDayBooked(nextDay);
 
@@ -1786,7 +1756,6 @@
       const { type, dayIndex } = pendingModalAction;
       closeDayActionModal();
 
-      // Vor jedem Eingriff automatisch ein Backup in der IndexedDB anlegen
       await createRollingBackup();
 
       if (type === 'delete') {
@@ -1796,9 +1765,8 @@
           : [];
 
         if (mode === 'A') {
-          // Exakt auf Zustand eines neu generierten Tages zurücksetzen (leerer Ort + offener Zustand)
           day.location = '';
-          day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+          day.lodging = { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' };
           day.transports = [];
           day.activities = [];
           day.notes = '';
@@ -1851,7 +1819,7 @@
                 date: isoNew,
                 location: '',
                 isCollapsed: false,
-                lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+                lodging: { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' },
                 transports: [],
                 activities: [],
                 images: [],
@@ -1889,7 +1857,7 @@
         date: isoNew,
         location: '',
         isCollapsed: false,
-        lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+        lodging: { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' },
         transports: [],
         activities: [],
         images: [],
@@ -1956,7 +1924,7 @@
       saveToStorage();
     }
 
-    // --- SICHERE ZAHLEN- & WÄHRUNGSKONVERTIERUNG ---
+    // --- SICHERE ZAHLENKONVERTIERUNG (EURO) ---
     function parseFlexibleNumber(val) {
       if (val === null || val === undefined || val === '') return 0;
       if (typeof val === 'number') return isNaN(val) ? 0 : val;
@@ -1979,56 +1947,21 @@
       } else if (hasComma) {
         const parts = s.split(',');
         if (parts.length > 2) {
-          // Tausendertrennzeichen: 1,000,000
           s = s.replace(/,/g, '');
         } else {
-          // Dezimalkomma: 45,90
           s = s.replace(',', '.');
         }
       } else if (hasDot) {
         const parts = s.split('.');
         if (parts.length > 2) {
-          // Mehrere Punkte: 1.000.000 -> Tausenderpunkte
           s = s.replace(/\./g, '');
         } else if (parts.length === 2 && parts[1].length === 3 && parts[0].length >= 1 && parts[0] !== '0') {
-          // Einzelner Punkt mit exakt 3 Nachkommastellen bei Preisen (z. B. 480.000 LAK oder 1.200 EUR) -> Tausenderpunkt
           s = s.replace(/\./g, '');
         }
       }
 
       const num = parseFloat(s);
       return isNaN(num) ? 0 : num;
-    }
-
-    function updateRate(curr, val) {
-      const num = parseFloat(String(val).replace(',', '.'));
-      if (!isNaN(num) && num > 0) {
-        if (!tripData.exchangeRates) tripData.exchangeRates = {};
-        tripData.exchangeRates[curr] = num;
-        recordChangeForReminder();
-        saveToStorage();
-        updateAllCostDisplays();
-      }
-    }
-
-    function convertToEur(val, currency) {
-      const num = parseFlexibleNumber(val);
-      if (num === 0) return 0;
-
-      const curr = (currency || 'EUR').toUpperCase();
-      if (curr === 'EUR') return num;
-
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
-      const rate = rates[curr] || 1;
-      return num / rate;
-    }
-
-    function getApproxEurHtml(val, currency) {
-      const curr = (currency || 'EUR').toUpperCase();
-      if (!val || curr === 'EUR') return '';
-      const eur = convertToEur(val, curr);
-      if (eur === 0) return '';
-      return '<span class="text-[10px] text-slate-400 ml-1 font-mono">(' + formatEuro(eur) + ')</span>';
     }
 
     function renderChecklist() {
@@ -2244,7 +2177,7 @@
       let activity = 0;
 
       if (day && day.lodging) {
-        const c = convertToEur(day.lodging.price, day.lodging.currency);
+        const c = parseFlexibleNumber(day.lodging.price);
         total += c;
         lodging += c;
         const s = (day.lodging.costStatus || '').toLowerCase();
@@ -2254,7 +2187,7 @@
       if (day && Array.isArray(day.transports)) {
         day.transports.forEach(t => {
           if (!t) return;
-          const c = convertToEur(t.cost, t.currency);
+          const c = parseFlexibleNumber(t.cost);
           total += c;
           transport += c;
           const s = (t.costStatus || '').toLowerCase();
@@ -2265,7 +2198,7 @@
       if (day && Array.isArray(day.activities)) {
         day.activities.forEach(a => {
           if (!a) return;
-          const c = convertToEur(a.cost, a.currency);
+          const c = parseFlexibleNumber(a.cost);
           total += c;
           activity += c;
           const s = (a.costStatus || '').toLowerCase();
@@ -2327,7 +2260,6 @@
         if (backups.length > 3) backups = backups.slice(0, 3);
         await tripsSet('backups', backups);
 
-        // Bereinige Medien aus herausrotierten Backups, sofern sie nirgends mehr benötigt werden
         for (const oldB of droppedBackups) {
           for (const d of (oldB.data?.days || [])) {
             for (const img of (d?.images || [])) {
@@ -2401,14 +2333,13 @@
           endDate: "",
           generalNotes: "",
           emergencyNotes: "",
-          exchangeRates: { THB: 38, USD: 1.08, LAK: 24000 },
           checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
           days: []
         };
       }
+      delete tripData.exchangeRates;
       if (tripData.generalNotes === undefined) tripData.generalNotes = "";
       if (tripData.emergencyNotes === undefined) tripData.emergencyNotes = "";
-      if (!tripData.exchangeRates) tripData.exchangeRates = { THB: 38, USD: 1.08, LAK: 24000 };
       if (!Array.isArray(tripData.checklist)) {
         tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
       }
@@ -2425,16 +2356,16 @@
         if (!Array.isArray(day.images)) day.images = [];
 
         if (!day.lodging || typeof day.lodging !== 'object') {
-          day.lodging = { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' };
+          day.lodging = { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' };
         } else {
           if (day.lodging.name === undefined) day.lodging.name = '';
           if (day.lodging.price === undefined) day.lodging.price = '';
-          if (!day.lodging.currency) day.lodging.currency = 'EUR';
           if (day.lodging.hint === undefined) day.lodging.hint = '';
           if (day.lodging.link === undefined) day.lodging.link = '';
           if (day.lodging.notes === undefined) day.lodging.notes = '';
           if (!day.lodging.costStatus) day.lodging.costStatus = day.lodging.isBooked ? 'gebucht' : 'geplant';
           day.lodging.isBooked = isDayBooked(day);
+          delete day.lodging.currency;
         }
 
         if (!Array.isArray(day.transports)) {
@@ -2445,10 +2376,10 @@
             if (t.title === undefined) t.title = '';
             if (t.category === undefined) t.category = '';
             if (t.cost === undefined) t.cost = '';
-            if (!t.currency) t.currency = 'EUR';
             if (!t.costStatus) t.costStatus = 'geplant';
             if (t.hint === undefined) t.hint = '';
             if (t.link === undefined) t.link = '';
+            delete t.currency;
           });
         }
 
@@ -2459,11 +2390,11 @@
             if (!a) return;
             if (a.title === undefined) a.title = '';
             if (a.cost === undefined) a.cost = '';
-            if (!a.currency) a.currency = 'EUR';
             if (!a.costStatus) a.costStatus = 'geplant';
             if (a.hint === undefined) a.hint = '';
             if (a.link === undefined) a.link = '';
             if (a.done === undefined) a.done = false;
+            delete a.currency;
           });
         }
       });
@@ -2635,14 +2566,6 @@
       document.getElementById('generalNotes').value = tripData.generalNotes || '';
       const emInput = document.getElementById('emergencyNotesInput');
       if (emInput) emInput.value = tripData.emergencyNotes || '';
-      
-      const rates = tripData.exchangeRates || { THB: 38, USD: 1.08, LAK: 24000 };
-      const elTHB = document.getElementById('rateTHB');
-      const elUSD = document.getElementById('rateUSD');
-      const elLAK = document.getElementById('rateLAK');
-      if (elTHB) elTHB.value = rates.THB || 38;
-      if (elUSD) elUSD.value = rates.USD || 1.08;
-      if (elLAK) elLAK.value = rates.LAK || 24000;
 
       const panel = document.getElementById('tripConfigSection');
       if (panel) {
@@ -2736,7 +2659,7 @@
               date: iso,
               location: '',
               isCollapsed: true,
-              lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+              lodging: { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' },
               transports: [],
               activities: [],
               images: [],
@@ -2774,7 +2697,7 @@
               date: iso,
               location: '',
               isCollapsed: true,
-              lodging: { name: '', isBooked: false, price: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', notes: '' },
+              lodging: { name: '', isBooked: false, price: '', costStatus: 'geplant', hint: '', link: '', notes: '' },
               transports: [],
               activities: [],
               images: [],
@@ -3024,7 +2947,7 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung (inkl. Button zum Kopieren von Ort & Unterkunft auf den Folgetag)
+      // Übernachtung (in EUR)
       let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
       let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
@@ -3042,17 +2965,16 @@
           '</div>' +
         '</div>' +
         '<div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 mb-3">' +
-          '<div class="md:col-span-5">' +
+          '<div class="md:col-span-6">' +
             '<input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="' + escapeHtml(day.lodging.name || '') + '" ' +
               'data-day-index="' + index + '" data-field="lodging.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
           '</div>' +
-          '<div class="md:col-span-4 flex items-center gap-1.5">' +
-            '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
-              'data-day-index="' + index + '" data-field="lodging.price" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-white font-mono focus:border-indigo-500">' +
-            '<select data-day-index="' + index + '" data-field="lodging.currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-2 py-1.5 font-bold text-xs">' +
-              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((day.lodging.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-            '</select>' +
-            '<span id="lodging-eur-approx-' + index + '">' + getApproxEurHtml(day.lodging.price, day.lodging.currency) + '</span>' +
+          '<div class="md:col-span-3 flex items-center gap-1.5">' +
+            '<div class="relative flex-1 flex items-center">' +
+              '<input type="text" placeholder="Preis" value="' + escapeHtml(day.lodging.price || '') + '" ' +
+                'data-day-index="' + index + '" data-field="lodging.price" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg pl-2.5 pr-7 py-1.5 text-sm text-slate-900 dark:text-white font-mono text-right focus:border-indigo-500">' +
+              '<span class="absolute right-2.5 text-xs font-bold text-slate-400 pointer-events-none">€</span>' +
+            '</div>' +
           '</div>' +
           '<div class="md:col-span-3">' +
             '<select data-day-index="' + index + '" data-field="lodging.costStatus" class="w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(day.lodging.costStatus || 'geplant') + '">' +
@@ -3110,11 +3032,10 @@
             '</select>' +
 
             '<input type="text" placeholder="Art (z. B. 08:30 Flug, Roller mieten)" value="' + escapeHtml(tr.title || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">' +
-            '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-            '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 font-bold text-[10px]">' +
-              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((tr.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-            '</select>' +
-            '<span id="tr-eur-approx-' + index + '-' + trIdx + '">' + getApproxEurHtml(tr.cost, tr.currency) + '</span>' +
+            '<div class="relative flex items-center w-24 shrink-0">' +
+              '<input type="text" placeholder="Kosten" value="' + escapeHtml(tr.cost || '') + '" data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+              '<span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>' +
+            '</div>' +
             '<select data-day-index="' + index + '" data-tr-index="' + trIdx + '" data-tr-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(tr.costStatus || 'geplant') + '">' +
               '<option value="geplant" ' + ((tr.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
               '<option value="reserviert" ' + (tr.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
@@ -3155,11 +3076,10 @@
             '</div>' +
             '<input type="checkbox" ' + (act.done ? 'checked' : '') + ' data-action="toggle-activity-done" data-day-index="' + index + '" data-act-index="' + actIdx + '" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">' +
             '<input type="text" id="act-title-input-' + index + '-' + actIdx + '" placeholder="Aktivität / Plan" value="' + escapeHtml(act.title || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ' + (act.done ? 'line-through text-slate-400' : '') + '">' +
-            '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-16 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-1.5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
-            '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="currency" class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded px-1 py-1 font-bold text-[10px]">' +
-              ['EUR', 'THB', 'USD', 'LAK'].map(c => '<option value="' + c + '" ' + ((act.currency || 'EUR') === c ? 'selected' : '') + '>' + c + '</option>').join('') +
-            '</select>' +
-            '<span id="act-eur-approx-' + index + '-' + actIdx + '">' + getApproxEurHtml(act.cost, act.currency) + '</span>' +
+            '<div class="relative flex items-center w-24 shrink-0">' +
+              '<input type="text" placeholder="Kosten" value="' + escapeHtml(act.cost || '') + '" data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">' +
+              '<span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>' +
+            '</div>' +
             '<select data-day-index="' + index + '" data-act-index="' + actIdx + '" data-act-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(act.costStatus || 'geplant') + '">' +
               '<option value="geplant" ' + ((act.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
               '<option value="reserviert" ' + (act.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
@@ -3310,9 +3230,6 @@
               tripData.days[dayIdx].lodging.isBooked = isDayBooked(tripData.days[dayIdx]);
               target.className = 'w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(target.value);
               updateDayCardVisualStatus(dayIdx);
-            } else if (sub === 'currency') {
-              const eurApprox = document.getElementById('lodging-eur-approx-' + dayIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].lodging.price, tripData.days[dayIdx].lodging.currency);
             }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
@@ -3328,9 +3245,6 @@
             tripData.days[dayIdx].transports[trIdx][trField] = target.value;
             if (trField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            } else if (trField === 'currency') {
-              const eurApprox = document.getElementById('tr-eur-approx-' + dayIdx + '-' + trIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].transports[trIdx].cost, tripData.days[dayIdx].transports[trIdx].currency);
             }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
@@ -3346,9 +3260,6 @@
             tripData.days[dayIdx].activities[actIdx][actField] = target.value;
             if (actField === 'costStatus') {
               target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            } else if (actField === 'currency') {
-              const eurApprox = document.getElementById('act-eur-approx-' + dayIdx + '-' + actIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].activities[actIdx].cost, tripData.days[dayIdx].activities[actIdx].currency);
             }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
@@ -3381,9 +3292,7 @@
             const sub = field.split('.')[1];
             if (!tripData.days[dayIdx].lodging) tripData.days[dayIdx].lodging = {};
             tripData.days[dayIdx].lodging[sub] = target.value;
-            if (sub === 'price' || sub === 'currency') {
-              const eurApprox = document.getElementById('lodging-eur-approx-' + dayIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].lodging.price, tripData.days[dayIdx].lodging.currency);
+            if (sub === 'price') {
               refreshDayHeaderCost(dayIdx);
             } else if (sub === 'link') {
               const linkBtn = document.getElementById('lodging-link-btn-' + dayIdx);
@@ -3409,9 +3318,7 @@
           const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
           if (tripData.days[dayIdx] && tripData.days[dayIdx].transports[trIdx]) {
             tripData.days[dayIdx].transports[trIdx][trField] = target.value;
-            if (trField === 'cost' || trField === 'currency') {
-              const eurApprox = document.getElementById('tr-eur-approx-' + dayIdx + '-' + trIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].transports[trIdx].cost, tripData.days[dayIdx].transports[trIdx].currency);
+            if (trField === 'cost') {
               refreshDayHeaderCost(dayIdx);
             } else if (trField === 'link') {
               const linkBtn = document.getElementById('tr-link-btn-' + dayIdx + '-' + trIdx);
@@ -3437,9 +3344,7 @@
           const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
           if (tripData.days[dayIdx] && tripData.days[dayIdx].activities[actIdx]) {
             tripData.days[dayIdx].activities[actIdx][actField] = target.value;
-            if (actField === 'cost' || actField === 'currency') {
-              const eurApprox = document.getElementById('act-eur-approx-' + dayIdx + '-' + actIdx);
-              if (eurApprox) eurApprox.innerHTML = getApproxEurHtml(tripData.days[dayIdx].activities[actIdx].cost, tripData.days[dayIdx].activities[actIdx].currency);
+            if (actField === 'cost') {
               refreshDayHeaderCost(dayIdx);
             } else if (actField === 'link') {
               const linkBtn = document.getElementById('act-link-btn-' + dayIdx + '-' + actIdx);
@@ -3565,14 +3470,6 @@
       updateStats();
     }
 
-    function updateAllCostDisplays() {
-      (tripData.days || []).forEach((d, idx) => {
-        refreshDayHeaderCost(idx);
-      });
-      renderDays();
-      updateStats();
-    }
-
     function toggleAllDays(expand) {
       if (!Array.isArray(tripData.days)) return;
       tripData.days.forEach(d => { if (d) d.isCollapsed = !expand; });
@@ -3583,7 +3480,7 @@
     function addTransportRow(dayIndex) {
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].transports)) tripData.days[dayIndex].transports = [];
-      tripData.days[dayIndex].transports.push({ title: '', category: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '' });
+      tripData.days[dayIndex].transports.push({ title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' });
       recordChangeForReminder();
       saveToStorage();
       renderDays();
@@ -3600,7 +3497,7 @@
     function addActivityRow(dayIndex) {
       if (!tripData.days[dayIndex]) return;
       if (!Array.isArray(tripData.days[dayIndex].activities)) tripData.days[dayIndex].activities = [];
-      tripData.days[dayIndex].activities.push({ title: '', cost: '', currency: 'EUR', costStatus: 'geplant', hint: '', link: '', done: false });
+      tripData.days[dayIndex].activities.push({ title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false });
       recordChangeForReminder();
       saveToStorage();
       renderDays();
@@ -3718,7 +3615,6 @@
     window.restoreBackup = restoreBackup;
     window.toggleTheme = toggleTheme;
     window.setTheme = setTheme;
-    window.updateRate = updateRate;
     window.toggleChecklistItem = toggleChecklistItem;
     window.addChecklistItem = addChecklistItem;
     window.removeChecklistItem = removeChecklistItem;
