@@ -140,7 +140,7 @@
       </div>
     </div>
 
-    <!-- IN HEADER VERSCHOBENE FILTER-, SUCH- & HEUTE-LEISTE (Ultra-schlank für Android & PC) -->
+    <!-- IN HEADER VERSCHOBENE FILTER-, SUCH-, HEUTE- & ALLE-AUF/ZU-LEISTE -->
     <div id="headerFilterBar" class="border-t border-slate-200/80 dark:border-slate-700/60 px-3 sm:px-4 py-1.5 bg-slate-50/60 dark:bg-slate-800/60 no-print transition-all duration-200">
       <div class="max-w-6xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
         
@@ -171,6 +171,12 @@
         <!-- Schlanker "Heute" Button -->
         <button onclick="jumpToToday()" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-sm shrink-0" title="Zum heutigen Reisetag scrollen">
           <i class="fa-solid fa-crosshairs text-[10px] sm:text-xs"></i> <span>Heute</span>
+        </button>
+
+        <!-- Button: Alle Tage auf-/zuklappen -->
+        <button onclick="toggleAllDaysSmart()" id="toggleAllDaysBtn" class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] sm:text-xs font-semibold transition flex items-center gap-1 shadow-sm shrink-0" title="Alle Tage auf- oder zuklappen">
+          <i id="toggleAllDaysIcon" class="fa-solid fa-angles-down text-[10px] sm:text-xs"></i>
+          <span id="toggleAllDaysText" class="hidden md:inline">Alle öffnen</span>
         </button>
       </div>
     </div>
@@ -953,7 +959,9 @@
         titleEl.innerText = title || 'Reiseplaner';
       }
 
-      const daysCount = (tripData.days || []).length;
+      const days = tripData.days || [];
+      const daysCount = days.length;
+      const nightsCount = days.filter(d => !isNoLodgingNeeded(d)).length;
 
       if (datesEl) {
         const sVal = document.getElementById('startDate')?.value || tripData.startDate;
@@ -969,7 +977,7 @@
 
       if (daysCountEl) {
         if (daysCount > 0) {
-          daysCountEl.innerText = `${daysCount} Nächte`;
+          daysCountEl.innerText = nightsCount !== daysCount ? `${daysCount} Tage · ${nightsCount} Nächte` : `${nightsCount} Nächte`;
           daysCountEl.classList.remove('hidden');
         } else {
           daysCountEl.classList.add('hidden');
@@ -978,18 +986,18 @@
     }
 
     function getDayVisualClasses(day, isToday) {
-      const isBooked = isDayBooked(day);
+      const isSettled = isDayLodgingSettled(day);
       const hasLocation = (day.location || '').trim() !== '';
 
       if (isToday) {
         return {
           cardClass: 'bg-white dark:bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/80 today-highlight',
           headerClass: 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40',
-          btnClass: isBooked ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (hasLocation ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white')
+          btnClass: isSettled ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (hasLocation ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white')
         };
       }
 
-      if (isBooked) {
+      if (isSettled) {
         return {
           cardClass: 'bg-emerald-100/80 border-emerald-500 dark:bg-emerald-950/50 dark:border-emerald-500/70',
           headerClass: 'border-emerald-300 bg-emerald-200/90 dark:border-emerald-500/50 dark:bg-emerald-900/70',
@@ -1014,10 +1022,10 @@
 
     // Status-Umrandung des Tagesortes in Rot / Gelb / Grün analog zum Tagesstatus
     function getLocationBoxClasses(day) {
-      const isBooked = isDayBooked(day);
+      const isSettled = isDayLodgingSettled(day);
       const hasLocation = (day?.location || '').trim() !== '';
 
-      if (isBooked) {
+      if (isSettled) {
         return 'relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border-2 transition bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 dark:bg-emerald-950/50 dark:border-emerald-500';
       }
       if (hasLocation) {
@@ -1027,13 +1035,13 @@
     }
 
     function getLocationMapsIconClasses(day) {
-      const isBooked = isDayBooked(day);
+      const isSettled = isDayLodgingSettled(day);
       const hasLocation = (day?.location || '').trim() !== '';
 
       if (!hasLocation) {
         return 'mr-2 shrink-0 transition no-print text-rose-400 dark:text-rose-500 cursor-not-allowed';
       }
-      if (isBooked) {
+      if (isSettled) {
         return 'mr-2 shrink-0 transition no-print text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer';
       }
       return 'mr-2 shrink-0 transition no-print text-amber-600 dark:text-amber-400 hover:text-amber-800 cursor-pointer';
@@ -1048,6 +1056,7 @@
         initServiceWorker();
         initPersistentStorage();
         setupKeyboardShortcuts();
+        setupLifecycleSaveFlush();
         setupEventDelegation();
         checkBackupReminder();
       } catch (e) {
@@ -1064,6 +1073,24 @@
           saveToFile(false);
         }
       });
+    }
+
+    // Sofortiges Speichern ausstehender Debounce-Änderungen beim Verlassen/Minimieren der App
+    function flushPendingSave() {
+      if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer);
+        saveDebounceTimer = null;
+        tripsSet('trip_data', tripData);
+      }
+    }
+
+    function setupLifecycleSaveFlush() {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+          flushPendingSave();
+        }
+      });
+      window.addEventListener('pagehide', flushPendingSave);
     }
 
     function initNetworkStatus() {
@@ -1414,13 +1441,13 @@
 
         if (isPdf) {
           return `
-            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2 max-w-[200px] shadow-sm">
+            <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pr-6 flex items-center gap-2 max-w-[210px] shadow-sm">
               <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
               <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-media-id="${item.id}" data-file-name="${escapeHtml(fileName)}" title="PDF ansehen">
                 <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(fileName)}</span>
                 <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
               </div>
-              <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
+              <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
             </div>
           `;
         }
@@ -1428,7 +1455,7 @@
         return `
           <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex items-center justify-center">
             <img id="thumb-${item.id}" data-action="open-lightbox" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="Klicken zum Vergrößern" src="" alt="Lade...">
-            <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
+            <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>
           </div>
         `;
       }).join('');
@@ -1565,6 +1592,34 @@
       openOnlyDay(dayIndex);
     }
 
+    // --- ALLE TAGE AUF-/ZUKLAPPEN ---
+    function toggleAllDays(expand) {
+      if (!Array.isArray(tripData.days) || tripData.days.length === 0) return;
+      tripData.days.forEach(d => { if (d) d.isCollapsed = !expand; });
+      saveToStorage();
+      renderDays();
+    }
+
+    function toggleAllDaysSmart() {
+      if (!Array.isArray(tripData.days) || tripData.days.length === 0) {
+        showToast("Noch keine Reisetage vorhanden", true);
+        return;
+      }
+      const anyCollapsed = tripData.days.some(d => d && d.isCollapsed);
+      toggleAllDays(anyCollapsed);
+      showToast(anyCollapsed ? "Alle Tage aufgeklappt" : "Alle Tage zugeklappt");
+    }
+
+    function updateToggleAllBtnState() {
+      const icon = document.getElementById('toggleAllDaysIcon');
+      const text = document.getElementById('toggleAllDaysText');
+      if (!icon || !text) return;
+      const days = Array.isArray(tripData.days) ? tripData.days : [];
+      const anyCollapsed = days.length === 0 || days.some(d => d && d.isCollapsed);
+      icon.className = anyCollapsed ? "fa-solid fa-angles-down text-[10px] sm:text-xs" : "fa-solid fa-angles-up text-[10px] sm:text-xs";
+      text.innerText = anyCollapsed ? "Alle öffnen" : "Alle schließen";
+    }
+
     // --- ORT & UNTERKUNFT AUF NÄCHSTEN TAG KOPIEREN ---
     async function copyLocationAndLodgingToNextDay(dayIndex) {
       const currentDay = tripData.days[dayIndex];
@@ -1650,7 +1705,8 @@
         (day.lodging.price || '').trim() !== '' ||
         (day.lodging.hint || '').trim() !== '' ||
         (day.lodging.link || '').trim() !== '' ||
-        (day.lodging.notes || '').trim() !== ''
+        (day.lodging.notes || '').trim() !== '' ||
+        day.lodging.costStatus === 'keine'
       )) return true;
       if (Array.isArray(day.transports) && day.transports.length > 0) return true;
       if (Array.isArray(day.activities) && day.activities.length > 0) return true;
@@ -1918,6 +1974,34 @@
       window.location.href = `geo:0,0?q=${q}`;
     }
 
+    function getHotelSearchQuery(day) {
+      if (!day) return '';
+      const name = (day.lodging?.name || '').trim();
+      const addr = (day.lodging?.notes || '').trim();
+      const loc = (day.location || '').trim();
+      return [name, addr, loc].filter(Boolean).join(', ');
+    }
+
+    function openHotelMaps(dayIndex) {
+      const day = tripData.days[dayIndex];
+      const query = getHotelSearchQuery(day);
+      if (!query) {
+        showToast("Bitte zuerst Hotelname, Adresse oder Tagesort eintragen", true);
+        return;
+      }
+      window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query), '_blank');
+    }
+
+    function openHotelOfflineMaps(dayIndex) {
+      const day = tripData.days[dayIndex];
+      const query = getHotelSearchQuery(day);
+      if (!query) {
+        showToast("Bitte zuerst Hotelname, Adresse oder Tagesort eintragen", true);
+        return;
+      }
+      window.location.href = `geo:0,0?q=${encodeURIComponent(query)}`;
+    }
+
     function saveEmergencyNotes(val) {
       tripData.emergencyNotes = val;
       recordChangeForReminder();
@@ -2149,10 +2233,19 @@
       renderDays();
     }
 
+    function isNoLodgingNeeded(day) {
+      if (!day || !day.lodging) return false;
+      return (day.lodging.costStatus || '').toLowerCase() === 'keine';
+    }
+
     function isDayBooked(day) {
       if (!day || !day.lodging) return false;
       const s = (day.lodging.costStatus || '').toLowerCase();
       return s === 'reserviert' || s === 'gebucht' || s === 'bezahlt';
+    }
+
+    function isDayLodgingSettled(day) {
+      return isDayBooked(day) || isNoLodgingNeeded(day);
     }
 
     function getTransportEmoji(tr) {
@@ -2220,6 +2313,9 @@
       }
       if (s === 'reserviert') {
         return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-400 dark:border-sky-700/80';
+      }
+      if (s === 'keine') {
+        return 'bg-slate-200 text-slate-700 border-slate-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-600';
       }
       return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-400 dark:border-amber-700/80';
     }
@@ -2403,6 +2499,7 @@
     function saveToStorage() {
       clearTimeout(saveDebounceTimer);
       saveDebounceTimer = setTimeout(async () => {
+        saveDebounceTimer = null;
         try {
           await tripsSet('trip_data', tripData);
         } catch (e) {
@@ -2459,6 +2556,7 @@
     }
 
     async function saveToFile(forceSaveAs) {
+      flushPendingSave();
       await createRollingBackup();
       await tripsSet('trip_data', tripData);
       const exportPayload = await buildExportPayload();
@@ -2730,6 +2828,8 @@
       if (!container) return;
       container.innerHTML = '';
 
+      updateToggleAllBtnState();
+
       if (!tripData.days || tripData.days.length === 0) {
         container.innerHTML = '<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-12 text-center text-slate-500 dark:text-slate-400 no-print">' +
           '<i class="fa-solid fa-map text-3xl sm:text-4xl mb-3 text-slate-400"></i><p class="text-xs sm:text-sm">Noch keine Tage vorhanden. Klicke im Menü oder oben auf den Stift, um den Reisezeitraum festzulegen und Tage zu generieren.</p></div>';
@@ -2743,7 +2843,7 @@
       tripData.days.forEach((day, index) => {
         let matchesFilter = true;
         if (currentFilter === 'booked_lodging') matchesFilter = isDayBooked(day);
-        else if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day);
+        else if (currentFilter === 'open_lodging') matchesFilter = !isDayBooked(day) && !isNoLodgingNeeded(day);
         else if (currentFilter === 'booked_flights') matchesFilter = hasBookedFlight(day);
         else if (currentFilter === 'open_flights') matchesFilter = hasOpenFlight(day);
 
@@ -2776,13 +2876,16 @@
 
     function createDayElement(day, index, isToday) {
       const isBooked = isDayBooked(day);
+      const noLodging = isNoLodgingNeeded(day);
       const visual = getDayVisualClasses(day, isToday);
       const { dayName, dayFormatted } = formatISODate(day.date);
       const dayCosts = getDayCostBreakdown(day);
       const hasTransports = Array.isArray(day.transports) && day.transports.length > 0;
       const hasActivities = Array.isArray(day.activities) && day.activities.length > 0;
       const images = Array.isArray(day.images) ? day.images : [];
+      const hasNotes = (day.notes || '').trim().length > 0;
       const hasLocation = (day.location || '').trim() !== '';
+      const hasHotelQuery = getHotelSearchQuery(day) !== '';
       const hasNextDay = index < (tripData.days.length - 1);
 
       const card = document.createElement('div');
@@ -2801,10 +2904,20 @@
           : '—';
         
         let lodgingText = '—';
-        if (day.lodging && (day.lodging.name || '').trim()) {
+        if (noLodging) {
+          lodgingText = '✈️ Keine Übernachtung';
+        } else if (day.lodging && (day.lodging.name || '').trim()) {
           const statusText = day.lodging.costStatus === 'reserviert' ? ' (reserviert)' : (isBooked ? ' (gebucht)' : '');
           lodgingText = `🏨 ${day.lodging.name}${statusText}`;
         }
+
+        const indicatorsHtml = (hasNotes || images.length > 0)
+          ? `<span class="text-slate-400/70 dark:text-slate-500">|</span>` +
+            `<span class="inline-flex items-center gap-1.5">` +
+              (hasNotes ? `<span class="text-xs" title="Notiz vorhanden">📝</span>` : '') +
+              (images.length > 0 ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : '') +
+            `</span>`
+          : '';
 
         card.innerHTML = `
           <div class="flex-1 flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2 pointer-events-none">
@@ -2817,6 +2930,7 @@
             <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trText)}</span>
             <span class="text-slate-400/70 dark:text-slate-500">|</span>
             <span class="text-slate-700 dark:text-slate-300">${escapeHtml(lodgingText)}</span>
+            ${indicatorsHtml}
             <span class="text-slate-400/70 dark:text-slate-500">|</span>
             <span class="font-mono font-black text-slate-900 dark:text-white">${formatEuro(dayCosts.total)}</span>
           </div>
@@ -2867,7 +2981,10 @@
 
       let statusLabel = 'Übernachtung offen';
       let statusIcon = 'fa-clock';
-      if (day.lodging.costStatus === 'reserviert') { 
+      if (noLodging) {
+        statusLabel = 'Keine Übernachtung';
+        statusIcon = 'fa-plane-departure';
+      } else if (day.lodging.costStatus === 'reserviert') { 
         statusLabel = 'Übernachtung reserviert'; 
         statusIcon = 'fa-bookmark'; 
       } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') { 
@@ -2947,9 +3064,20 @@
       html += '<div id="images-container-' + index + '" class="flex flex-wrap gap-2.5 pt-1 ' + (images.length === 0 ? 'hidden' : '') + '">';
       html += '</div></div>';
 
-      // Übernachtung (in EUR)
-      let lodgingStatusText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
-      let lodgingStatusColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
+      // Übernachtung (inkl. Hotel-Maps-Button & "Keine Übernachtung nötig")
+      let lodgingStatusText = '○ Unterkunft noch nicht gebucht';
+      let lodgingStatusColor = 'text-amber-600 dark:text-amber-400';
+      if (noLodging) {
+        lodgingStatusText = '● Keine Übernachtung nötig (z. B. Abreise / Nachtflug)';
+        lodgingStatusColor = 'text-slate-500 dark:text-slate-400';
+      } else if (day.lodging.costStatus === 'reserviert') {
+        lodgingStatusText = '● Unterkunft reserviert';
+        lodgingStatusColor = 'text-sky-600 dark:text-sky-400';
+      } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') {
+        lodgingStatusText = '● Unterkunft gebucht';
+        lodgingStatusColor = 'text-emerald-600 dark:text-emerald-400';
+      }
+
       const lodgingSafeUrl = formatSafeUrl(day.lodging.link);
 
       html += '<div class="bg-white dark:bg-slate-900/80 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 shadow-sm">' +
@@ -2965,9 +3093,19 @@
           '</div>' +
         '</div>' +
         '<div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 mb-3">' +
-          '<div class="md:col-span-6">' +
+          '<div class="md:col-span-6 flex items-center gap-1.5">' +
             '<input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="' + escapeHtml(day.lodging.name || '') + '" ' +
-              'data-day-index="' + index + '" data-field="lodging.name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
+              'data-day-index="' + index + '" data-field="lodging.name" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">' +
+            '<button type="button" id="hotel-maps-btn-' + index + '" data-action="open-hotel-maps" data-day-index="' + index + '" ' +
+              'class="no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 ' + (hasHotelQuery ? 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed') + '" ' +
+              'title="Unterkunft in Google Maps suchen">' +
+              '<i class="fa-solid fa-location-dot text-xs pointer-events-none"></i>' +
+            '</button>' +
+            '<button type="button" id="hotel-offline-maps-btn-' + index + '" data-action="open-hotel-offline-maps" data-day-index="' + index + '" ' +
+              'class="no-print sm:hidden px-2.5 py-1.5 rounded-lg border transition items-center justify-center shrink-0 ' + (hasHotelQuery ? 'flex bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-600 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer' : 'hidden') + '" ' +
+              'title="Unterkunft in lokaler Karten-App öffnen (Offline-Maps)">' +
+              '<i class="fa-solid fa-compass text-xs pointer-events-none"></i>' +
+            '</button>' +
           '</div>' +
           '<div class="md:col-span-3 flex items-center gap-1.5">' +
             '<div class="relative flex-1 flex items-center">' +
@@ -2981,6 +3119,7 @@
               '<option value="geplant" ' + ((day.lodging.costStatus || 'geplant') === 'geplant' ? 'selected' : '') + '>⏳ Geplant</option>' +
               '<option value="reserviert" ' + (day.lodging.costStatus === 'reserviert' ? 'selected' : '') + '>📌 Reserviert</option>' +
               '<option value="gebucht" ' + (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt' ? 'selected' : '') + '>✅ Gebucht</option>' +
+              '<option value="keine" ' + (day.lodging.costStatus === 'keine' ? 'selected' : '') + '>✈️ Keine Übernachtung</option>' +
             '</select>' +
           '</div>' +
         '</div>' +
@@ -3119,6 +3258,14 @@
             if (day) openOfflineMaps(day.location);
             break;
           }
+          case 'open-hotel-maps': {
+            openHotelMaps(dayIdx);
+            break;
+          }
+          case 'open-hotel-offline-maps': {
+            openHotelOfflineMaps(dayIdx);
+            break;
+          }
           case 'toggle-booking': {
             toggleBookingStatus(dayIdx);
             break;
@@ -3230,6 +3377,7 @@
               tripData.days[dayIdx].lodging.isBooked = isDayBooked(tripData.days[dayIdx]);
               target.className = 'w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(target.value);
               updateDayCardVisualStatus(dayIdx);
+              updateHeadline();
             }
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder();
@@ -3294,6 +3442,8 @@
             tripData.days[dayIdx].lodging[sub] = target.value;
             if (sub === 'price') {
               refreshDayHeaderCost(dayIdx);
+            } else if (sub === 'name' || sub === 'notes') {
+              updateDayCardVisualStatus(dayIdx);
             } else if (sub === 'link') {
               const linkBtn = document.getElementById('lodging-link-btn-' + dayIdx);
               if (linkBtn) {
@@ -3385,15 +3535,17 @@
 
     function toggleBookingStatus(dayIndex) {
       if (!tripData.days[dayIndex] || !tripData.days[dayIndex].lodging) return;
-      const currentBooked = isDayBooked(tripData.days[dayIndex]);
-      tripData.days[dayIndex].lodging.costStatus = currentBooked ? 'geplant' : 'gebucht';
-      tripData.days[dayIndex].lodging.isBooked = !currentBooked;
+      const day = tripData.days[dayIndex];
+      const settled = isDayLodgingSettled(day);
+      day.lodging.costStatus = settled ? 'geplant' : 'gebucht';
+      day.lodging.isBooked = isDayBooked(day);
       recordChangeForReminder();
       saveToStorage();
       updateDayCardVisualStatus(dayIndex);
+      updateHeadline();
       const statusSelect = document.querySelector(`select[data-day-index="${dayIndex}"][data-field="lodging.costStatus"]`);
       if (statusSelect) {
-        statusSelect.value = tripData.days[dayIndex].lodging.costStatus;
+        statusSelect.value = day.lodging.costStatus;
         statusSelect.className = 'w-full text-xs font-bold rounded-lg px-2.5 py-2 border transition ' + getStatusBadgeClass(statusSelect.value);
       }
     }
@@ -3402,14 +3554,18 @@
       const day = tripData.days[dayIndex];
       if (!day) return;
       const isToday = day.date === getTodayIso();
+      const noLodging = isNoLodgingNeeded(day);
       const visual = getDayVisualClasses(day, isToday);
       const hasLoc = (day.location || '').trim() !== '';
+      const hasHotelQuery = getHotelSearchQuery(day) !== '';
 
       const card = document.getElementById('day-card-' + dayIndex);
       const header = document.getElementById('day-header-' + dayIndex);
       const bookingBtn = document.getElementById('day-booking-btn-' + dayIndex);
       const lodgingLabel = document.getElementById('lodging-status-label-' + dayIndex);
       const locBox = document.getElementById('loc-box-' + dayIndex);
+      const hotelMapsBtn = document.getElementById('hotel-maps-btn-' + dayIndex);
+      const hotelOfflineMapsBtn = document.getElementById('hotel-offline-maps-btn-' + dayIndex);
 
       if (card) {
         if (day.isCollapsed) {
@@ -3437,9 +3593,26 @@
         }
       }
 
+      if (hotelMapsBtn) {
+        hotelMapsBtn.className = "no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 " +
+          (hasHotelQuery
+            ? "bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer"
+            : "bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed");
+      }
+
+      if (hotelOfflineMapsBtn) {
+        hotelOfflineMapsBtn.className = "no-print sm:hidden px-2.5 py-1.5 rounded-lg border transition items-center justify-center shrink-0 " +
+          (hasHotelQuery
+            ? "flex bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-600 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300 cursor-pointer"
+            : "hidden");
+      }
+
       let statusLabel = 'Übernachtung offen';
       let statusIcon = 'fa-clock';
-      if (day.lodging.costStatus === 'reserviert') { 
+      if (noLodging) {
+        statusLabel = 'Keine Übernachtung';
+        statusIcon = 'fa-plane-departure';
+      } else if (day.lodging.costStatus === 'reserviert') { 
         statusLabel = 'Übernachtung reserviert'; 
         statusIcon = 'fa-bookmark'; 
       } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') { 
@@ -3453,8 +3626,18 @@
       }
 
       if (lodgingLabel) {
-        let lText = (day.lodging.costStatus === 'reserviert') ? '● Unterkunft reserviert' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? '● Unterkunft gebucht' : '○ Unterkunft noch nicht gebucht');
-        let lColor = (day.lodging.costStatus === 'reserviert') ? 'text-sky-600 dark:text-sky-400' : ((day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400');
+        let lText = '○ Unterkunft noch nicht gebucht';
+        let lColor = 'text-amber-600 dark:text-amber-400';
+        if (noLodging) {
+          lText = '● Keine Übernachtung nötig (z. B. Abreise / Nachtflug)';
+          lColor = 'text-slate-500 dark:text-slate-400';
+        } else if (day.lodging.costStatus === 'reserviert') {
+          lText = '● Unterkunft reserviert';
+          lColor = 'text-sky-600 dark:text-sky-400';
+        } else if (day.lodging.costStatus === 'gebucht' || day.lodging.costStatus === 'bezahlt') {
+          lText = '● Unterkunft gebucht';
+          lColor = 'text-emerald-600 dark:text-emerald-400';
+        }
         lodgingLabel.className = 'text-[11px] font-semibold ' + lColor;
         lodgingLabel.innerText = lText;
       }
@@ -3468,13 +3651,6 @@
       const display = document.getElementById('day-cost-display-' + dayIndex);
       if (display) display.innerText = formatEuro(costs.total);
       updateStats();
-    }
-
-    function toggleAllDays(expand) {
-      if (!Array.isArray(tripData.days)) return;
-      tripData.days.forEach(d => { if (d) d.isCollapsed = !expand; });
-      saveToStorage();
-      renderDays();
     }
 
     function addTransportRow(dayIndex) {
@@ -3513,9 +3689,10 @@
 
     function updateStats() {
       const days = Array.isArray(tripData.days) ? tripData.days : [];
-      const total = days.length;
-      const booked = days.filter(d => isDayBooked(d)).length;
-      const open = total - booked;
+      const nightsDays = days.filter(d => !isNoLodgingNeeded(d));
+      const totalNights = nightsDays.length;
+      const booked = nightsDays.filter(d => isDayBooked(d)).length;
+      const open = totalNights - booked;
 
       let grandTotal = 0;
       let grandPaid = 0;
@@ -3534,7 +3711,7 @@
       });
 
       const grandPending = grandTotal - grandPaid;
-      const avgPerDay = total > 0 ? (grandTotal / total) : 0;
+      const avgPerDay = days.length > 0 ? (grandTotal / days.length) : 0;
 
       const elTotal = document.getElementById('statTotal');
       const elBooked = document.getElementById('statBooked');
@@ -3544,7 +3721,7 @@
       const elCostPending = document.getElementById('statCostPending');
       const elCostPerDay = document.getElementById('statCostPerDay');
 
-      if (elTotal) elTotal.innerText = total;
+      if (elTotal) elTotal.innerText = totalNights;
       if (elBooked) elBooked.innerText = booked;
       if (elOpen) elOpen.innerText = open;
       if (elCostTotal) elCostTotal.innerText = formatEuro(grandTotal);
@@ -3589,6 +3766,7 @@
     window.generateOrUpdateDays = generateOrUpdateDays;
     window.importJSONFallback = importJSONFallback;
     window.toggleAllDays = toggleAllDays;
+    window.toggleAllDaysSmart = toggleAllDaysSmart;
     window.toggleBookingStatus = toggleBookingStatus;
     window.toggleDayCollapse = toggleDayCollapse;
     window.openOnlyDay = openOnlyDay;
@@ -3610,6 +3788,8 @@
     window.jumpToToday = jumpToToday;
     window.openGoogleMaps = openGoogleMaps;
     window.openOfflineMaps = openOfflineMaps;
+    window.openHotelMaps = openHotelMaps;
+    window.openHotelOfflineMaps = openHotelOfflineMaps;
     window.showRestoreModal = showRestoreModal;
     window.closeRestoreModal = closeRestoreModal;
     window.restoreBackup = restoreBackup;
