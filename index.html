@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.91</title>
+  <title>Reiseplaner Pro v1.92</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -13,11 +13,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { darkMode: 'class' };
-    if (localStorage.getItem('reiseplaner_pro_theme') === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      document.documentElement.classList.add('dark');
-    }
+    document.documentElement.classList.toggle('dark', localStorage.getItem('reiseplaner_pro_theme') !== 'light');
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
@@ -53,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.91</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.92</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -381,20 +377,13 @@
         </div>
         <button type="button" onclick="resolveAppDialog(false)" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold leading-none">&times;</button>
       </div>
-
       <p id="appDialogMessage" class="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed"></p>
-
       <div id="appDialogInputWrap" class="hidden pt-1">
         <input type="text" id="appDialogInput" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); resolveAppDialog(true); }" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500">
       </div>
-
       <div class="flex items-center justify-end gap-2 pt-2">
-        <button type="button" id="appDialogCancelBtn" onclick="resolveAppDialog(false)" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">
-          Abbrechen
-        </button>
-        <button type="button" id="appDialogConfirmBtn" onclick="resolveAppDialog(true)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5">
-          OK
-        </button>
+        <button type="button" id="appDialogCancelBtn" onclick="resolveAppDialog(false)" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
+        <button type="button" id="appDialogConfirmBtn" onclick="resolveAppDialog(true)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5">OK</button>
       </div>
     </div>
   </div>
@@ -411,7 +400,6 @@
         </div>
         <button onclick="closeMoveItemModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
       </div>
-
       <div class="space-y-3.5 text-xs">
         <div id="moveItemQuickBtns" class="grid grid-cols-2 gap-2">
           <button type="button" id="moveItemPrevDayBtn" onclick="confirmMoveItemToDay('prev')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-indigo-950/60 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 font-semibold transition flex items-center justify-center gap-1.5">
@@ -421,13 +409,11 @@
             <span>Auf Folgetag</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
           </button>
         </div>
-
         <div>
           <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Oder beliebigen Zieltag auswählen:</label>
           <select id="moveItemTargetSelect" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500"></select>
         </div>
       </div>
-
       <div class="flex items-center justify-end gap-2 pt-2">
         <button onclick="closeMoveItemModal()" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
         <button onclick="confirmMoveItemToDay('select')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5"><i class="fa-solid fa-check"></i> Verschieben</button>
@@ -510,7 +496,7 @@
     </div>
   </div>
 
-  <!-- LIGHTBOX (INKL. UMBENENNEN-FUNKTION) -->
+  <!-- LIGHTBOX -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4 select-none" onclick="closeLightbox()">
     <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
       <div class="w-full flex items-center justify-between mb-2 px-1 gap-2">
@@ -582,8 +568,7 @@
     let saveDebounceTimer = null, pendingModalAction = null, pendingCopyDayIndex = null, pendingMoveItem = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
-    let activeDialogResolver = null;
-    let activeDialogType = 'confirm';
+    let activeDialogResolver = null, activeDialogType = 'confirm';
 
     const THEME_KEY = 'reiseplaner_pro_theme';
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
@@ -592,123 +577,76 @@
     const activeMediaObjectUrls = new Map();
     let dbInstancePromise = null;
 
+    // --- ZENTRALER MODAL-HELFER ---
+    function toggleModal(id, show) {
+      const m = document.getElementById(id);
+      if (m) { m.classList.toggle('hidden', !show); m.classList.toggle('flex', show); }
+    }
+
     // --- NATIVE APP-DIALOGE (CONFIRM, PROMPT, ALERT) ---
     function openAppDialog({
-      type = 'confirm',
-      title = 'Hinweis',
-      message = '',
-      defaultValue = '',
-      placeholder = '',
-      confirmText = 'OK',
-      cancelText = 'Abbrechen',
-      variant = 'indigo',
-      icon = 'fa-circle-question'
+      type = 'confirm', title = 'Hinweis', message = '', defaultValue = '',
+      placeholder = '', confirmText = 'OK', cancelText = 'Abbrechen', variant = 'indigo', icon = 'fa-circle-question'
     }) {
       return new Promise((resolve) => {
         activeDialogResolver = resolve;
         activeDialogType = type;
 
         const modal = document.getElementById('appDialogModal');
-        const titleEl = document.getElementById('appDialogTitle');
-        const msgEl = document.getElementById('appDialogMessage');
+        if (!modal) return resolve(type === 'prompt' ? null : false);
+
+        document.getElementById('appDialogTitle').innerText = title;
+        document.getElementById('appDialogMessage').innerText = message;
+        document.getElementById('appDialogIcon').className = `fa-solid ${icon}`;
+
         const iconBox = document.getElementById('appDialogIconBox');
-        const iconEl = document.getElementById('appDialogIcon');
+        const confirmBtn = document.getElementById('appDialogConfirmBtn');
+        const cancelBtn = document.getElementById('appDialogCancelBtn');
         const inputWrap = document.getElementById('appDialogInputWrap');
         const inputEl = document.getElementById('appDialogInput');
-        const cancelBtn = document.getElementById('appDialogCancelBtn');
-        const confirmBtn = document.getElementById('appDialogConfirmBtn');
 
-        if (!modal) {
-          resolve(type === 'prompt' ? null : false);
-          return;
-        }
+        const styles = {
+          danger: ['bg-rose-500/15 text-rose-600 dark:text-rose-400', 'bg-rose-600 hover:bg-rose-500'],
+          amber: ['bg-amber-500/15 text-amber-600 dark:text-amber-400', 'bg-amber-600 hover:bg-amber-500'],
+          indigo: ['bg-indigo-500/15 text-indigo-600 dark:text-indigo-400', 'bg-indigo-600 hover:bg-indigo-500']
+        }[variant] || ['bg-indigo-500/15 text-indigo-600 dark:text-indigo-400', 'bg-indigo-600 hover:bg-indigo-500'];
 
-        titleEl.innerText = title;
-        msgEl.innerText = message;
-        iconEl.className = `fa-solid ${icon}`;
-
-        if (variant === 'danger') {
-          iconBox.className = 'w-8 h-8 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 text-sm';
-          confirmBtn.className = 'px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
-        } else if (variant === 'amber') {
-          iconBox.className = 'w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-sm';
-          confirmBtn.className = 'px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
-        } else {
-          iconBox.className = 'w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-sm';
-          confirmBtn.className = 'px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
-        }
-
+        iconBox.className = `w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${styles[0]}`;
+        confirmBtn.className = `px-4 py-2 rounded-xl text-white text-xs font-semibold transition shadow flex items-center gap-1.5 ${styles[1]}`;
         confirmBtn.innerText = confirmText;
         cancelBtn.innerText = cancelText;
         cancelBtn.classList.toggle('hidden', type === 'alert');
 
+        inputWrap.classList.toggle('hidden', type !== 'prompt');
         if (type === 'prompt') {
-          inputWrap.classList.remove('hidden');
           inputEl.value = defaultValue || '';
           inputEl.placeholder = placeholder || '';
-        } else {
-          inputWrap.classList.add('hidden');
         }
 
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-
+        toggleModal('appDialogModal', true);
         setTimeout(() => {
-          if (type === 'prompt') {
-            inputEl.focus();
-            inputEl.select();
-          } else {
-            confirmBtn.focus();
-          }
+          if (type === 'prompt') { inputEl.focus(); inputEl.select(); }
+          else confirmBtn.focus();
         }, 40);
       });
     }
 
     function resolveAppDialog(confirmed) {
-      const modal = document.getElementById('appDialogModal');
-      const inputEl = document.getElementById('appDialogInput');
-      if (modal) {
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-      }
+      toggleModal('appDialogModal', false);
       if (!activeDialogResolver) return;
-      const resolve = activeDialogResolver;
-      const type = activeDialogType;
+      const resolve = activeDialogResolver, type = activeDialogType;
       activeDialogResolver = null;
-
-      if (type === 'prompt') {
-        resolve(confirmed ? inputEl.value : null);
-      } else {
-        resolve(Boolean(confirmed));
-      }
+      resolve(type === 'prompt' ? (confirmed ? document.getElementById('appDialogInput').value : null) : Boolean(confirmed));
     }
 
     const showAppAlert = (message, title = 'Hinweis', variant = 'amber', icon = 'fa-circle-exclamation') =>
       openAppDialog({ type: 'alert', title, message, confirmText: 'Verstanden', variant, icon });
 
     const showAppConfirm = (message, opts = {}) =>
-      openAppDialog({
-        type: 'confirm',
-        title: opts.title || 'Bitte bestätigen',
-        message,
-        confirmText: opts.confirmText || 'Bestätigen',
-        cancelText: opts.cancelText || 'Abbrechen',
-        variant: opts.variant || 'indigo',
-        icon: opts.icon || 'fa-circle-question'
-      });
+      openAppDialog({ type: 'confirm', title: opts.title || 'Bitte bestätigen', message, confirmText: opts.confirmText || 'Bestätigen', cancelText: opts.cancelText || 'Abbrechen', variant: opts.variant || 'indigo', icon: opts.icon || 'fa-circle-question' });
 
     const showAppPrompt = (message, defaultValue = '', opts = {}) =>
-      openAppDialog({
-        type: 'prompt',
-        title: opts.title || 'Eingabe',
-        message,
-        defaultValue,
-        placeholder: opts.placeholder || '',
-        confirmText: opts.confirmText || 'Speichern',
-        cancelText: opts.cancelText || 'Abbrechen',
-        variant: opts.variant || 'indigo',
-        icon: opts.icon || 'fa-pen'
-      });
+      openAppDialog({ type: 'prompt', title: opts.title || 'Eingabe', message, defaultValue, placeholder: opts.placeholder || '', confirmText: opts.confirmText || 'Speichern', cancelText: opts.cancelText || 'Abbrechen', variant: opts.variant || 'indigo', icon: opts.icon || 'fa-pen' });
 
     // --- KOMPAKTER INDEXEDDB HELFER ---
     function openDB() {
@@ -760,9 +698,7 @@
       const isUsed = (days) => Array.isArray(days) && days.some(d => Array.isArray(d?.images) && d.images.some(img => img?.id === mediaId));
       if (isUsed(tripData.days)) return;
       const backups = (await tripsGet('backups')) || [];
-      if (!Array.isArray(backups) || !backups.some(b => isUsed(b?.data?.days))) {
-        await mediaStoreDelete(mediaId);
-      }
+      if (!Array.isArray(backups) || !backups.some(b => isUsed(b?.data?.days))) await mediaStoreDelete(mediaId);
     }
 
     async function getMediaBlobUrl(id) {
@@ -872,11 +808,7 @@
         panel.classList.remove('hidden');
         panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       }
-      updateHeadline();
-      renderDays();
-      renderChecklist();
-      renderAllAttachmentsOverview();
-      updateStats();
+      updateHeadline(); renderDays(); renderChecklist(); renderAllAttachmentsOverview(); updateStats();
       setTimeout(() => document.getElementById('tripTitle')?.focus(), 150);
       showToast("Neue Reise angelegt – gib Reisetitel und Zeitraum ein");
     }
@@ -926,9 +858,7 @@
       if (tabId === 'plan' || tabId === 'notes') autoResizeAllTextareas();
     }
 
-    function toggleMoreMenu() {
-      document.getElementById('moreMenuDropdown')?.classList.toggle('hidden');
-    }
+    const toggleMoreMenu = () => document.getElementById('moreMenuDropdown')?.classList.toggle('hidden');
 
     document.addEventListener('click', (e) => {
       const menu = document.getElementById('moreMenuDropdown');
@@ -948,8 +878,7 @@
       } else {
         document.getElementById('startDate').value = tripData.startDate || '';
         document.getElementById('endDate').value = tripData.endDate || '';
-        updateHeadline();
-        updateTripCountdown();
+        updateHeadline(); updateTripCountdown();
         panel.classList.add('hidden');
       }
     }
@@ -969,26 +898,16 @@
         datesEl.innerText = (sVal && eVal) ? `${formatISODate(sVal).dayFormatted} – ${formatISODate(eVal).dayFormatted}` : 'Kein Reisezeitraum festgelegt';
       }
       if (daysCountEl) {
-        if (days.length > 0) {
-          daysCountEl.innerText = nightsCount !== days.length ? `${days.length} Tage · ${nightsCount} Nächte` : `${nightsCount} Nächte`;
-          daysCountEl.classList.remove('hidden');
-        } else {
-          daysCountEl.classList.add('hidden');
-        }
+        daysCountEl.classList.toggle('hidden', !days.length);
+        if (days.length > 0) daysCountEl.innerText = nightsCount !== days.length ? `${days.length} Tage · ${nightsCount} Nächte` : `${nightsCount} Nächte`;
       }
     }
 
     function getLodgingStatusInfo(day) {
       const status = (day?.lodging?.costStatus || 'geplant').toLowerCase();
-      if (status === 'keine') {
-        return { btnLabel: 'Keine Übernachtung', btnIcon: 'fa-plane-departure', labelText: '● Keine Übernachtung nötig (z. B. Abreise / Nachtflug)', labelColor: 'text-slate-500 dark:text-slate-400' };
-      }
-      if (status === 'reserviert') {
-        return { btnLabel: 'Übernachtung reserviert', btnIcon: 'fa-bookmark', labelText: '● Unterkunft reserviert', labelColor: 'text-sky-600 dark:text-sky-400' };
-      }
-      if (status === 'gebucht' || status === 'bezahlt') {
-        return { btnLabel: 'Übernachtung gebucht', btnIcon: 'fa-check', labelText: '● Unterkunft gebucht', labelColor: 'text-emerald-600 dark:text-emerald-400' };
-      }
+      if (status === 'keine') return { btnLabel: 'Keine Übernachtung', btnIcon: 'fa-plane-departure', labelText: '● Keine Übernachtung nötig (z. B. Abreise / Nachtflug)', labelColor: 'text-slate-500 dark:text-slate-400' };
+      if (status === 'reserviert') return { btnLabel: 'Übernachtung reserviert', btnIcon: 'fa-bookmark', labelText: '● Unterkunft reserviert', labelColor: 'text-sky-600 dark:text-sky-400' };
+      if (status === 'gebucht' || status === 'bezahlt') return { btnLabel: 'Übernachtung gebucht', btnIcon: 'fa-check', labelText: '● Unterkunft gebucht', labelColor: 'text-emerald-600 dark:text-emerald-400' };
       return { btnLabel: 'Übernachtung offen', btnIcon: 'fa-clock', labelText: '○ Unterkunft noch nicht gebucht', labelColor: 'text-amber-600 dark:text-amber-400' };
     }
 
@@ -1038,15 +957,11 @@
       window.addEventListener('keydown', (e) => {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
-          saveToFile(false);
-          return;
+          return saveToFile(false);
         }
         const appDlg = document.getElementById('appDialogModal');
         if (appDlg && !appDlg.classList.contains('hidden')) {
-          if (e.key === 'Escape') {
-            e.preventDefault();
-            resolveAppDialog(false);
-          }
+          if (e.key === 'Escape') { e.preventDefault(); resolveAppDialog(false); }
           return;
         }
         const lbModal = document.getElementById('lightboxModal');
@@ -1094,15 +1009,10 @@
     function updateNetworkBadge() {
       const dot = document.getElementById('networkDot'), text = document.getElementById('networkText'), badge = document.getElementById('networkBadge');
       if (!dot || !text || !badge) return;
-      if (navigator.onLine) {
-        badge.className = "hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1";
-        dot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
-        text.innerText = "Online";
-      } else {
-        badge.className = "hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 items-center gap-1";
-        dot.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
-        text.innerText = "Offline bereit";
-      }
+      const on = navigator.onLine;
+      badge.className = `hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full items-center gap-1 ${on ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`;
+      dot.className = `w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`;
+      text.innerText = on ? "Online" : "Offline bereit";
     }
 
     function initBackupReminderState() {
@@ -1188,9 +1098,8 @@
     async function initPersistentStorage() {
       const badge = document.getElementById('storageBadge');
       if (navigator.storage?.persist) {
-        try {
-          renderStorageBadge(await navigator.storage.persisted() || await navigator.storage.persist());
-        } catch (e) { renderStorageBadge(false); }
+        try { renderStorageBadge(await navigator.storage.persisted() || await navigator.storage.persist()); }
+        catch (e) { renderStorageBadge(false); }
       } else if (badge) {
         badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Standard-Speicher';
       }
@@ -1199,9 +1108,7 @@
     function renderStorageBadge(isProtected) {
       const badge = document.getElementById('storageBadge');
       if (!badge) return;
-      badge.className = isProtected
-        ? "text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5"
-        : "text-[10px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5";
+      badge.className = `text-[10px] font-normal px-2 py-0.5 rounded-full flex items-center gap-1.5 ${isProtected ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800'}`;
       badge.innerHTML = isProtected
         ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span> Dauerhaft geschützt'
         : '<span class="w-1.5 h-1.5 rounded-full bg-amber-500 dark:bg-amber-400"></span> Temporärer Speicher';
@@ -1225,9 +1132,7 @@
 
     // --- BELEGE, UMBENENNEN, DRAG & DROP & MEDIEN ---
     function handleDayPaste(e, dayIndex) {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (const item of items) {
+      for (const item of (e.clipboardData?.items || [])) {
         if (item.type.includes('image') || item.type === 'application/pdf') {
           e.preventDefault();
           const file = item.getAsFile();
@@ -1263,13 +1168,17 @@
       if (!day) return;
       if (!Array.isArray(day.images)) day.images = [];
 
-      if (file.type === 'application/pdf') {
-        const id = generateUUID();
-        if (await mediaStorePut(id, file, file.name || 'Dokument.pdf', 'pdf', file.size)) {
-          day.images.push({ id, name: file.name || 'Dokument.pdf', type: 'pdf', size: file.size });
+      const saveMediaEntry = async (blob, defaultName, type, okMsg, errMsg) => {
+        const id = generateUUID(), name = file.name || defaultName;
+        if (await mediaStorePut(id, blob, name, type, blob.size)) {
+          day.images.push({ id, name, type, size: blob.size });
           recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
-          showToast("PDF-Beleg gespeichert");
-        } else showToast("Fehler beim Speichern des PDFs", true);
+          showToast(okMsg);
+        } else showToast(errMsg, true);
+      };
+
+      if (file.type === 'application/pdf') {
+        await saveMediaEntry(file, 'Dokument.pdf', 'pdf', "PDF-Beleg gespeichert", "Fehler beim Speichern des PDFs");
       } else if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1283,15 +1192,7 @@
             }
             const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
             canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-            canvas.toBlob(async (blob) => {
-              if (!blob) return showToast("Fehler bei Bildkomprimierung", true);
-              const id = generateUUID();
-              if (await mediaStorePut(id, blob, file.name || 'Screenshot.jpg', 'image', blob.size)) {
-                day.images.push({ id, name: file.name || 'Screenshot.jpg', type: 'image', size: blob.size });
-                recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
-                showToast("Screenshot gespeichert");
-              } else showToast("Fehler beim Speichern des Bildes", true);
-            }, 'image/jpeg', 0.82);
+            canvas.toBlob(blob => blob ? saveMediaEntry(blob, 'Screenshot.jpg', 'image', "Screenshot gespeichert", "Fehler beim Speichern des Bildes") : showToast("Fehler bei Bildkomprimierung", true), 'image/jpeg', 0.82);
           };
           img.src = e.target.result;
         };
@@ -1319,16 +1220,12 @@
         const rec = await mediaStoreGet(item.id);
         if (rec?.blob) await mediaStorePut(item.id, rec.blob, newName, item.type, item.size || rec.size);
       }
-      recordChangeForReminder();
-      saveToStorage();
-      updateImagesDOM(dayIndex);
-      renderAllAttachmentsOverview();
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
 
       const lbItem = currentLightboxList[currentLightboxIndex];
       if (lbItem && lbItem.id === item.id) {
         lbItem.name = newName;
-        const cap = document.getElementById('lightboxCaption');
-        if (cap) cap.innerText = newName;
+        document.getElementById('lightboxCaption').innerText = newName;
       }
       showToast("Beleg umbenannt");
     }
@@ -1337,12 +1234,8 @@
       const lbItem = currentLightboxList[currentLightboxIndex];
       if (!lbItem?.id) return;
       for (let dIdx = 0; dIdx < (tripData.days || []).length; dIdx++) {
-        const imgs = tripData.days[dIdx]?.images || [];
-        const iIdx = imgs.findIndex(img => img?.id === lbItem.id);
-        if (iIdx !== -1) {
-          await renameDayAttachment(dIdx, iIdx);
-          return;
-        }
+        const iIdx = (tripData.days[dIdx]?.images || []).findIndex(img => img?.id === lbItem.id);
+        if (iIdx !== -1) return renameDayAttachment(dIdx, iIdx);
       }
     }
 
@@ -1359,10 +1252,7 @@
 
       const [item] = images.splice(itemIdx, 1);
       if (item?.id) await safeDeleteMedia(item.id);
-      recordChangeForReminder();
-      saveToStorage();
-      updateImagesDOM(dayIndex);
-      renderAllAttachmentsOverview();
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
       if (currentFilter === 'with_attachments') renderDays();
       showToast("Beleg entfernt");
     }
@@ -1375,42 +1265,57 @@
       }
     }
 
+    // ZENTRALER RENDERER FÜR BELEG-THUMBNAILS (TAGESKARTE & ÜBERSICHT)
+    function buildAttachmentCardHTML(item, dayIndex, itemIdx, thumbPrefix) {
+      const isPdf = item.type === 'pdf';
+      const fileName = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg'));
+      const isOverview = thumbPrefix === 'overview-thumb-';
+
+      const actionBtns = isOverview ? `
+        <button onclick="event.stopPropagation(); renameDayAttachment(${dayIndex}, ${itemIdx})" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="event.stopPropagation(); deleteDayAttachment(${dayIndex}, ${itemIdx})" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg löschen">&times;</button>` : `
+        <button data-action="rename-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen pointer-events-none"></i></button>
+        <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>`;
+
+      if (isPdf) {
+        const openAttr = isOverview ? `onclick="openPdfAttachment('${item.id}', '${fileName}')"` : `data-action="open-pdf" data-media-id="${item.id}" data-file-name="${fileName}"`;
+        return `
+          <div ${isOverview ? openAttr : ''} class="relative group ${isOverview ? 'cursor-pointer hover:brightness-95 transition' : ''} rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[235px] shadow-sm" title="${fileName} – PDF öffnen">
+            <i class="fa-solid fa-file-pdf text-xl text-rose-600 dark:text-rose-400 shrink-0"></i>
+            <div class="overflow-hidden flex-1 cursor-pointer" ${!isOverview ? openAttr : ''}>
+              <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${fileName}</span>
+              <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
+            </div>${actionBtns}
+          </div>`;
+      }
+
+      const imgOpenAttr = isOverview ? `onclick="openLightbox('${item.id}', ${dayIndex})"` : `data-action="open-lightbox" data-day-index="${dayIndex}" data-media-id="${item.id}"`;
+      return `
+        <div ${isOverview ? imgOpenAttr : ''} class="relative group cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center" title="${fileName} – Klicken zum Vergrößern">
+          <img id="${thumbPrefix}${item.id}" ${!isOverview ? imgOpenAttr : ''} class="w-full h-full object-cover cursor-pointer group-hover:scale-105 transition duration-200" src="" alt="${fileName}">
+          <span class="pointer-events-none absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${fileName}</span>
+          ${actionBtns}
+        </div>`;
+    }
+
+    async function loadThumbnailsForItems(items, prefix) {
+      await Promise.all((items || []).map(async (item) => {
+        if (item?.type !== 'pdf' && item?.id) {
+          const imgEl = document.getElementById(prefix + item.id);
+          const url = imgEl && await getMediaBlobUrl(item.id);
+          if (url) imgEl.src = url;
+        }
+      }));
+    }
+
     async function updateImagesDOM(dayIndex) {
       const container = document.getElementById('images-container-' + dayIndex);
       if (!container) return;
       const items = tripData.days[dayIndex]?.images || [];
       container.classList.toggle('hidden', items.length === 0);
       if (!items.length) { container.innerHTML = ''; return; }
-
-      container.innerHTML = items.map((item, itemIdx) => {
-        const isPdf = item.type === 'pdf';
-        const fileName = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg'));
-        const actionBtns = `
-          <button data-action="rename-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen pointer-events-none"></i></button>
-          <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>`;
-
-        return isPdf ? `
-          <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2 max-w-[230px] shadow-sm">
-            <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
-            <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-media-id="${item.id}" data-file-name="${fileName}" title="${fileName} – PDF ansehen">
-              <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${fileName}</span>
-              <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
-            </div>${actionBtns}
-          </div>` : `
-          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center">
-            <img id="thumb-${item.id}" data-action="open-lightbox" data-day-index="${dayIndex}" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="${fileName} – Klicken zum Vergrößern" src="" alt="${fileName}">
-            <span class="pointer-events-none absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${fileName}</span>
-            ${actionBtns}
-          </div>`;
-      }).join('');
-
-      await Promise.all(items.map(async (item) => {
-        if (item.type !== 'pdf' && item.id) {
-          const imgEl = document.getElementById('thumb-' + item.id);
-          const url = imgEl && await getMediaBlobUrl(item.id);
-          if (url) imgEl.src = url;
-        }
-      }));
+      container.innerHTML = items.map((item, idx) => buildAttachmentCardHTML(item, dayIndex, idx, 'thumb-')).join('');
+      await loadThumbnailsForItems(items, 'thumb-');
     }
 
     async function renderAllAttachmentsOverview() {
@@ -1435,29 +1340,7 @@
 
       container.innerHTML = daysWithAttachments.map(({ day, dayIdx }) => {
         const { dayName, dayFormatted } = formatISODate(day.date);
-        const itemsHtml = day.images.map((item, itemIdx) => {
-          const isPdf = item.type === 'pdf';
-          const fileName = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg'));
-          const ctrlBtns = `
-            <button onclick="event.stopPropagation(); renameDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen"></i></button>
-            <button onclick="event.stopPropagation(); deleteDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg löschen">&times;</button>`;
-
-          return isPdf ? `
-            <div onclick="openPdfAttachment('${item.id}', '${fileName}')" class="relative group cursor-pointer rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[240px] shadow-sm hover:brightness-95 transition" title="${fileName} öffnen">
-              <i class="fa-solid fa-file-pdf text-xl text-rose-600 dark:text-rose-400 shrink-0"></i>
-              <div class="overflow-hidden flex-1">
-                <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${fileName}</span>
-                <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">PDF öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
-              </div>
-              ${ctrlBtns}
-            </div>` : `
-            <div onclick="openLightbox('${item.id}', ${dayIdx})" class="cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex flex-col items-center justify-center relative group" title="${fileName} vergrößern">
-              <img id="overview-thumb-${item.id}" src="" alt="${fileName}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
-              <span class="absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${fileName}</span>
-              ${ctrlBtns}
-            </div>`;
-        }).join('');
-
+        const itemsHtml = day.images.map((item, itemIdx) => buildAttachmentCardHTML(item, dayIdx, itemIdx, 'overview-thumb-')).join('');
         return `
           <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
             <div class="flex items-center justify-between gap-2">
@@ -1476,13 +1359,7 @@
       }).join('');
 
       for (const { day } of daysWithAttachments) {
-        for (const item of day.images) {
-          if (item?.type !== 'pdf' && item?.id) {
-            const imgEl = document.getElementById('overview-thumb-' + item.id);
-            const url = imgEl && await getMediaBlobUrl(item.id);
-            if (url) imgEl.src = url;
-          }
-        }
+        await loadThumbnailsForItems(day.images, 'overview-thumb-');
       }
     }
 
@@ -1520,9 +1397,6 @@
 
     async function openLightbox(mediaId, dayIndex) {
       if (!mediaId) return;
-      const modal = document.getElementById('lightboxModal');
-      if (!modal) return;
-
       let imageItems = (dayIndex !== undefined && tripData.days[dayIndex]?.images || []).filter(it => it && it.type !== 'pdf' && it.id);
       if (!imageItems.length) {
         (tripData.days || []).forEach(d => (d?.images || []).forEach(it => { if (it && it.type !== 'pdf' && it.id) imageItems.push(it); }));
@@ -1532,7 +1406,7 @@
       currentLightboxIndex = foundIdx !== -1 ? foundIdx : 0;
 
       await renderLightboxCurrentSlide();
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      toggleModal('lightboxModal', true);
     }
 
     async function navigateLightbox(step) {
@@ -1543,8 +1417,7 @@
     }
 
     function closeLightbox() {
-      const modal = document.getElementById('lightboxModal');
-      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      toggleModal('lightboxModal', false);
       document.getElementById('lightboxImg').src = '';
       currentLightboxList = []; currentLightboxIndex = 0;
     }
@@ -1647,9 +1520,8 @@
       if (!hasLodgingOrLocationData(currentDay)) return showToast("Bitte zuerst Ort oder Unterkunft eintragen", true);
 
       pendingCopyDayIndex = dayIndex;
-      const modal = document.getElementById('copyLodgingModal');
       const select = document.getElementById('copyLodgingNightsSelect');
-      if (!modal || !select) return;
+      if (!select) return;
 
       document.getElementById('copyLodgingModalSubtitle').innerText = `Quelle: Tag ${dayIndex + 1} (${formatISODate(currentDay.date).dayFormatted}) • ${currentDay.location || 'Ohne Ort'} ${currentDay.lodging?.name ? '– ' + currentDay.lodging.name : ''}`;
       select.innerHTML = '';
@@ -1658,12 +1530,11 @@
         const endF = formatISODate(tripData.days[targetEndIdx].date).dayFormatted;
         select.add(new Option(count === 1 ? `1 Folgetag (nur Tag ${targetEndIdx + 1} am ${endF})` : `${count} Folgetage (Tag ${dayIndex + 2} bis Tag ${targetEndIdx + 1} am ${endF})`, String(count)));
       }
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      toggleModal('copyLodgingModal', true);
     }
 
     function closeCopyLodgingModal() {
-      const modal = document.getElementById('copyLodgingModal');
-      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      toggleModal('copyLodgingModal', false);
       pendingCopyDayIndex = null;
     }
 
@@ -1708,24 +1579,19 @@
 
     // --- EINZELNE TRANSPORTE ODER AKTIVITÄTEN AUF ANDEREN TAG VERSCHIEBEN ---
     function openMoveItemModal(dayIndex, listKey, itemIndex) {
-      if (!tripData.days || tripData.days.length <= 1) {
-        return showToast("Mindestens 2 Reisetage erforderlich", true);
-      }
+      if (!tripData.days || tripData.days.length <= 1) return showToast("Mindestens 2 Reisetage erforderlich", true);
       const item = tripData.days[dayIndex]?.[listKey]?.[itemIndex];
       if (!item) return;
 
       pendingMoveItem = { dayIndex, listKey, itemIndex };
-      const modal = document.getElementById('moveItemModal');
-      const titleEl = document.getElementById('moveItemModalTitle');
-      const subEl = document.getElementById('moveItemModalSubtitle');
       const select = document.getElementById('moveItemTargetSelect');
       const prevBtn = document.getElementById('moveItemPrevDayBtn');
       const nextBtn = document.getElementById('moveItemNextDayBtn');
-      if (!modal || !select) return;
+      if (!select) return;
 
       const isTr = listKey === 'transports';
-      if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-calendar-day text-indigo-500"></i> ${isTr ? 'Transport' : 'Aktivität'} auf anderen Tag verschieben`;
-      if (subEl) subEl.innerText = `Tag ${dayIndex + 1}: ${item.title || (isTr ? 'Unbenannter Transport' : 'Unbenannte Aktivität')}`;
+      document.getElementById('moveItemModalTitle').innerHTML = `<i class="fa-solid fa-calendar-day text-indigo-500"></i> ${isTr ? 'Transport' : 'Aktivität'} auf anderen Tag verschieben`;
+      document.getElementById('moveItemModalSubtitle').innerText = `Tag ${dayIndex + 1}: ${item.title || (isTr ? 'Unbenannter Transport' : 'Unbenannte Aktivität')}`;
 
       if (prevBtn) {
         const hasPrev = dayIndex > 0;
@@ -1751,27 +1617,20 @@
         select.add(opt);
       });
 
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
+      toggleModal('moveItemModal', true);
     }
 
     function closeMoveItemModal() {
-      const modal = document.getElementById('moveItemModal');
-      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      toggleModal('moveItemModal', false);
       pendingMoveItem = null;
     }
 
     function confirmMoveItemToDay(mode) {
       if (!pendingMoveItem) return;
       const { dayIndex, listKey, itemIndex } = pendingMoveItem;
-      let targetIdx = -1;
-      if (mode === 'prev') targetIdx = dayIndex - 1;
-      else if (mode === 'next') targetIdx = dayIndex + 1;
-      else targetIdx = parseInt(document.getElementById('moveItemTargetSelect')?.value ?? '-1', 10);
+      const targetIdx = mode === 'prev' ? dayIndex - 1 : (mode === 'next' ? dayIndex + 1 : parseInt(document.getElementById('moveItemTargetSelect')?.value ?? '-1', 10));
 
-      if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) {
-        return closeMoveItemModal();
-      }
+      if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) return closeMoveItemModal();
 
       const sourceList = tripData.days[dayIndex]?.[listKey];
       if (!Array.isArray(sourceList) || !sourceList[itemIndex]) return closeMoveItemModal();
@@ -1781,9 +1640,7 @@
       tripData.days[targetIdx][listKey].push(movedItem);
 
       closeMoveItemModal();
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
+      recordChangeForReminder(); saveToStorage(); renderDays();
       showToast(`${listKey === 'transports' ? 'Transport' : 'Aktivität'} auf Tag ${targetIdx + 1} verschoben`);
     }
 
@@ -1811,24 +1668,26 @@
 
     function openDayActionModal(type, dayIndex) {
       pendingModalAction = { type, dayIndex };
-      const modal = document.getElementById('dayActionModal'), day = tripData.days[dayIndex];
-      if (!modal || !day) return;
+      const day = tripData.days[dayIndex];
+      if (!day) return;
 
       const dayNum = dayIndex + 1, { dayName, dayFormatted } = formatISODate(day.date);
       const bookedLater = tripData.days.slice(dayIndex + 1).filter(hasDayAnyFixedBooking);
       const hasLaterBookings = bookedLater.length > 0;
       const warningsEl = document.getElementById('dayActionModalWarnings');
-
       const setEl = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
+
+      warningsEl.classList.toggle('hidden', !hasLaterBookings);
+      if (hasLaterBookings) {
+        warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
+        warningsEl.innerHTML = type === 'delete'
+          ? `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Hinweis zu festen Buchungen:</b> An ${bookedLater.length} nachfolgenden Tag(en) liegen feste Buchungen vor. In <b>Modus A</b> bleiben diese unberührt und behalten exakt ihr gebuchtes Kalenderdatum.</div>`
+          : `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Achtung bei Buchungen:</b> An ${bookedLater.length} Folgetag(en) liegen feste Buchungen vor. In <b>Modus A</b> werden nur komplett leere Tage genutzt, damit keine Buchungen oder Inhalte verloren gehen.</div>`;
+      }
 
       if (type === 'delete') {
         setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayNum} entfernen / zurücksetzen`);
         setEl('dayActionModalDesc', 'innerHTML', `Datum: <b>${dayFormatted} (${dayName})</b> &bull; Ort: <b>${escapeHtml(day.location || 'Ohne Ort')}</b>`);
-        warningsEl.classList.toggle('hidden', !hasLaterBookings);
-        if (hasLaterBookings) {
-          warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
-          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Hinweis zu festen Buchungen:</b> An ${bookedLater.length} nachfolgenden Tag(en) liegen feste Buchungen vor. In <b>Modus A</b> bleiben diese unberührt und behalten exakt ihr gebuchtes Kalenderdatum.</div>`;
-        }
         setEl('dayActionModalTitleA', 'innerText', "Modus A: Feste Buchungen geschützt (Empfohlen)");
         setEl('dayActionModalDescA', 'innerText', `Tag ${dayNum} bleibt im Kalender erhalten, wird aber komplett auf den Zustand eines neu generierten Tages zurückgesetzt (ohne Ort, Status offen). Alle nachfolgenden Tage und Buchungen behalten exakt ihr festes Datum.`);
         setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-shield-halved"></i> Tag zurücksetzen / leeren (Modus A)`);
@@ -1840,11 +1699,6 @@
       } else {
         setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-calendar-plus text-indigo-500"></i> Neuen Tag nach Tag ${dayNum} einfügen`);
         setEl('dayActionModalDesc', 'innerHTML', `Neuer Tag zwischen Tag ${dayNum} (${dayFormatted}) und Folgetag.`);
-        warningsEl.classList.toggle('hidden', !hasLaterBookings);
-        if (hasLaterBookings) {
-          warningsEl.className = "p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-300 dark:border-amber-700 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5";
-          warningsEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-500 mt-0.5 text-sm shrink-0"></i><div><b>Achtung bei Buchungen:</b> An ${bookedLater.length} Folgetag(en) liegen feste Buchungen vor. In <b>Modus A</b> werden nur komplett leere Tage genutzt, damit keine Buchungen oder Inhalte verloren gehen.</div>`;
-        }
         setEl('dayActionModalTitleA', 'innerText', "Modus A: Buchungsschutz prüfen");
         setEl('dayActionModalDescA', 'innerText', hasLaterBookings ? `Prüft, ob vor der nächsten festen Buchung ein komplett leerer Tag genutzt werden kann, ohne das Datum der Buchung zu verändern oder Inhalte zu überschreiben.` : `Fügt einen neuen Tag ein. Da keine nachfolgenden Buchungen betroffen sind, wird die Reise sicher um 1 Tag erweitert.`);
         setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-shield-halved"></i> Geschützt einfügen (Modus A)`);
@@ -1854,12 +1708,11 @@
         setEl('dayActionModalBtnB', 'innerHTML', `<i class="fa-solid fa-calendar-plus"></i> Alles nach hinten verschieben (Modus B)`);
         setEl('dayActionModalBtnB', 'className', "w-full py-2 px-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5");
       }
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      toggleModal('dayActionModal', true);
     }
 
     function closeDayActionModal() {
-      const modal = document.getElementById('dayActionModal');
-      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      toggleModal('dayActionModal', false);
       pendingModalAction = null;
     }
 
@@ -1911,9 +1764,7 @@
             } else {
               await showAppAlert(
                 `An Tag ${bookedAbsIdx + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Tag (Tage mit bereits eingetragenen Orten, Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`,
-                "Modus A blockiert (Buchungsschutz)",
-                "amber",
-                "fa-shield-halved"
+                "Modus A blockiert (Buchungsschutz)", "amber", "fa-shield-halved"
               );
             }
           } else executeInsertModeB(dayIndex);
@@ -1948,25 +1799,21 @@
     const moveTransportItem = (dayIdx, itemIdx, dir) => moveArrayItem(dayIdx, 'transports', itemIdx, dir, "Transportreihenfolge verschoben");
     const moveActivityItem = (dayIdx, itemIdx, dir) => moveArrayItem(dayIdx, 'activities', itemIdx, dir, "Aktivitätsreihenfolge verschoben");
 
-    function openOfflineMaps(locationStr) {
-      if (!(locationStr || '').trim()) return showToast("Bitte zuerst einen Tagesort eingeben", true);
-      window.location.href = `geo:0,0?q=${encodeURIComponent(locationStr.trim())}`;
-    }
-
+    // --- KARTEN & KOPIER-HELFER ---
     const getHotelSearchQuery = (day) => day ? [day.lodging?.name, day.lodging?.notes, day.location].map(s => (s || '').trim()).filter(Boolean).join(', ') : '';
     const hasHotelCopyData = (day) => Boolean(day && [(day.lodging?.name || '').trim(), (day.lodging?.notes || '').trim()].some(Boolean));
 
-    function openHotelMaps(dayIndex) {
-      const q = getHotelSearchQuery(tripData.days[dayIndex]);
-      if (!q) return showToast("Bitte zuerst Hotelname, Adresse oder Tagesort eintragen", true);
-      window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q), '_blank');
+    function launchMap(query, isOffline, emptyMsg) {
+      const q = (query || '').trim();
+      if (!q) return showToast(emptyMsg, true);
+      if (isOffline) window.location.href = `geo:0,0?q=${encodeURIComponent(q)}`;
+      else window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(q), '_blank');
     }
 
-    function openHotelOfflineMaps(dayIndex) {
-      const q = getHotelSearchQuery(tripData.days[dayIndex]);
-      if (!q) return showToast("Bitte zuerst Hotelname, Adresse oder Tagesort eintragen", true);
-      window.location.href = `geo:0,0?q=${encodeURIComponent(q)}`;
-    }
+    const openGoogleMaps = (loc) => launchMap(loc, false, "Bitte zuerst einen Tagesort eingeben");
+    const openOfflineMaps = (loc) => launchMap(loc, true, "Bitte zuerst einen Tagesort eingeben");
+    const openHotelMaps = (dayIdx) => launchMap(getHotelSearchQuery(tripData.days[dayIdx]), false, "Bitte zuerst Hotelname, Adresse oder Tagesort eintragen");
+    const openHotelOfflineMaps = (dayIdx) => launchMap(getHotelSearchQuery(tripData.days[dayIdx]), true, "Bitte zuerst Hotelname, Adresse oder Tagesort eintragen");
 
     async function copyHotelInfo(dayIndex) {
       const day = tripData.days[dayIndex];
@@ -1975,16 +1822,13 @@
       if (!parts.length) return showToast("Bitte zuerst Hotelname oder Adresse eintragen", true);
       const text = parts.join(', ');
       try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(text);
-        } else {
+        if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(text);
+        else {
           const ta = Object.assign(document.createElement('textarea'), { value: text });
           document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
         }
         showToast("Unterkunft & Adresse in Zwischenablage kopiert");
-      } catch (e) {
-        showToast("Kopieren fehlgeschlagen", true);
-      }
+      } catch (e) { showToast("Kopieren fehlgeschlagen", true); }
     }
 
     function saveEmergencyNotes(val) {
@@ -2105,11 +1949,6 @@
           showToast(`Zu Tag ${targetIndex + 1} (Heute) gesprungen`);
         }
       }, 100);
-    }
-
-    function openGoogleMaps(locationStr) {
-      if (!(locationStr || '').trim()) return showToast("Bitte zuerst einen Tagesort eingeben", true);
-      window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
     // --- FILTER & STATUS HELFER ---
@@ -2245,8 +2084,8 @@
     }
 
     async function showRestoreModal() {
-      const modal = document.getElementById('restoreModal'), list = document.getElementById('backupList');
-      if (!modal || !list) return;
+      const list = document.getElementById('backupList');
+      if (!list) return;
       const backups = (await tripsGet('backups')) || [];
       list.innerHTML = !backups.length
         ? '<p class="text-xs text-slate-500 italic p-3 text-center">Noch keine Sicherungsstände vorhanden.</p>'
@@ -2258,13 +2097,10 @@
             </div>
             <button onclick="restoreBackup(${idx})" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shrink-0 shadow">Laden</button>
           </div>`).join('');
-      modal.classList.remove('hidden'); modal.classList.add('flex');
+      toggleModal('restoreModal', true);
     }
 
-    function closeRestoreModal() {
-      const modal = document.getElementById('restoreModal');
-      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
-    }
+    const closeRestoreModal = () => toggleModal('restoreModal', false);
 
     async function restoreBackup(idx) {
       try {
@@ -2458,10 +2294,7 @@
       if (emInput) emInput.value = tripData.emergencyNotes || '';
 
       document.getElementById('tripConfigSection')?.classList.toggle('hidden', Boolean(tripData.days?.length));
-      updateHeadline();
-      renderChecklist();
-      renderAllAttachmentsOverview();
-      renderDays();
+      updateHeadline(); renderChecklist(); renderAllAttachmentsOverview(); renderDays();
     }
 
     function saveMetaData() {
@@ -2477,16 +2310,14 @@
     async function generateOrUpdateDays() {
       const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
       if (!start || !end) {
-        await showAppAlert("Bitte wähle zuerst ein Start- und ein Enddatum für deine Reise aus.", "Zeitraum unvollständig", "amber", "fa-calendar-xmark");
-        return;
+        return showAppAlert("Bitte wähle zuerst ein Start- und ein Enddatum für deine Reise aus.", "Zeitraum unvollständig", "amber", "fa-calendar-xmark");
       }
       const pStart = parseISOParts(start), pEnd = parseISOParts(end);
       if (!pStart || !pEnd) return;
 
       const dStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d), dEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
       if (dStart > dEnd) {
-        await showAppAlert("Das Startdatum darf nicht nach dem Enddatum liegen.", "Ungültiger Zeitraum", "danger", "fa-calendar-xmark");
-        return;
+        return showAppAlert("Das Startdatum darf nicht nach dem Enddatum liegen.", "Ungültiger Zeitraum", "danger", "fa-calendar-xmark");
       }
 
       normalizeDataModel();
@@ -2502,13 +2333,7 @@
         const oldF = formatISODate(oldStartDate).dayFormatted, newF = formatISODate(start).dayFormatted;
         shiftRoute = await showAppConfirm(
           `Das Startdatum wurde geändert (${oldF} → ${newF}).\n\n• „Route verschieben“: Gesamte bestehende Reiseroute auf das neue Startdatum schieben (Tag 1 bleibt Tag 1 am ${newF}).\n• „Kalendertage behalten“: Bisherige Daten an ihren fixen Kalendertagen belassen.`,
-          {
-            title: "Startdatum geändert",
-            confirmText: "Route verschieben",
-            cancelText: "Kalendertage behalten",
-            variant: "indigo",
-            icon: "fa-calendar-days"
-          }
+          { title: "Startdatum geändert", confirmText: "Route verschieben", cancelText: "Kalendertage behalten", variant: "indigo", icon: "fa-calendar-days" }
         );
       }
 
@@ -2542,7 +2367,6 @@
           );
           if (!proceed) return;
         }
-
         targetDatesSet.forEach(iso => newDays.push(existingMap.get(iso) || createEmptyDay(iso, true)));
       }
 
@@ -2608,7 +2432,6 @@
       autoResizeAllTextareas();
     }
 
-    // NEU IN V1.91: Ausgelagerter Renderer für den Übernachtungs-Block (Kompakt bei "Keine Übernachtung", voll bei Übernachtung)
     function renderLodgingSectionHTML(day, index) {
       const noLodging = isNoLodgingNeeded(day);
       const statusInfo = getLodgingStatusInfo(day);
@@ -2622,8 +2445,7 @@
         <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
         <option value="gebucht" ${st === 'gebucht' || st === 'bezahlt' ? 'selected' : ''}>✅ Gebucht</option>
-        <option value="keine" ${st === 'keine' ? 'selected' : ''}>✈️ Keine Übernachtung</option>
-      `;
+        <option value="keine" ${st === 'keine' ? 'selected' : ''}>✈️ Keine Übernachtung</option>`;
 
       if (noLodging) {
         return `
@@ -3025,7 +2847,6 @@
             if (sub === 'costStatus') {
               const newStatus = (target.value || 'geplant').toLowerCase();
               day.lodging.isBooked = isDayBooked(day);
-              // Wenn zwischen "keine" und einer echten Übernachtungs-Option gewechselt wird, Block neu rendern
               if ((prevStatus === 'keine') !== (newStatus === 'keine')) {
                 refreshLodgingSectionDOM(dayIdx);
                 if (day.images?.length) renderAllAttachmentsOverview();
@@ -3046,29 +2867,22 @@
           return;
         }
 
-        const trField = target.getAttribute('data-tr-field');
-        if (trField) {
-          const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
-          if (day.transports[trIdx]) {
-            day.transports[trIdx][trField] = target.value;
-            if (trField === 'costStatus') target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            if (trField === 'link') updateDynamicLinkButton(`tr-link-btn-${dayIdx}-${trIdx}`, target.value);
+        const updateSubListField = (attrField, attrIdx, listKey, linkPrefix) => {
+          const f = target.getAttribute(attrField);
+          if (!f) return false;
+          const idx = parseInt(target.getAttribute(attrIdx), 10);
+          if (day[listKey]?.[idx]) {
+            day[listKey][idx][f] = target.value;
+            if (f === 'costStatus') target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
+            if (f === 'link') updateDynamicLinkButton(`${linkPrefix}-${dayIdx}-${idx}`, target.value);
             refreshDayHeaderCost(dayIdx);
             recordChangeForReminder(); saveToStorage();
           }
-          return;
-        }
+          return true;
+        };
 
-        const actField = target.getAttribute('data-act-field');
-        if (actField) {
-          const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
-          if (day.activities[actIdx]) {
-            day.activities[actIdx][actField] = target.value;
-            if (actField === 'costStatus') target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            if (actField === 'link') updateDynamicLinkButton(`act-link-btn-${dayIdx}-${actIdx}`, target.value);
-            refreshDayHeaderCost(dayIdx);
-            recordChangeForReminder(); saveToStorage();
-          }
+        if (!updateSubListField('data-tr-field', 'data-tr-index', 'transports', 'tr-link-btn')) {
+          updateSubListField('data-act-field', 'data-act-index', 'activities', 'act-link-btn');
         }
       };
 
@@ -3167,35 +2981,25 @@
       updateStats();
     }
 
-    function addTransportRow(dayIndex) {
+    function addListRow(dayIndex, listKey, defaultObj, focusSelectorFn) {
       const day = tripData.days[dayIndex];
       if (!day) return;
-      if (!Array.isArray(day.transports)) day.transports = [];
-      day.transports.push({ title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' });
+      if (!Array.isArray(day[listKey])) day[listKey] = [];
+      day[listKey].push(defaultObj);
       recordChangeForReminder(); saveToStorage(); renderDays();
-      setTimeout(() => document.querySelector(`input[data-day-index="${dayIndex}"][data-tr-index="${day.transports.length - 1}"][data-tr-field="title"]`)?.focus(), 50);
+      setTimeout(() => document.querySelector(focusSelectorFn(day[listKey].length - 1))?.focus(), 50);
     }
 
-    function removeTransportItem(dayIndex, itemIndex) {
-      if (!tripData.days[dayIndex]?.transports) return;
-      tripData.days[dayIndex].transports.splice(itemIndex, 1);
+    function removeListRow(dayIndex, listKey, itemIndex) {
+      if (!tripData.days[dayIndex]?.[listKey]) return;
+      tripData.days[dayIndex][listKey].splice(itemIndex, 1);
       recordChangeForReminder(); saveToStorage(); renderDays();
     }
 
-    function addActivityRow(dayIndex) {
-      const day = tripData.days[dayIndex];
-      if (!day) return;
-      if (!Array.isArray(day.activities)) day.activities = [];
-      day.activities.push({ title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false });
-      recordChangeForReminder(); saveToStorage(); renderDays();
-      setTimeout(() => document.getElementById(`act-title-input-${dayIndex}-${day.activities.length - 1}`)?.focus(), 50);
-    }
-
-    function removeActivityItem(dayIndex, itemIndex) {
-      if (!tripData.days[dayIndex]?.activities) return;
-      tripData.days[dayIndex].activities.splice(itemIndex, 1);
-      recordChangeForReminder(); saveToStorage(); renderDays();
-    }
+    const addTransportRow = (dayIdx) => addListRow(dayIdx, 'transports', { title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' }, idx => `input[data-day-index="${dayIdx}"][data-tr-index="${idx}"][data-tr-field="title"]`);
+    const removeTransportItem = (dayIdx, itemIdx) => removeListRow(dayIdx, 'transports', itemIdx);
+    const addActivityRow = (dayIdx) => addListRow(dayIdx, 'activities', { title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false }, idx => `#act-title-input-${dayIdx}-${idx}`);
+    const removeActivityItem = (dayIdx, itemIdx) => removeListRow(dayIdx, 'activities', itemIdx);
 
     function updateStats() {
       const days = tripData.days || [];
@@ -3220,16 +3024,14 @@
       setTxt('statCostPerDay', formatEuro(days.length ? grandTotal / days.length : 0));
 
       const pct = (val) => grandTotal > 0 ? (val / grandTotal * 100) : 0;
-      const [pctL, pctT, pctA] = [pct(sumLodging), pct(sumTransport), pct(sumActivity)];
-
       const setBar = (barId, txtId, sum, p) => {
         const bar = document.getElementById(barId);
         if (bar) bar.style.width = p.toFixed(1) + '%';
         setTxt(txtId, `${formatEuro(sum)} (${p.toFixed(0)}%)`);
       };
-      setBar('barLodging', 'breakdownLodging', sumLodging, pctL);
-      setBar('barTransport', 'breakdownTransport', sumTransport, pctT);
-      setBar('barActivity', 'breakdownActivity', sumActivity, pctA);
+      setBar('barLodging', 'breakdownLodging', sumLodging, pct(sumLodging));
+      setBar('barTransport', 'breakdownTransport', sumTransport, pct(sumTransport));
+      setBar('barActivity', 'breakdownActivity', sumActivity, pct(sumActivity));
 
       updateTripCountdown();
     }
