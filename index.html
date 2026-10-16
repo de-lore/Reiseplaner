@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.88</title>
+  <title>Reiseplaner Pro v1.89</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,7 +53,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.88</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.89</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -369,7 +369,7 @@
     </button>
   </nav>
 
-  <!-- NEU IN V1.88: MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
+  <!-- MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
   <div id="moveItemModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeMoveItemModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -1139,7 +1139,6 @@
       }
     }
 
-    // NEU IN V1.88: Beleg umbenennen (aus Tageskarte, Übersicht oder Lightbox)
     async function renameDayAttachment(dayIndex, itemIdx) {
       const item = tripData.days[dayIndex]?.images?.[itemIdx];
       if (!item) return;
@@ -1181,9 +1180,14 @@
       }
     }
 
+    // NEU IN V1.89: Sicherheitsrückfrage vor dem Löschen eines Belegs
     async function deleteDayAttachment(dayIndex, itemIdx) {
       const images = tripData.days[dayIndex]?.images;
-      if (!Array.isArray(images)) return;
+      if (!Array.isArray(images) || !images[itemIdx]) return;
+      const targetItem = images[itemIdx];
+      const fileName = targetItem.name || (targetItem.type === 'pdf' ? 'Dokument.pdf' : 'Screenshot.jpg');
+      if (!confirm(`Möchtest du den Beleg „${fileName}“ an Tag ${dayIndex + 1} wirklich löschen?`)) return;
+
       const [item] = images.splice(itemIdx, 1);
       if (item?.id) await safeDeleteMedia(item.id);
       recordChangeForReminder();
@@ -1240,7 +1244,6 @@
       }));
     }
 
-    // NEU IN V1.88: Synchronisierte zentrale Beleg-Übersicht inkl. direktem Umbenennen & Löschen
     async function renderAllAttachmentsOverview() {
       const container = document.getElementById('allAttachmentsOverview');
       const countBadge = document.getElementById('allAttachmentsCountBadge');
@@ -1520,7 +1523,7 @@
       showToast(`Ort & Unterkunft auf ${targetIndices.length} Folgetag(e) übertragen`);
     }
 
-    // --- NEU IN V1.88: EINZELNE TRANSPORTE ODER AKTIVITÄTEN AUF ANDEREN TAG VERSCHIEBEN ---
+    // --- EINZELNE TRANSPORTE ODER AKTIVITÄTEN AUF ANDEREN TAG VERSCHIEBEN ---
     function openMoveItemModal(dayIndex, listKey, itemIndex) {
       if (!tripData.days || tripData.days.length <= 1) {
         return showToast("Mindestens 2 Reisetage erforderlich", true);
@@ -1777,7 +1780,6 @@
       window.location.href = `geo:0,0?q=${encodeURIComponent(q)}`;
     }
 
-    // NEU IN V1.88: 1-Klick-Kopieren für Hotelname & Adresse
     async function copyHotelInfo(dayIndex) {
       const day = tripData.days[dayIndex];
       if (!day) return;
@@ -1922,7 +1924,7 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
-    // --- FILTER & STATUS HELFER (INKL. V1.88 ERWEITERUNGEN) ---
+    // --- FILTER & STATUS HELFER ---
     function isFlightTransport(t) {
       if (!t) return false;
       if (t.category === 'flugzeug') return true;
