@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.89</title>
+  <title>Reiseplaner Pro v1.88</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -22,7 +22,6 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
-    :root { --header-offset: 75px; }
     @media print {
       .no-print { display: none !important; }
       body { background: white !important; color: black !important; font-size: 10pt !important; padding-bottom: 0 !important; }
@@ -54,7 +53,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.89</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.88</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -370,7 +369,7 @@
     </button>
   </nav>
 
-  <!-- MODAL: EINTRAG AUF ANDEREN TAG VERSCHIEBEN -->
+  <!-- NEU IN V1.88: MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
   <div id="moveItemModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeMoveItemModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -481,7 +480,7 @@
     </div>
   </div>
 
-  <!-- LIGHTBOX -->
+  <!-- LIGHTBOX (INKL. UMBENENNEN-FUNKTION) -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4 select-none" onclick="closeLightbox()">
     <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
       <div class="w-full flex items-center justify-between mb-2 px-1 gap-2">
@@ -561,7 +560,7 @@
     const activeMediaObjectUrls = new Map();
     let dbInstancePromise = null;
 
-    // --- INDEXEDDB HELFER ---
+    // --- KOMPAKTER INDEXEDDB HELFER ---
     function openDB() {
       if (dbInstancePromise) return dbInstancePromise;
       return dbInstancePromise = new Promise((resolve, reject) => {
@@ -594,6 +593,7 @@
           }
         });
       } catch (e) {
+        console.warn(`DB Fehler (${storeName}/${mode}):`, e);
         return fallback;
       }
     }
@@ -800,13 +800,6 @@
       }
     }
 
-    function updateHeaderOffset() {
-      const header = document.querySelector('header');
-      if (header) {
-        document.documentElement.style.setProperty('--header-offset', header.offsetHeight + 'px');
-      }
-    }
-
     function updateHeadline() {
       const titleEl = document.getElementById('headerTripTitle');
       const datesEl = document.getElementById('headerTripDates');
@@ -829,7 +822,6 @@
           daysCountEl.classList.add('hidden');
         }
       }
-      updateHeaderOffset();
     }
 
     function getLodgingStatusInfo(day) {
@@ -883,14 +875,10 @@
         setupLifecycleSaveFlush();
         setupEventDelegation();
         checkBackupReminder();
-        updateHeaderOffset();
       } catch (e) { console.error("Initialisierungsfehler:", e); }
     });
 
-    window.addEventListener('resize', () => {
-      autoResizeAllTextareas();
-      updateHeaderOffset();
-    });
+    window.addEventListener('resize', autoResizeAllTextareas);
 
     function setupKeyboardShortcuts() {
       window.addEventListener('keydown', (e) => {
@@ -1073,7 +1061,7 @@
       setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
     }
 
-    // --- BELEGE & MEDIEN ---
+    // --- BELEGE, UMBENENNEN, DRAG & DROP & MEDIEN ---
     function handleDayPaste(e, dayIndex) {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -1151,6 +1139,7 @@
       }
     }
 
+    // NEU IN V1.88: Beleg umbenennen (aus Tageskarte, Übersicht oder Lightbox)
     async function renameDayAttachment(dayIndex, itemIdx) {
       const item = tripData.days[dayIndex]?.images?.[itemIdx];
       if (!item) return;
@@ -1251,6 +1240,7 @@
       }));
     }
 
+    // NEU IN V1.88: Synchronisierte zentrale Beleg-Übersicht inkl. direktem Umbenennen & Löschen
     async function renderAllAttachmentsOverview() {
       const container = document.getElementById('allAttachmentsOverview');
       const countBadge = document.getElementById('allAttachmentsCountBadge');
@@ -1530,7 +1520,7 @@
       showToast(`Ort & Unterkunft auf ${targetIndices.length} Folgetag(e) übertragen`);
     }
 
-    // --- TRANSPORT / AKTIVITÄT AUF ANDEREN TAG VERSCHIEBEN ---
+    // --- NEU IN V1.88: EINZELNE TRANSPORTE ODER AKTIVITÄTEN AUF ANDEREN TAG VERSCHIEBEN ---
     function openMoveItemModal(dayIndex, listKey, itemIndex) {
       if (!tripData.days || tripData.days.length <= 1) {
         return showToast("Mindestens 2 Reisetage erforderlich", true);
@@ -1787,6 +1777,7 @@
       window.location.href = `geo:0,0?q=${encodeURIComponent(q)}`;
     }
 
+    // NEU IN V1.88: 1-Klick-Kopieren für Hotelname & Adresse
     async function copyHotelInfo(dayIndex) {
       const day = tripData.days[dayIndex];
       if (!day) return;
@@ -1931,6 +1922,7 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
+    // --- FILTER & STATUS HELFER (INKL. V1.88 ERWEITERUNGEN) ---
     function isFlightTransport(t) {
       if (!t) return false;
       if (t.category === 'flugzeug') return true;
@@ -2033,6 +2025,7 @@
       });
     }
 
+    // --- BACKUP & RESTORE ---
     async function createRollingBackup() {
       try {
         let backups = (await tripsGet('backups')) || [];
@@ -2447,18 +2440,6 @@
       const st = day.lodging.costStatus || 'geplant';
 
       card.innerHTML = `
-        <!-- NEU IN V1.89: OBERE STICKY-LEISE BEIM SCROLLEN -->
-        <div data-action="toggle-collapse" data-day-index="${index}" style="top: var(--header-offset);" class="sticky z-20 px-3 py-1.5 bg-indigo-600/95 dark:bg-indigo-900/95 backdrop-blur text-white text-xs font-bold flex items-center justify-between shadow-md cursor-pointer no-print">
-          <div class="flex items-center gap-2 truncate">
-            <span class="px-1.5 py-0.5 rounded bg-white/20 font-black">Tag ${index + 1}</span>
-            <span class="font-mono">${dayFormatted} (${dayName})</span>
-            <span class="truncate">• 📍 ${escapeHtml(day.location || 'Ohne Ort')}</span>
-          </div>
-          <span class="text-[11px] bg-white/15 hover:bg-white/25 px-2 py-0.5 rounded-lg shrink-0 flex items-center gap-1">
-            <i class="fa-solid fa-chevron-up text-[10px]"></i> Zuklappen
-          </span>
-        </div>
-
         <div id="day-header-${index}" class="px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ${visual.headerClass}">
           <div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="${index}" title="Tag zuklappen">
             <div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ${isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : ''}">
@@ -2584,12 +2565,6 @@
               </div>
               <div><input type="text" placeholder="Adresse / Check-in Notiz" value="${escapeHtml(day.lodging.notes || '')}" data-day-index="${index}" data-field="lodging.notes" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white focus:border-indigo-500"></div>
             </div>
-          </div>
-
-          <!-- NEU IN V1.89: UNTERE ABSCHLUSS-LEISTE ZUM ZUKLAPPEN -->
-          <div data-action="toggle-collapse" data-day-index="${index}" class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 cursor-pointer no-print hover:text-indigo-600 dark:hover:text-indigo-400 transition">
-            <span class="font-bold">Ende von Tag ${index + 1} (${dayFormatted})</span>
-            <span class="flex items-center gap-1 font-semibold"><i class="fa-solid fa-chevron-up"></i> Tag zuklappen</span>
           </div>
         </div>`;
       return card;
