@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.89</title>
+  <title>Reiseplaner Pro v1.90</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,7 +53,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.89</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.90</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -369,6 +369,36 @@
     </button>
   </nav>
 
+  <!-- NEU IN V1.90: NATIVES APP-DIALOG-MODAL (ERSETZT BROWSER CONFIRM / PROMPT / ALERT) -->
+  <div id="appDialogModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-[60] hidden items-center justify-center p-4 no-print" onclick="resolveAppDialog(false)">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div id="appDialogIconBox" class="w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-sm">
+            <i id="appDialogIcon" class="fa-solid fa-circle-question"></i>
+          </div>
+          <h3 id="appDialogTitle" class="text-sm font-bold text-slate-900 dark:text-white">Bestätigung</h3>
+        </div>
+        <button type="button" onclick="resolveAppDialog(false)" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold leading-none">&times;</button>
+      </div>
+
+      <p id="appDialogMessage" class="text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed"></p>
+
+      <div id="appDialogInputWrap" class="hidden pt-1">
+        <input type="text" id="appDialogInput" onkeydown="if(event.key === 'Enter'){ event.preventDefault(); resolveAppDialog(true); }" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500">
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button type="button" id="appDialogCancelBtn" onclick="resolveAppDialog(false)" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">
+          Abbrechen
+        </button>
+        <button type="button" id="appDialogConfirmBtn" onclick="resolveAppDialog(true)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5">
+          OK
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
   <div id="moveItemModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeMoveItemModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
@@ -552,6 +582,8 @@
     let saveDebounceTimer = null, pendingModalAction = null, pendingCopyDayIndex = null, pendingMoveItem = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
+    let activeDialogResolver = null;
+    let activeDialogType = 'confirm';
 
     const THEME_KEY = 'reiseplaner_pro_theme';
     const LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time';
@@ -559,6 +591,124 @@
     const DB_NAME = 'ReiseplanerPro_DB_v2', DB_VERSION = 1, TRIPS_STORE = 'trips_store', MEDIA_STORE = 'media_store';
     const activeMediaObjectUrls = new Map();
     let dbInstancePromise = null;
+
+    // --- NEU IN V1.90: NATIVE APP-DIALOGE (CONFIRM, PROMPT, ALERT) ---
+    function openAppDialog({
+      type = 'confirm',
+      title = 'Hinweis',
+      message = '',
+      defaultValue = '',
+      placeholder = '',
+      confirmText = 'OK',
+      cancelText = 'Abbrechen',
+      variant = 'indigo',
+      icon = 'fa-circle-question'
+    }) {
+      return new Promise((resolve) => {
+        activeDialogResolver = resolve;
+        activeDialogType = type;
+
+        const modal = document.getElementById('appDialogModal');
+        const titleEl = document.getElementById('appDialogTitle');
+        const msgEl = document.getElementById('appDialogMessage');
+        const iconBox = document.getElementById('appDialogIconBox');
+        const iconEl = document.getElementById('appDialogIcon');
+        const inputWrap = document.getElementById('appDialogInputWrap');
+        const inputEl = document.getElementById('appDialogInput');
+        const cancelBtn = document.getElementById('appDialogCancelBtn');
+        const confirmBtn = document.getElementById('appDialogConfirmBtn');
+
+        if (!modal) {
+          resolve(type === 'prompt' ? null : false);
+          return;
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        iconEl.className = `fa-solid ${icon}`;
+
+        if (variant === 'danger') {
+          iconBox.className = 'w-8 h-8 rounded-xl bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0 text-sm';
+          confirmBtn.className = 'px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
+        } else if (variant === 'amber') {
+          iconBox.className = 'w-8 h-8 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 text-sm';
+          confirmBtn.className = 'px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
+        } else {
+          iconBox.className = 'w-8 h-8 rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 text-sm';
+          confirmBtn.className = 'px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5';
+        }
+
+        confirmBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        cancelBtn.classList.toggle('hidden', type === 'alert');
+
+        if (type === 'prompt') {
+          inputWrap.classList.remove('hidden');
+          inputEl.value = defaultValue || '';
+          inputEl.placeholder = placeholder || '';
+        } else {
+          inputWrap.classList.add('hidden');
+        }
+
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        setTimeout(() => {
+          if (type === 'prompt') {
+            inputEl.focus();
+            inputEl.select();
+          } else {
+            confirmBtn.focus();
+          }
+        }, 40);
+      });
+    }
+
+    function resolveAppDialog(confirmed) {
+      const modal = document.getElementById('appDialogModal');
+      const inputEl = document.getElementById('appDialogInput');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      if (!activeDialogResolver) return;
+      const resolve = activeDialogResolver;
+      const type = activeDialogType;
+      activeDialogResolver = null;
+
+      if (type === 'prompt') {
+        resolve(confirmed ? inputEl.value : null);
+      } else {
+        resolve(Boolean(confirmed));
+      }
+    }
+
+    const showAppAlert = (message, title = 'Hinweis', variant = 'amber', icon = 'fa-circle-exclamation') =>
+      openAppDialog({ type: 'alert', title, message, confirmText: 'Verstanden', variant, icon });
+
+    const showAppConfirm = (message, opts = {}) =>
+      openAppDialog({
+        type: 'confirm',
+        title: opts.title || 'Bitte bestätigen',
+        message,
+        confirmText: opts.confirmText || 'Bestätigen',
+        cancelText: opts.cancelText || 'Abbrechen',
+        variant: opts.variant || 'indigo',
+        icon: opts.icon || 'fa-circle-question'
+      });
+
+    const showAppPrompt = (message, defaultValue = '', opts = {}) =>
+      openAppDialog({
+        type: 'prompt',
+        title: opts.title || 'Eingabe',
+        message,
+        defaultValue,
+        placeholder: opts.placeholder || '',
+        confirmText: opts.confirmText || 'Speichern',
+        cancelText: opts.cancelText || 'Abbrechen',
+        variant: opts.variant || 'indigo',
+        icon: opts.icon || 'fa-pen'
+      });
 
     // --- KOMPAKTER INDEXEDDB HELFER ---
     function openDB() {
@@ -697,7 +847,11 @@
 
     async function createNewTrip() {
       if (tripData.days?.length > 0) {
-        if (!confirm("Möchtest du wirklich eine neue Reise anlegen? Der aktuelle Stand wird automatisch in den Backups gesichert, bevor der Plan zurückgesetzt wird.")) return;
+        const ok = await showAppConfirm(
+          "Möchtest du wirklich eine neue Reise anlegen?\n\nDer aktuelle Stand wird automatisch in den Backups gesichert, bevor der Plan zurückgesetzt wird.",
+          { title: "Neue Reise beginnen", confirmText: "Neue Reise anlegen", variant: "amber", icon: "fa-circle-plus" }
+        );
+        if (!ok) return;
         await createRollingBackup();
       }
       tripData = {
@@ -885,6 +1039,14 @@
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
           e.preventDefault();
           saveToFile(false);
+          return;
+        }
+        const appDlg = document.getElementById('appDialogModal');
+        if (appDlg && !appDlg.classList.contains('hidden')) {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            resolveAppDialog(false);
+          }
           return;
         }
         const lbModal = document.getElementById('lightboxModal');
@@ -1143,7 +1305,11 @@
       const item = tripData.days[dayIndex]?.images?.[itemIdx];
       if (!item) return;
       const oldName = item.name || (item.type === 'pdf' ? 'Dokument.pdf' : 'Screenshot.jpg');
-      const input = prompt("Neuer Name für diesen Beleg:", oldName);
+      const input = await showAppPrompt(
+        `Wie soll der Beleg an Tag ${dayIndex + 1} heißen?`,
+        oldName,
+        { title: "Beleg umbenennen", placeholder: "z. B. Flugticket Hanoi", confirmText: "Umbenennen", icon: "fa-pen" }
+      );
       if (input === null) return;
       const newName = input.trim();
       if (!newName || newName === oldName) return;
@@ -1180,13 +1346,16 @@
       }
     }
 
-    // NEU IN V1.89: Sicherheitsrückfrage vor dem Löschen eines Belegs
     async function deleteDayAttachment(dayIndex, itemIdx) {
       const images = tripData.days[dayIndex]?.images;
       if (!Array.isArray(images) || !images[itemIdx]) return;
       const targetItem = images[itemIdx];
       const fileName = targetItem.name || (targetItem.type === 'pdf' ? 'Dokument.pdf' : 'Screenshot.jpg');
-      if (!confirm(`Möchtest du den Beleg „${fileName}“ an Tag ${dayIndex + 1} wirklich löschen?`)) return;
+      const ok = await showAppConfirm(
+        `Möchtest du den Beleg „${fileName}“ an Tag ${dayIndex + 1} wirklich unwiderruflich entfernen?`,
+        { title: "Beleg löschen", confirmText: "Löschen", variant: "danger", icon: "fa-trash-can" }
+      );
+      if (!ok) return;
 
       const [item] = images.splice(itemIdx, 1);
       if (item?.id) await safeDeleteMedia(item.id);
@@ -1443,7 +1612,11 @@
       if (!dayA || !dayB) return;
 
       if (hasDayAnyFixedBooking(dayA) || hasDayAnyFixedBooking(dayB)) {
-        if (!confirm(`Hinweis: Mindestens einer der beiden Tage (Tag ${dayIndex + 1} am ${formatISODate(dayA.date).dayFormatted} oder Tag ${targetIndex + 1} am ${formatISODate(dayB.date).dayFormatted}) enthält bereits eine feste Buchung.\n\nSollen die Inhalte von Tag ${dayIndex + 1} und Tag ${targetIndex + 1} trotzdem getauscht werden (die Kalenderdaten bleiben fest)?`)) return;
+        const ok = await showAppConfirm(
+          `Mindestens einer der beiden Tage (Tag ${dayIndex + 1} am ${formatISODate(dayA.date).dayFormatted} oder Tag ${targetIndex + 1} am ${formatISODate(dayB.date).dayFormatted}) enthält bereits eine feste Buchung.\n\nSollen die Inhalte von Tag ${dayIndex + 1} und Tag ${targetIndex + 1} trotzdem getauscht werden (die Kalenderdaten bleiben fest)?`,
+          { title: "Feste Buchung vorhanden", confirmText: "Trotzdem tauschen", variant: "amber", icon: "fa-triangle-exclamation" }
+        );
+        if (!ok) return;
       }
 
       await createRollingBackup();
@@ -1500,7 +1673,13 @@
       const targetIndices = Array.from({ length: count }, (_, i) => dayIndex + i + 1).filter(idx => idx < tripData.days.length);
 
       const daysWithExisting = targetIndices.filter(idx => hasLodgingOrLocationData(tripData.days[idx]));
-      if (daysWithExisting.length > 0 && !confirm(`Hinweis: ${daysWithExisting.map(i => `Tag ${i + 1}`).join(', ')} enthält/enthalten bereits Angaben zu Ort oder Unterkunft.\n\nSollen diese Daten überschrieben werden?`)) return;
+      if (daysWithExisting.length > 0) {
+        const ok = await showAppConfirm(
+          `${daysWithExisting.map(i => `Tag ${i + 1}`).join(', ')} enthält/enthalten bereits Angaben zu Ort oder Unterkunft.\n\nSollen diese Daten überschrieben werden?`,
+          { title: "Bestehende Angaben überschreiben?", confirmText: "Überschreiben", variant: "amber", icon: "fa-copy" }
+        );
+        if (!ok) return;
+      }
 
       closeCopyLodgingModal();
       await createRollingBackup();
@@ -1726,7 +1905,12 @@
               normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
               showToast(`Tag eingefügt (leerer Tag genutzt, Buchung geschützt)`);
             } else {
-              alert(`Modus A blockiert: An Tag ${bookedAbsIdx + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Tag (Tage mit bereits eingetragenen Orten, Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
+              await showAppAlert(
+                `An Tag ${bookedAbsIdx + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Tag (Tage mit bereits eingetragenen Orten, Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`,
+                "Modus A blockiert (Buchungsschutz)",
+                "amber",
+                "fa-shield-halved"
+              );
             }
           } else executeInsertModeB(dayIndex);
         } else executeInsertModeB(dayIndex);
@@ -2081,12 +2265,16 @@
     async function restoreBackup(idx) {
       try {
         const backups = (await tripsGet('backups')) || [];
-        if (backups[idx]?.data && confirm(`Möchtest du den Stand vom ${backups[idx].timestamp} laden?`)) {
-          tripData = JSON.parse(JSON.stringify(backups[idx].data));
-          await migrateImagesToMediaStore(tripData.days);
-          normalizeDataModel(); recordChangeForReminder(); saveToStorage(); syncUI(); closeRestoreModal();
-          showToast("Stand geladen");
-        }
+        if (!backups[idx]?.data) return;
+        const ok = await showAppConfirm(
+          `Möchtest du den Sicherungsstand vom ${backups[idx].timestamp} (${backups[idx].title}) wirklich wiederherstellen?`,
+          { title: "Speicherstand laden", confirmText: "Stand laden", variant: "amber", icon: "fa-rotate-left" }
+        );
+        if (!ok) return;
+        tripData = JSON.parse(JSON.stringify(backups[idx].data));
+        await migrateImagesToMediaStore(tripData.days);
+        normalizeDataModel(); recordChangeForReminder(); saveToStorage(); syncUI(); closeRestoreModal();
+        showToast("Stand geladen");
       } catch (e) { showToast("Fehler beim Wiederherstellen", true); }
     }
 
@@ -2284,12 +2472,18 @@
 
     async function generateOrUpdateDays() {
       const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
-      if (!start || !end) return alert("Bitte Start- und Enddatum auswählen.");
+      if (!start || !end) {
+        await showAppAlert("Bitte wähle zuerst ein Start- und ein Enddatum für deine Reise aus.", "Zeitraum unvollständig", "amber", "fa-calendar-xmark");
+        return;
+      }
       const pStart = parseISOParts(start), pEnd = parseISOParts(end);
       if (!pStart || !pEnd) return;
 
       const dStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d), dEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
-      if (dStart > dEnd) return alert("Startdatum darf nicht nach dem Enddatum liegen.");
+      if (dStart > dEnd) {
+        await showAppAlert("Das Startdatum darf nicht nach dem Enddatum liegen.", "Ungültiger Zeitraum", "danger", "fa-calendar-xmark");
+        return;
+      }
 
       normalizeDataModel();
       const msPerDay = 86400000;
@@ -2302,7 +2496,16 @@
       let shiftRoute = false;
       if (hasExistingDays && oldStartDate && oldStartDate !== start) {
         const oldF = formatISODate(oldStartDate).dayFormatted, newF = formatISODate(start).dayFormatted;
-        shiftRoute = confirm(`Das Startdatum wurde geändert (${oldF} → ${newF}).\n\nOK = Gesamte bestehende Reiseroute auf das neue Startdatum verschieben (Tag 1 bleibt Tag 1 am ${newF}).\nAbbrechen = Kalendertage fix beibehalten und nur den Zeitraum anpassen.`);
+        shiftRoute = await showAppConfirm(
+          `Das Startdatum wurde geändert (${oldF} → ${newF}).\n\n• „Route verschieben“: Gesamte bestehende Reiseroute auf das neue Startdatum schieben (Tag 1 bleibt Tag 1 am ${newF}).\n• „Kalendertage behalten“: Bisherige Daten an ihren fixen Kalendertagen belassen.`,
+          {
+            title: "Startdatum geändert",
+            confirmText: "Route verschieben",
+            cancelText: "Kalendertage behalten",
+            variant: "indigo",
+            icon: "fa-calendar-days"
+          }
+        );
       }
 
       const newDays = [];
@@ -2312,7 +2515,13 @@
       if (hasExistingDays && shiftRoute) {
         if (newTotalDays < tripData.days.length) {
           const droppedWithContent = tripData.days.slice(newTotalDays).filter(hasDayAnyContent);
-          if (droppedWithContent.length > 0 && !confirm(`Achtung: Der neue Zeitraum (${newTotalDays} Tage) ist kürzer als bisher (${tripData.days.length} Tage). Dabei würden am Ende ${droppedWithContent.length} Tag(e) mit eingetragenen Daten entfallen.\n\nTrotzdem fortfahren?`)) return;
+          if (droppedWithContent.length > 0) {
+            const proceed = await showAppConfirm(
+              `Der neue Zeitraum (${newTotalDays} Tage) ist kürzer als bisher (${tripData.days.length} Tage). Dabei würden am Ende ${droppedWithContent.length} Tag(e) mit eingetragenen Daten entfallen.\n\nTrotzdem fortfahren?`,
+              { title: "Reisezeitraum kürzer", confirmText: "Trotzdem kürzen", variant: "danger", icon: "fa-triangle-exclamation" }
+            );
+            if (!proceed) return;
+          }
         }
         for (let i = 0; i < newTotalDays; i++) {
           const iso = addDaysISO(start, i);
@@ -2322,7 +2531,13 @@
         const existingMap = new Map(tripData.days.filter(d => d?.date).map(d => [d.date, d]));
         const targetDatesSet = new Set(Array.from({ length: newTotalDays }, (_, i) => addDaysISO(start, i)));
         const droppedWithContent = tripData.days.filter(d => d?.date && !targetDatesSet.has(d.date) && hasDayAnyContent(d));
-        if (droppedWithContent.length > 0 && !confirm(`Achtung: ${droppedWithContent.length} bestehende(r) Tag(e) mit eingetragenen Daten liegen außerhalb des neuen Kalenderzeitraums und würden entfernt.\n\nTrotzdem fortfahren?`)) return;
+        if (droppedWithContent.length > 0) {
+          const proceed = await showAppConfirm(
+            `${droppedWithContent.length} bestehende(r) Tag(e) mit eingetragenen Daten liegen außerhalb des neuen Kalenderzeitraums und würden entfernt.\n\nTrotzdem fortfahren?`,
+            { title: "Tage außerhalb des Zeitraums", confirmText: "Trotzdem fortfahren", variant: "danger", icon: "fa-triangle-exclamation" }
+          );
+          if (!proceed) return;
+        }
 
         targetDatesSet.forEach(iso => newDays.push(existingMap.get(iso) || createEmptyDay(iso, true)));
       }
