@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.87</title>
+  <title>Reiseplaner Pro v1.88</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,7 +53,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.87</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.88</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -124,6 +124,8 @@
             <option value="open_lodging">Offene Unterkünfte</option>
             <option value="booked_flights">Gebuchte Flüge</option>
             <option value="open_flights">Offene Flüge</option>
+            <option value="open_transports">Offene Transporte (Alle)</option>
+            <option value="with_attachments">Tage mit Belegen</option>
           </select>
         </div>
         <div class="relative flex-1 min-w-0">
@@ -367,6 +369,42 @@
     </button>
   </nav>
 
+  <!-- NEU IN V1.88: MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
+  <div id="moveItemModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeMoveItemModal()">
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
+      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
+        <div>
+          <h3 id="moveItemModalTitle" class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i class="fa-solid fa-calendar-day text-indigo-500"></i> Eintrag auf anderen Tag verschieben
+          </h3>
+          <p id="moveItemModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs"></p>
+        </div>
+        <button onclick="closeMoveItemModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <div id="moveItemQuickBtns" class="grid grid-cols-2 gap-2">
+          <button type="button" id="moveItemPrevDayBtn" onclick="confirmMoveItemToDay('prev')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-indigo-950/60 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 font-semibold transition flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-arrow-left text-[10px]"></i> <span>Auf Vortag</span>
+          </button>
+          <button type="button" id="moveItemNextDayBtn" onclick="confirmMoveItemToDay('next')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-indigo-950/60 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 font-semibold transition flex items-center justify-center gap-1.5">
+            <span>Auf Folgetag</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
+          </button>
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Oder beliebigen Zieltag auswählen:</label>
+          <select id="moveItemTargetSelect" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500"></select>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeMoveItemModal()" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
+        <button onclick="confirmMoveItemToDay('select')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5"><i class="fa-solid fa-check"></i> Verschieben</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: FOLGENÄCHTE KOPIEREN -->
   <div id="copyLodgingModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeCopyLodgingModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
@@ -442,15 +480,18 @@
     </div>
   </div>
 
-  <!-- LIGHTBOX -->
+  <!-- LIGHTBOX (INKL. UMBENENNEN-FUNKTION) -->
   <div id="lightboxModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4 select-none" onclick="closeLightbox()">
     <div class="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center" onclick="event.stopPropagation()">
-      <div class="w-full flex items-center justify-between mb-2 px-1">
+      <div class="w-full flex items-center justify-between mb-2 px-1 gap-2">
         <div class="flex items-center gap-2 min-w-0">
           <span id="lightboxCounter" class="px-2 py-0.5 rounded-md bg-slate-800 text-indigo-300 border border-slate-700 text-xs font-mono font-bold shrink-0">1 / 1</span>
           <span id="lightboxCaption" class="text-white text-xs sm:text-sm font-semibold truncate">Screenshot.jpg</span>
+          <button onclick="renameCurrentLightboxImage()" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-indigo-600 text-slate-200 hover:text-white border border-slate-700 text-xs transition flex items-center gap-1 shrink-0" title="Beleg umbenennen">
+            <i class="fa-solid fa-pen text-[10px]"></i> <span class="hidden sm:inline">Umbenennen</span>
+          </button>
         </div>
-        <button onclick="closeLightbox()" class="text-white text-sm sm:text-base font-bold hover:text-rose-400 transition shrink-0 ml-3">&times; Schließen</button>
+        <button onclick="closeLightbox()" class="text-white text-sm sm:text-base font-bold hover:text-rose-400 transition shrink-0 ml-2">&times; Schließen</button>
       </div>
       <div id="lightboxTouchArea" class="relative w-full flex items-center justify-center">
         <button id="lightboxPrevBtn" onclick="navigateLightbox(-1)" class="hidden absolute left-2 sm:left-4 z-10 w-9 h-9 sm:w-11 sm:h-11 rounded-full bg-slate-900/80 hover:bg-indigo-600 text-white border border-slate-700 items-center justify-center transition shadow-lg" title="Vorheriges Bild (← oder Wischen)">
@@ -508,7 +549,7 @@
     };
 
     let activeFileHandle = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
-    let saveDebounceTimer = null, pendingModalAction = null, pendingCopyDayIndex = null, prePrintCollapsedStates = null;
+    let saveDebounceTimer = null, pendingModalAction = null, pendingCopyDayIndex = null, pendingMoveItem = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
 
@@ -1020,7 +1061,7 @@
       setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 2500);
     }
 
-    // --- BELEGE, DRAG & DROP & MEDIEN ---
+    // --- BELEGE, UMBENENNEN, DRAG & DROP & MEDIEN ---
     function handleDayPaste(e, dayIndex) {
       const items = e.clipboardData?.items;
       if (!items) return;
@@ -1064,8 +1105,7 @@
         const id = generateUUID();
         if (await mediaStorePut(id, file, file.name || 'Dokument.pdf', 'pdf', file.size)) {
           day.images.push({ id, name: file.name || 'Dokument.pdf', type: 'pdf', size: file.size });
-          recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex);
-          if (currentTab === 'notes') renderAllAttachmentsOverview();
+          recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
           showToast("PDF-Beleg gespeichert");
         } else showToast("Fehler beim Speichern des PDFs", true);
       } else if (file.type.startsWith('image/')) {
@@ -1086,8 +1126,7 @@
               const id = generateUUID();
               if (await mediaStorePut(id, blob, file.name || 'Screenshot.jpg', 'image', blob.size)) {
                 day.images.push({ id, name: file.name || 'Screenshot.jpg', type: 'image', size: blob.size });
-                recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex);
-                if (currentTab === 'notes') renderAllAttachmentsOverview();
+                recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex); renderAllAttachmentsOverview();
                 showToast("Screenshot gespeichert");
               } else showToast("Fehler beim Speichern des Bildes", true);
             }, 'image/jpeg', 0.82);
@@ -1100,13 +1139,58 @@
       }
     }
 
+    // NEU IN V1.88: Beleg umbenennen (aus Tageskarte, Übersicht oder Lightbox)
+    async function renameDayAttachment(dayIndex, itemIdx) {
+      const item = tripData.days[dayIndex]?.images?.[itemIdx];
+      if (!item) return;
+      const oldName = item.name || (item.type === 'pdf' ? 'Dokument.pdf' : 'Screenshot.jpg');
+      const input = prompt("Neuer Name für diesen Beleg:", oldName);
+      if (input === null) return;
+      const newName = input.trim();
+      if (!newName || newName === oldName) return;
+
+      item.name = newName;
+      if (item.id) {
+        const rec = await mediaStoreGet(item.id);
+        if (rec?.blob) await mediaStorePut(item.id, rec.blob, newName, item.type, item.size || rec.size);
+      }
+      recordChangeForReminder();
+      saveToStorage();
+      updateImagesDOM(dayIndex);
+      renderAllAttachmentsOverview();
+
+      const lbItem = currentLightboxList[currentLightboxIndex];
+      if (lbItem && lbItem.id === item.id) {
+        lbItem.name = newName;
+        const cap = document.getElementById('lightboxCaption');
+        if (cap) cap.innerText = newName;
+      }
+      showToast("Beleg umbenannt");
+    }
+
+    async function renameCurrentLightboxImage() {
+      const lbItem = currentLightboxList[currentLightboxIndex];
+      if (!lbItem?.id) return;
+      for (let dIdx = 0; dIdx < (tripData.days || []).length; dIdx++) {
+        const imgs = tripData.days[dIdx]?.images || [];
+        const iIdx = imgs.findIndex(img => img?.id === lbItem.id);
+        if (iIdx !== -1) {
+          await renameDayAttachment(dIdx, iIdx);
+          return;
+        }
+      }
+    }
+
     async function deleteDayAttachment(dayIndex, itemIdx) {
       const images = tripData.days[dayIndex]?.images;
       if (!Array.isArray(images)) return;
       const [item] = images.splice(itemIdx, 1);
       if (item?.id) await safeDeleteMedia(item.id);
-      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIndex);
-      if (currentTab === 'notes') renderAllAttachmentsOverview();
+      recordChangeForReminder();
+      saveToStorage();
+      updateImagesDOM(dayIndex);
+      renderAllAttachmentsOverview();
+      if (currentFilter === 'with_attachments') renderDays();
       showToast("Beleg entfernt");
     }
 
@@ -1128,19 +1212,22 @@
       container.innerHTML = items.map((item, itemIdx) => {
         const isPdf = item.type === 'pdf';
         const fileName = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg'));
-        const delBtn = `<button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>`;
+        const actionBtns = `
+          <button data-action="rename-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen pointer-events-none"></i></button>
+          <button data-action="delete-attachment" data-day-index="${dayIndex}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Löschen">&times;</button>`;
 
         return isPdf ? `
-          <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pr-6 flex items-center gap-2 max-w-[210px] shadow-sm">
+          <div class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2 max-w-[230px] shadow-sm">
             <i class="fa-solid fa-file-pdf text-2xl text-rose-600 dark:text-rose-400 shrink-0"></i>
-            <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-media-id="${item.id}" data-file-name="${fileName}" title="PDF ansehen">
+            <div class="overflow-hidden flex-1 cursor-pointer" data-action="open-pdf" data-media-id="${item.id}" data-file-name="${fileName}" title="${fileName} – PDF ansehen">
               <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${fileName}</span>
               <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
-            </div>${delBtn}
+            </div>${actionBtns}
           </div>` : `
-          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex items-center justify-center">
+          <div class="relative group rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center">
             <img id="thumb-${item.id}" data-action="open-lightbox" data-day-index="${dayIndex}" data-media-id="${item.id}" class="w-full h-full object-cover cursor-pointer hover:scale-105 transition duration-200" title="${fileName} – Klicken zum Vergrößern" src="" alt="${fileName}">
-            ${delBtn}
+            <span class="pointer-events-none absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${fileName}</span>
+            ${actionBtns}
           </div>`;
       }).join('');
 
@@ -1153,6 +1240,7 @@
       }));
     }
 
+    // NEU IN V1.88: Synchronisierte zentrale Beleg-Übersicht inkl. direktem Umbenennen & Löschen
     async function renderAllAttachmentsOverview() {
       const container = document.getElementById('allAttachmentsOverview');
       const countBadge = document.getElementById('allAttachmentsCountBadge');
@@ -1175,20 +1263,26 @@
 
       container.innerHTML = daysWithAttachments.map(({ day, dayIdx }) => {
         const { dayName, dayFormatted } = formatISODate(day.date);
-        const itemsHtml = day.images.map(item => {
+        const itemsHtml = day.images.map((item, itemIdx) => {
           const isPdf = item.type === 'pdf';
           const fileName = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg'));
+          const ctrlBtns = `
+            <button onclick="event.stopPropagation(); renameDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg umbenennen"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="event.stopPropagation(); deleteDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px] opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition shadow" title="Beleg löschen">&times;</button>`;
+
           return isPdf ? `
-            <div onclick="openPdfAttachment('${item.id}', '${fileName}')" class="cursor-pointer rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 flex items-center gap-2.5 max-w-[220px] shadow-sm hover:brightness-95 transition" title="PDF öffnen">
+            <div onclick="openPdfAttachment('${item.id}', '${fileName}')" class="relative group cursor-pointer rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[240px] shadow-sm hover:brightness-95 transition" title="${fileName} öffnen">
               <i class="fa-solid fa-file-pdf text-xl text-rose-600 dark:text-rose-400 shrink-0"></i>
               <div class="overflow-hidden flex-1">
                 <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${fileName}</span>
                 <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">PDF öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
               </div>
+              ${ctrlBtns}
             </div>` : `
-            <div onclick="openLightbox('${item.id}', ${dayIdx})" class="cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-20 h-20 flex flex-col items-center justify-center relative group" title="${fileName} vergrößern">
+            <div onclick="openLightbox('${item.id}', ${dayIdx})" class="cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex flex-col items-center justify-center relative group" title="${fileName} vergrößern">
               <img id="overview-thumb-${item.id}" src="" alt="${fileName}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200">
               <span class="absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${fileName}</span>
+              ${ctrlBtns}
             </div>`;
         }).join('');
 
@@ -1354,7 +1448,7 @@
       tripData.days[dayIndex] = Object.assign(dayB, { date: fixedDateA, isCollapsed: true });
       tripData.days[targetIndex] = Object.assign(dayA, { date: fixedDateB, isCollapsed: false });
 
-      recordChangeForReminder(); saveToStorage(); renderDays();
+      recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
       setTimeout(() => document.getElementById('day-card-' + targetIndex)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 60);
       showToast(`Tag ${dayIndex + 1} mit Tag ${targetIndex + 1} getauscht`);
     }
@@ -1424,6 +1518,87 @@
 
       recordChangeForReminder(); saveToStorage(); renderDays();
       showToast(`Ort & Unterkunft auf ${targetIndices.length} Folgetag(e) übertragen`);
+    }
+
+    // --- NEU IN V1.88: EINZELNE TRANSPORTE ODER AKTIVITÄTEN AUF ANDEREN TAG VERSCHIEBEN ---
+    function openMoveItemModal(dayIndex, listKey, itemIndex) {
+      if (!tripData.days || tripData.days.length <= 1) {
+        return showToast("Mindestens 2 Reisetage erforderlich", true);
+      }
+      const item = tripData.days[dayIndex]?.[listKey]?.[itemIndex];
+      if (!item) return;
+
+      pendingMoveItem = { dayIndex, listKey, itemIndex };
+      const modal = document.getElementById('moveItemModal');
+      const titleEl = document.getElementById('moveItemModalTitle');
+      const subEl = document.getElementById('moveItemModalSubtitle');
+      const select = document.getElementById('moveItemTargetSelect');
+      const prevBtn = document.getElementById('moveItemPrevDayBtn');
+      const nextBtn = document.getElementById('moveItemNextDayBtn');
+      if (!modal || !select) return;
+
+      const isTr = listKey === 'transports';
+      if (titleEl) titleEl.innerHTML = `<i class="fa-solid fa-calendar-day text-indigo-500"></i> ${isTr ? 'Transport' : 'Aktivität'} auf anderen Tag verschieben`;
+      if (subEl) subEl.innerText = `Tag ${dayIndex + 1}: ${item.title || (isTr ? 'Unbenannter Transport' : 'Unbenannte Aktivität')}`;
+
+      if (prevBtn) {
+        const hasPrev = dayIndex > 0;
+        prevBtn.disabled = !hasPrev;
+        prevBtn.classList.toggle('opacity-40', !hasPrev);
+        prevBtn.classList.toggle('cursor-not-allowed', !hasPrev);
+        prevBtn.innerHTML = `<i class="fa-solid fa-arrow-left text-[10px]"></i> <span>${hasPrev ? `Vortag (Tag ${dayIndex})` : 'Kein Vortag'}</span>`;
+      }
+      if (nextBtn) {
+        const hasNext = dayIndex < tripData.days.length - 1;
+        nextBtn.disabled = !hasNext;
+        nextBtn.classList.toggle('opacity-40', !hasNext);
+        nextBtn.classList.toggle('cursor-not-allowed', !hasNext);
+        nextBtn.innerHTML = `<span>${hasNext ? `Folgetag (Tag ${dayIndex + 2})` : 'Kein Folgetag'}</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>`;
+      }
+
+      select.innerHTML = '';
+      tripData.days.forEach((d, idx) => {
+        if (idx === dayIndex) return;
+        const { dayName, dayFormatted } = formatISODate(d.date);
+        const opt = new Option(`Tag ${idx + 1} (${dayFormatted}, ${dayName}) – ${d.location || 'Ohne Ort'}`, String(idx));
+        if (idx === dayIndex + 1 || (dayIndex === tripData.days.length - 1 && idx === dayIndex - 1)) opt.selected = true;
+        select.add(opt);
+      });
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeMoveItemModal() {
+      const modal = document.getElementById('moveItemModal');
+      if (modal) { modal.classList.add('hidden'); modal.classList.remove('flex'); }
+      pendingMoveItem = null;
+    }
+
+    function confirmMoveItemToDay(mode) {
+      if (!pendingMoveItem) return;
+      const { dayIndex, listKey, itemIndex } = pendingMoveItem;
+      let targetIdx = -1;
+      if (mode === 'prev') targetIdx = dayIndex - 1;
+      else if (mode === 'next') targetIdx = dayIndex + 1;
+      else targetIdx = parseInt(document.getElementById('moveItemTargetSelect')?.value ?? '-1', 10);
+
+      if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) {
+        return closeMoveItemModal();
+      }
+
+      const sourceList = tripData.days[dayIndex]?.[listKey];
+      if (!Array.isArray(sourceList) || !sourceList[itemIndex]) return closeMoveItemModal();
+
+      const [movedItem] = sourceList.splice(itemIndex, 1);
+      if (!Array.isArray(tripData.days[targetIdx][listKey])) tripData.days[targetIdx][listKey] = [];
+      tripData.days[targetIdx][listKey].push(movedItem);
+
+      closeMoveItemModal();
+      recordChangeForReminder();
+      saveToStorage();
+      renderDays();
+      showToast(`${listKey === 'transports' ? 'Transport' : 'Aktivität'} auf Tag ${targetIdx + 1} verschoben`);
     }
 
     // --- BUCHUNGSSCHUTZ & PUFFER-LOGIK ---
@@ -1514,7 +1689,7 @@
         if (mode === 'A') {
           Object.assign(day, createEmptyDay(day.date, day.isCollapsed));
           for (const id of removedMediaIds) await safeDeleteMedia(id);
-          recordChangeForReminder(); saveToStorage(); renderDays();
+          recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
           showToast(`Tag ${dayIndex + 1} zurückgesetzt (Modus A)`);
         } else {
           tripData.days.splice(dayIndex, 1);
@@ -1527,7 +1702,7 @@
             document.getElementById('endDate').value = tripData.endDate;
           }
           for (const id of removedMediaIds) await safeDeleteMedia(id);
-          normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays();
+          normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
           showToast(`Tag ${dayIndex + 1} gelöscht & Reise verkürzt (Modus B)`);
         }
       } else if (type === 'insert') {
@@ -1545,7 +1720,7 @@
               tripData.days.splice(dayIndex + 1, 0, newDay);
               for (let i = dayIndex + 1; i < bookedAbsIdx; i++) tripData.days[i].date = addDaysISO(tripData.days[i - 1].date, 1);
               tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
-              normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays();
+              normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
               showToast(`Tag eingefügt (leerer Tag genutzt, Buchung geschützt)`);
             } else {
               alert(`Modus A blockiert: An Tag ${bookedAbsIdx + 1} liegt eine feste Buchung. Dazwischen existiert kein komplett leerer Tag (Tage mit bereits eingetragenen Orten, Transporten, Hotels, Aktivitäten oder Notizen werden geschützt).\n\nUm alle Tage inklusive Buchung nach hinten zu schieben, wähle bitte Modus B.`);
@@ -1565,7 +1740,7 @@
         document.getElementById('endDate').value = tripData.endDate;
       }
       tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
-      normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays();
+      normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
       showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag, Modus B)`);
     }
 
@@ -1588,6 +1763,7 @@
     }
 
     const getHotelSearchQuery = (day) => day ? [day.lodging?.name, day.lodging?.notes, day.location].map(s => (s || '').trim()).filter(Boolean).join(', ') : '';
+    const hasHotelCopyData = (day) => Boolean(day && [(day.lodging?.name || '').trim(), (day.lodging?.notes || '').trim()].some(Boolean));
 
     function openHotelMaps(dayIndex) {
       const q = getHotelSearchQuery(tripData.days[dayIndex]);
@@ -1599,6 +1775,26 @@
       const q = getHotelSearchQuery(tripData.days[dayIndex]);
       if (!q) return showToast("Bitte zuerst Hotelname, Adresse oder Tagesort eintragen", true);
       window.location.href = `geo:0,0?q=${encodeURIComponent(q)}`;
+    }
+
+    // NEU IN V1.88: 1-Klick-Kopieren für Hotelname & Adresse
+    async function copyHotelInfo(dayIndex) {
+      const day = tripData.days[dayIndex];
+      if (!day) return;
+      const parts = [day.lodging?.name, day.lodging?.notes, day.location].map(s => (s || '').trim()).filter(Boolean);
+      if (!parts.length) return showToast("Bitte zuerst Hotelname oder Adresse eintragen", true);
+      const text = parts.join(', ');
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = Object.assign(document.createElement('textarea'), { value: text });
+          document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        }
+        showToast("Unterkunft & Adresse in Zwischenablage kopiert");
+      } catch (e) {
+        showToast("Kopieren fehlgeschlagen", true);
+      }
     }
 
     function saveEmergencyNotes(val) {
@@ -1726,7 +1922,7 @@
       window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationStr.trim()), '_blank');
     }
 
-    // --- FILTER & STATUS HELFER ---
+    // --- FILTER & STATUS HELFER (INKL. V1.88 ERWEITERUNGEN) ---
     function isFlightTransport(t) {
       if (!t) return false;
       if (t.category === 'flugzeug') return true;
@@ -1736,6 +1932,8 @@
 
     const hasBookedFlight = (day) => Array.isArray(day.transports) && day.transports.some(t => isFlightTransport(t) && isStatusFixed(t.costStatus));
     const hasOpenFlight = (day) => Array.isArray(day.transports) && day.transports.some(t => isFlightTransport(t) && !isStatusFixed(t.costStatus));
+    const hasOpenTransport = (day) => Array.isArray(day.transports) && day.transports.some(t => t && !isStatusFixed(t.costStatus));
+    const hasAttachments = (day) => Array.isArray(day.images) && day.images.length > 0;
 
     function setFilter(filterType) {
       currentFilter = filterType;
@@ -2136,7 +2334,7 @@
       for (const id of oldMediaIds) await safeDeleteMedia(id);
       recordChangeForReminder(); saveToStorage();
       document.getElementById('tripConfigSection')?.classList.add('hidden');
-      updateHeadline(); renderDays();
+      updateHeadline(); renderDays(); renderAllAttachmentsOverview();
       showToast("Tage generiert & Reiseplan aktualisiert");
     }
 
@@ -2161,15 +2359,18 @@
           booked_lodging: isDayBooked(day),
           open_lodging: !isDayBooked(day) && !isNoLodgingNeeded(day),
           booked_flights: hasBookedFlight(day),
-          open_flights: hasOpenFlight(day)
+          open_flights: hasOpenFlight(day),
+          open_transports: hasOpenTransport(day),
+          with_attachments: hasAttachments(day)
         };
         if (!filterMap[currentFilter]) return;
 
         if (searchQuery) {
           const hay = [
-            day.location, day.lodging?.name, day.notes, day.lodging?.hint,
+            day.location, day.lodging?.name, day.lodging?.notes, day.notes, day.lodging?.hint,
             ...(day.transports || []).map(t => `${t.title || ''} ${t.hint || ''}`),
-            ...(day.activities || []).map(a => `${a.title || ''} ${a.hint || ''}`)
+            ...(day.activities || []).map(a => `${a.title || ''} ${a.hint || ''}`),
+            ...(day.images || []).map(img => img?.name || '')
           ].join(' ').toLowerCase();
           if (!hay.includes(searchQuery)) return;
         }
@@ -2195,6 +2396,7 @@
       const images = day.images || [];
       const hasNotes = Boolean((day.notes || '').trim()), hasLocation = Boolean((day.location || '').trim());
       const hasHotelQuery = Boolean(getHotelSearchQuery(day));
+      const hasHotelCopy = hasHotelCopyData(day);
       const hasPrevDay = index > 0, hasNextDay = index < tripData.days.length - 1;
 
       const card = document.createElement('div');
@@ -2330,6 +2532,9 @@
             <div class="grid grid-cols-1 md:grid-cols-12 gap-2.5 sm:gap-3 mb-3">
               <div class="md:col-span-6 flex items-center gap-1.5">
                 <input type="text" placeholder="Hotel-, Hostel- oder Unterkunftsname" value="${escapeHtml(day.lodging.name || '')}" data-day-index="${index}" data-field="lodging.name" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg px-3 py-1.5 text-sm text-slate-900 dark:text-white focus:border-indigo-500">
+                <button type="button" id="hotel-copy-btn-${index}" data-action="copy-hotel-info" data-day-index="${index}" class="no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 ${hasHotelCopy || hasHotelQuery ? 'bg-slate-100 hover:bg-indigo-50 border-slate-300 text-slate-700 hover:text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-300 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed'}" title="1-Klick Kopieren: Hotelname & Adresse in Zwischenablage">
+                  <i class="fa-regular fa-copy text-xs pointer-events-none"></i>
+                </button>
                 <button type="button" id="hotel-maps-btn-${index}" data-action="open-hotel-maps" data-day-index="${index}" class="no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 ${hasHotelQuery ? 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed'}" title="Unterkunft in Google Maps suchen">
                   <i class="fa-solid fa-location-dot text-xs pointer-events-none"></i>
                 </button>
@@ -2401,7 +2606,8 @@
                         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
                         <option value="bezahlt" ${st === 'bezahlt' || st === 'gebucht' ? 'selected' : ''}>✅ Bezahlt</option>
                       </select>
-                      <button data-action="remove-transport" data-day-index="${index}" data-tr-index="${trIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>
+                      <button data-action="move-transport-day" data-day-index="${index}" data-tr-index="${trIdx}" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 no-print transition" title="Auf anderen Reisetag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                      <button data-action="remove-transport" data-day-index="${index}" data-tr-index="${trIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print" title="Löschen">&times;</button>
                     </div>
                     <div class="flex items-start gap-2">
                       <textarea rows="1" placeholder="Hinweise (z. B. Gleis, Helme, Kaution)" data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(tr.hint || '')}</textarea>
@@ -2445,7 +2651,8 @@
                         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
                         <option value="bezahlt" ${st === 'bezahlt' || st === 'gebucht' ? 'selected' : ''}>✅ Bezahlt</option>
                       </select>
-                      <button data-action="remove-activity" data-day-index="${index}" data-act-index="${actIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print">&times;</button>
+                      <button data-action="move-activity-day" data-day-index="${index}" data-act-index="${actIdx}" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 no-print transition" title="Auf anderen Reisetag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                      <button data-action="remove-activity" data-day-index="${index}" data-act-index="${actIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print" title="Löschen">&times;</button>
                     </div>
                     <div class="flex items-start gap-2">
                       <textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit, Treffpunkt)" data-day-index="${index}" data-act-index="${actIdx}" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(act.hint || '')}</textarea>
@@ -2484,6 +2691,7 @@
           'open-offline-maps': () => tripData.days[dayIdx] && openOfflineMaps(tripData.days[dayIdx].location),
           'open-hotel-maps': () => openHotelMaps(dayIdx),
           'open-hotel-offline-maps': () => openHotelOfflineMaps(dayIdx),
+          'copy-hotel-info': () => copyHotelInfo(dayIdx),
           'toggle-booking': () => toggleBookingStatus(dayIdx),
           'swap-day-prev': () => swapDayWithAdjacent(dayIdx, -1),
           'swap-day-next': () => swapDayWithAdjacent(dayIdx, 1),
@@ -2495,13 +2703,16 @@
           'remove-transport': () => removeTransportItem(dayIdx, trIdx),
           'move-transport-up': () => moveTransportItem(dayIdx, trIdx, -1),
           'move-transport-down': () => moveTransportItem(dayIdx, trIdx, 1),
+          'move-transport-day': () => openMoveItemModal(dayIdx, 'transports', trIdx),
           'add-activity': () => addActivityRow(dayIdx),
           'remove-activity': () => removeActivityItem(dayIdx, actIdx),
           'move-activity-up': () => moveActivityItem(dayIdx, actIdx, -1),
           'move-activity-down': () => moveActivityItem(dayIdx, actIdx, 1),
+          'move-activity-day': () => openMoveItemModal(dayIdx, 'activities', actIdx),
           'trigger-file-upload': () => document.getElementById('file-upload-' + dayIdx)?.click(),
           'open-lightbox': () => openLightbox(target.getAttribute('data-media-id'), dayIdx),
           'open-pdf': () => openPdfAttachment(target.getAttribute('data-media-id'), target.getAttribute('data-file-name')),
+          'rename-attachment': () => renameDayAttachment(dayIdx, parseInt(target.getAttribute('data-item-index'), 10)),
           'delete-attachment': () => deleteDayAttachment(dayIdx, parseInt(target.getAttribute('data-item-index'), 10))
         };
         actions[action]?.();
@@ -2534,6 +2745,7 @@
           if (field === 'location') {
             day.location = target.value;
             updateDayCardVisualStatus(dayIdx);
+            if (day.images?.length) renderAllAttachmentsOverview();
           } else if (field === 'notes') {
             day.notes = target.value;
           } else if (field.startsWith('lodging.')) {
@@ -2547,6 +2759,7 @@
               updateHeadline();
             } else if (sub === 'name' || sub === 'notes') {
               updateDayCardVisualStatus(dayIdx);
+              if (sub === 'name' && day.images?.length) renderAllAttachmentsOverview();
             } else if (sub === 'link') {
               updateDynamicLinkButton('lodging-link-btn-' + dayIdx, target.value);
             }
@@ -2617,6 +2830,7 @@
       const visual = getDayVisualClasses(day, day.date === getTodayIso());
       const hasLoc = Boolean((day.location || '').trim());
       const hasHotelQuery = Boolean(getHotelSearchQuery(day));
+      const hasHotelCopy = hasHotelCopyData(day);
       const statusInfo = getLodgingStatusInfo(day);
 
       const card = document.getElementById('day-card-' + dayIndex);
@@ -2636,6 +2850,9 @@
         if (mapsBtn) { mapsBtn.className = getLocationMapsIconClasses(day); mapsBtn.title = hasLoc ? "In Google Maps öffnen" : "Tagesort eintragen"; }
         if (offlineMapsBtn) offlineMapsBtn.className = `mr-2.5 shrink-0 transition no-print sm:hidden ${hasLoc ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'hidden'}`;
       }
+
+      const hotelCopyBtn = document.getElementById('hotel-copy-btn-' + dayIndex);
+      if (hotelCopyBtn) hotelCopyBtn.className = `no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 ${hasHotelCopy || hasHotelQuery ? 'bg-slate-100 hover:bg-indigo-50 border-slate-300 text-slate-700 hover:text-indigo-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-300 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed'}`;
 
       const hotelMapsBtn = document.getElementById('hotel-maps-btn-' + dayIndex);
       if (hotelMapsBtn) hotelMapsBtn.className = `no-print px-2.5 py-1.5 rounded-lg border transition flex items-center justify-center shrink-0 ${hasHotelQuery ? 'bg-indigo-50 hover:bg-indigo-100 border-indigo-200 text-indigo-600 dark:bg-indigo-950/60 dark:border-indigo-800 dark:text-indigo-300 cursor-pointer' : 'bg-slate-100 border-slate-200 text-slate-400 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-500 cursor-not-allowed'}`;
