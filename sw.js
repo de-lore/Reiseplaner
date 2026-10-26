@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-pro-v1.96';
+const CACHE_NAME = 'reiseplaner-pro-v1.93';
 
 const LOCAL_ASSETS = [
   './',
@@ -55,10 +55,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   // CDN: Cache-First + Stale-While-Revalidate
-  if (
-    url.hostname.includes('cdn.tailwindcss.com') ||
-    url.hostname.includes('cdnjs.cloudflare.com')
-  ) {
+  if (url.hostname.includes('cdn.tailwindcss.com') || url.hostname.includes('cdnjs.cloudflare.com')) {
     event.respondWith(
       caches.open(CACHE_NAME).then(async (cache) => {
         const cached = await cache.match(req, { ignoreVary: true });
