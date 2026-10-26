@@ -17,11 +17,20 @@
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- PDF.JS FÜR LOKALEN CLIENTSEITIGEN PDF-IMPORT -->
+  <!-- PDF.JS FÜR LOKALEN CLIENTSEITIGEN PDF-IMPORT (OHNE CROSS-ORIGIN BLOCKADE) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
+    // Verhindert das Einfrieren durch Cross-Origin Worker
     if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      try {
+        const workerUrl = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        // Erzeuge einen Blob-Worker, um Sicherheitsblockaden der Browser zu umgehen
+        const blob = new Blob([`importScripts("${workerUrl}");`], { type: 'application/javascript' });
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+      } catch (e) {
+        // Fallback: Worker deaktivieren (läuft stabil im UI-Thread)
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+      }
     }
   </script>
 
@@ -1131,9 +1140,19 @@
     }
 
     // --- PDF-EXTRAKTOR & PARSER FÜR BUCHUNGSBESTÄTIGUNGEN (v1.94) ---
-    async function extractTextFromPDF(file) {
+   async function extractTextFromPDF(file) {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      // Zwingend als Uint8Array übergeben, damit der Worker nicht einfriert
+      const typedArray = new Uint8Array(arrayBuffer);
+
+      const loadingTask = pdfjsLib.getDocument({
+        data: typedArray,
+        cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+        cMapPacked: true,
+        stopAtErrors: false
+      });
+
+      const pdf = await loadingTask.promise;
       let fullText = '';
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
