@@ -2018,22 +2018,12 @@
       if (willOpen) {
         requestAnimationFrame(() => {
           const el = document.getElementById('day-card-' + dayIdx);
-          const header = document.querySelector('header');
           if (el) {
-            const headerHeight = header ? header.offsetHeight : 0;
-            const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-            const offsetPosition = elementPosition - headerHeight - 12;
-
-            window.scrollTo({
-              top: Math.max(0, offsetPosition),
-              behavior: 'smooth'
-            });
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
         });
       }
     }
-
-    const toggleDayCollapse = (dayIdx) => openOnlyDay(dayIdx);
 
     const toggleDayCollapse = (dayIdx) => openOnlyDay(dayIdx);
 
