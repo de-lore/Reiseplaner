@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.94</title>
+  <title>Reiseplaner Pro v1.95</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.94</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.95</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -396,7 +396,7 @@
     </button>
   </nav>
 
-  <!-- MODAL: UNTERKUNFT ERFASSEN / BEARBEITEN -->
+  <!-- MODAL: UNTERKUNFT ERFASSEN / BEARBEITEN (INKL. SMART AUTO-FILL BOX) -->
   <div id="lodgingModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeLodgingModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -405,6 +405,23 @@
         </h3>
         <button onclick="closeLodgingModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
       </div>
+
+      <!-- AUTO-FILL BOX FÜR BUCHUNGSTEXTE -->
+      <div class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/80 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Buchungstext automatisch analysieren
+          </span>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400">Booking / Agoda / E-Mail Text</span>
+        </div>
+        <textarea id="autoFillBookingInput" rows="2" placeholder="Buchungsbestätigung hier einfügen (Hotel, Daten, Preis, Stornofrist)..." class="w-full bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+        <div class="flex justify-end">
+          <button type="button" onclick="parseBookingTextFromInput()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-[11px]"></i> Automatisch ausfüllen
+          </button>
+        </div>
+      </div>
+
       <input type="hidden" id="modalLodgingId">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         <div class="sm:col-span-2">
@@ -645,6 +662,128 @@
       const m = document.getElementById(id);
       if (m) { m.classList.toggle('hidden', !show); m.classList.toggle('flex', show); }
     };
+
+    // --- SMART BUCHUNGSTEXT PARSER (v1.95) ---
+    function parseBookingTextFromInput() {
+      const text = document.getElementById('autoFillBookingInput')?.value || '';
+      if (!text.trim()) {
+        return showAppAlert("Bitte füge zuerst den Text deiner Buchung in das Textfeld ein.", "Kein Text vorhanden");
+      }
+
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const res = {};
+
+      // 1. Check-In & Check-Out Datums-Erkennung (z. B. 24.01.2027, 2027-01-24 oder 24. Jan 2027)
+      const months = {
+        jan: '01', feb: '02', mär: '03', mar: '03', apr: '04', mai: '05', may: '05', jun: '06',
+        jul: '07', aug: '08', sep: '09', okt: '10', oct: '10', nov: '11', dez: '12', dec: '12'
+      };
+
+      const parseDateString = (str) => {
+        if (!str) return null;
+        const isoMatch = str.match(/\b(20\d{2})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b/);
+        if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        const deMatch = str.match(/\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b/);
+        if (deMatch) return `${deMatch[3]}-${deMatch[2].padStart(2, '0')}-${deMatch[1].padStart(2, '0')}`;
+        const wordMatch = str.match(/\b(0?[1-9]|[12]\d|3[01])\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\s+(20\d{2})\b/);
+        if (wordMatch) {
+          const mKey = wordMatch[2].toLowerCase().substring(0, 3);
+          if (months[mKey]) return `${wordMatch[3]}-${months[mKey]}-${wordMatch[1].padStart(2, '0')}`;
+        }
+        return null;
+      };
+
+      // Suche nach expliziten Check-in/Check-out Zeilen
+      for (const line of lines) {
+        if (!res.checkIn && /check[- ]?in|anreise|ankunft|arrival/i.test(line)) {
+          const d = parseDateString(line);
+          if (d) res.checkIn = d;
+        }
+        if (!res.checkOut && /check[- ]?out|abreise|abfahrt|departure/i.test(line)) {
+          const d = parseDateString(line);
+          if (d) res.checkOut = d;
+        }
+      }
+
+      // Fallback: Erste zwei gefundene Datumsangaben im Gesamttext
+      if (!res.checkIn || !res.checkOut) {
+        const allDateMatches = [];
+        const rx = /\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b|\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/g;
+        let m;
+        while ((m = rx.exec(text)) !== null) {
+          const parsed = parseDateString(m[0]);
+          if (parsed && !allDateMatches.includes(parsed)) allDateMatches.push(parsed);
+        }
+        if (!res.checkIn && allDateMatches[0]) res.checkIn = allDateMatches[0];
+        if (!res.checkOut && allDateMatches[1]) res.checkOut = allDateMatches[1];
+      }
+
+      // 2. Preis-Erkennung (z. B. 125,50 €, EUR 140, 89.00 EUR)
+      const priceMatch = text.match(/(?:preis|gesamtpreis|total|betrag|summe)?[:\s]*([0-9]+[0-9.,]*)\s*(?:€|eur|euro)\b/i) ||
+                         text.match(/(?:€|eur|euro)\s*([0-9]+[0-9.,]*)/i);
+      if (priceMatch) {
+        res.price = priceMatch[1].trim();
+      }
+
+      // 3. Stornofrist-Erkennung (Kostenlos stornierbar bis ...)
+      const cancelMatch = text.match(/(?:kostenlos(?:e|en)?\s+stornier(?:ung|bar)|stornieren\s+bis|free\s+cancellation\s+until)[:\s]*([^\n.]+)/i);
+      if (cancelMatch) {
+        const cDate = parseDateString(cancelMatch[1]);
+        if (cDate) {
+          const timeMatch = cancelMatch[1].match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+          const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '23:59';
+          res.freeCancel = `${cDate}T${timeStr}`;
+        }
+      }
+
+      // 4. Hotelname & Ort
+      for (const line of lines) {
+        if (!res.name && /^(hotel|resort|villa|hostel|guesthouse|bungalows?|palace|boutique)\b/i.test(line)) {
+          res.name = line;
+        } else if (!res.name && /(hotel|resort|villa|hostel|guesthouse|bungalows?|palace|boutique)\b/i.test(line) && line.length < 60) {
+          res.name = line.replace(/^(unterkunft|ihre unterkunft|hotelname)[:\s-]*/i, '').trim();
+        }
+        if (!res.location && /(?:ort|region|stadt|location|city)[:\s]+([^\n,]+)/i.test(line)) {
+          const locMatch = line.match(/(?:ort|region|stadt|location|city)[:\s]+([^\n,]+)/i);
+          if (locMatch) res.location = locMatch[1].trim();
+        }
+      }
+
+      // Fallback: Zeile 1 als Name, falls typische Bestätigungs-Kopfzeile
+      if (!res.name && lines[0] && lines[0].length < 60 && !/buchung|bestätigung|vielen dank/i.test(lines[0])) {
+        res.name = lines[0];
+      }
+
+      // 5. Buchungsnummer & Notizen
+      const bookingNrMatch = text.match(/(?:buchungsnummer|booking\s*(?:id|number|nr)|pin)[:\s]*([A-Z0-9.-]+)/i);
+      const notesArr = [];
+      if (bookingNrMatch) notesArr.push(`Buchungs-Nr.: ${bookingNrMatch[1]}`);
+      if (/frühstück\s+(?:inbegriffen|inklusive|enthalten)|breakfast\s+included/i.test(text)) {
+        notesArr.push('Frühstück inklusive');
+      }
+
+      // Gefundene Werte in die Formularfelder schreiben
+      let appliedCount = 0;
+      if (res.name) { document.getElementById('modalLodgingName').value = res.name; appliedCount++; }
+      if (res.location) { document.getElementById('modalLodgingLocation').value = res.location; appliedCount++; }
+      if (res.checkIn) { document.getElementById('modalLodgingCheckIn').value = res.checkIn; appliedCount++; }
+      if (res.checkOut) { document.getElementById('modalLodgingCheckOut').value = res.checkOut; appliedCount++; }
+      if (res.price) { document.getElementById('modalLodgingPrice').value = res.price; appliedCount++; }
+      if (res.freeCancel) { document.getElementById('modalLodgingFreeCancel').value = res.freeCancel; appliedCount++; }
+      if (notesArr.length) {
+        const curNotes = document.getElementById('modalLodgingNotes').value.trim();
+        document.getElementById('modalLodgingNotes').value = curNotes ? `${curNotes} | ${notesArr.join(', ')}` : notesArr.join(', ');
+        appliedCount++;
+      }
+
+      updateModalNightsCalc();
+
+      if (appliedCount > 0) {
+        showToast(`${appliedCount} Felder automatisch ausgefüllt`);
+      } else {
+        showToast("Keine passenden Felder im Text erkannt", true);
+      }
+    }
 
     // --- APP-DIALOGE ---
     function openAppDialog({
@@ -940,6 +1079,7 @@
       const isEdit = Boolean(id), l = isEdit ? tripData.lodgings.find(it => it.id === id) : null;
       document.getElementById('lodgingModalTitle').innerHTML = `<i class="fa-solid fa-hotel text-indigo-500"></i> ${isEdit ? 'Unterkunft bearbeiten' : 'Neue Unterkunft anlegen'}`;
       document.getElementById('modalLodgingDeleteBtn').classList.toggle('hidden', !isEdit);
+      document.getElementById('autoFillBookingInput').value = '';
       document.getElementById('modalLodgingId').value = isEdit ? l.id : '';
       document.getElementById('modalLodgingName').value = l?.name || '';
       document.getElementById('modalLodgingLocation').value = l?.location || '';
