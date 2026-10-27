@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.98</title>
+  <title>Reiseplaner Pro v1.99</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="inline-block px-1.5 sm:px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.98</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.99</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -59,6 +59,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v1.99</span>
           </div>
         </div>
       </div>
@@ -88,6 +89,9 @@
             </button>
             <button onclick="openFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
               <i class="fa-solid fa-folder-open text-indigo-500 w-4"></i> JSON öffnen...
+            </button>
+            <button onclick="shareTripFile(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-slate-700 dark:text-slate-200 transition">
+              <i class="fa-solid fa-share-nodes text-indigo-500 w-4"></i> Teilen / an PC senden...
             </button>
             <button onclick="exportToCSV(); toggleMoreMenu();" class="w-full text-left px-3 py-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700/80 flex items-center gap-2.5 text-emerald-600 dark:text-emerald-400 font-semibold transition">
               <i class="fa-solid fa-file-csv text-emerald-500 w-4"></i> Als CSV exportieren
@@ -464,10 +468,11 @@
           <input type="text" inputmode="decimal" id="modalLodgingPrice" placeholder="0,00" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono text-right focus:border-indigo-500">
         </div>
         <div>
-          <label class="block font-bold text-amber-600 dark:text-amber-400 mb-1">
+          <label id="modalCancelLabel" class="block font-bold text-slate-700 dark:text-slate-300 mb-1">
             <i class="fa-solid fa-clock-rotate-left"></i> Kostenlose Stornierung bis:
           </label>
-          <input type="datetime-local" id="modalLodgingFreeCancel" class="w-full bg-slate-50 dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-amber-500">
+          <input type="datetime-local" id="modalLodgingFreeCancel" oninput="updateCancelBar()" onchange="updateCancelBar()" class="w-full bg-slate-50 dark:bg-slate-900 border-2 border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white">
+          <div id="modalCancelStatus" class="hidden text-[11px] mt-1 font-semibold"></div>
         </div>
         <div class="sm:col-span-2">
           <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Adresse / Anfahrt (sichtbar am Reisetag für Taxi):</label>
@@ -1030,6 +1035,7 @@
       applied += setVal('modalLodgingPrice', res.price);
       applied += setVal('modalLodgingFreeCancel', res.freeCancel);
       applied += setVal('modalLodgingAddress', res.address);
+      updateCancelBar();
 
       const notesEl = document.getElementById('modalLodgingNotes');
       if (notesEl && notes.length) {
@@ -1315,21 +1321,52 @@
       return { btnLabel: 'Übernachtung geplant', btnIcon: 'fa-clock' };
     }
 
-    function renderCancellationBadge(iso) {
-      if (!iso) return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Keine Stornofrist erfasst</span>`;
+    // Zustand der kostenlosen Stornierung: none | green (> 3 Tage) | amber (<= 3 Tage) | red (abgelaufen)
+    function getCancellationState(iso) {
+      if (!iso) return { state: 'none', text: '' };
       const dl = new Date(iso);
-      if (isNaN(dl.getTime())) return `<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">${escapeHtml(iso)}</span>`;
+      if (isNaN(dl.getTime())) return { state: 'none', text: '' };
       const diffH = (dl.getTime() - Date.now()) / 3600000;
       const dF = dl.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
       const tF = dl.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
       const full = `${dF} um ${tF} Uhr`;
+      const days = Math.ceil(diffH / 24);
+      const left = diffH < 24 ? `noch ${Math.max(1, Math.ceil(diffH))} Std.` : `noch ${days} ${days === 1 ? 'Tag' : 'Tage'}`;
+      if (diffH < 0) return { state: 'red', full, left: '', text: 'Nicht mehr kostenlos stornierbar (abgelaufen)' };
+      if (diffH <= 72) return { state: 'amber', full, left, text: `Achtung: ${left} kostenlos stornierbar` };
+      return { state: 'green', full, left, text: `Noch ${days} Tage kostenlos stornierbar` };
+    }
 
-      if (diffH < 0) return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Stornofrist abgelaufen (${full})</span>`;
-      if (diffH <= 72) {
-        const days = Math.ceil(diffH / 24);
-        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 animate-pulse dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1"><i class="fa-solid fa-clock text-amber-600"></i> Kostenlos stornierbar bis: ${full} (noch ${days} ${days === 1 ? 'Tag' : 'Tage'})</span>`;
+    const CANCEL_BAR_CLASSES = {
+      none: 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white',
+      green: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200',
+      amber: 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 text-amber-900 dark:text-amber-200',
+      red: 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200'
+    };
+    const CANCEL_LABEL_CLASSES = { none: 'text-slate-700 dark:text-slate-300', green: 'text-emerald-700 dark:text-emerald-400', amber: 'text-amber-700 dark:text-amber-400', red: 'text-rose-700 dark:text-rose-400' };
+
+    // Eingabefeld "Kostenlose Stornierung bis" im Dialog farbig markieren
+    function updateCancelBar() {
+      const inp = document.getElementById('modalLodgingFreeCancel');
+      if (!inp) return;
+      const st = getCancellationState(inp.value);
+      inp.className = `w-full rounded-xl px-3 py-2 border-2 font-semibold transition-colors focus:outline-none ${CANCEL_BAR_CLASSES[st.state]}`;
+      const lab = document.getElementById('modalCancelLabel');
+      if (lab) lab.className = `block font-bold mb-1 ${CANCEL_LABEL_CLASSES[st.state]}`;
+      const info = document.getElementById('modalCancelStatus');
+      if (info) {
+        info.className = `text-[11px] mt-1 font-semibold ${st.state === 'none' ? 'hidden' : CANCEL_LABEL_CLASSES[st.state]}`;
+        info.innerText = st.text;
       }
-      return `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1"><i class="fa-solid fa-circle-check text-emerald-600"></i> Kostenlos stornierbar bis: ${full}</span>`;
+    }
+
+    function renderCancellationBadge(iso) {
+      if (!iso) return `<div class="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Keine Stornofrist erfasst</div>`;
+      const st = getCancellationState(iso);
+      if (st.state === 'none') return `<div class="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">${escapeHtml(iso)}</div>`;
+      if (st.state === 'red') return `<div class="w-full text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Stornofrist abgelaufen (${st.full})</div>`;
+      if (st.state === 'amber') return `<div class="w-full text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 animate-pulse dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-600"></i> Kostenlos stornierbar bis: ${st.full} (${st.left})</div>`;
+      return `<div class="w-full text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Kostenlos stornierbar bis: ${st.full} (${st.left})</div>`;
     }
 
     function renderLodgingsTab() {
@@ -1410,6 +1447,7 @@
       document.getElementById('modalLodgingCheckOut').value = l?.checkOut || (tripData.startDate ? addDaysISO(tripData.startDate, 1) : '');
       document.getElementById('modalLodgingPrice').value = l?.totalPrice || '';
       document.getElementById('modalLodgingFreeCancel').value = l?.freeCancellationUntil || '';
+      updateCancelBar();
       document.getElementById('modalLodgingAddress').value = l?.address || '';
       document.getElementById('modalLodgingLink').value = l?.link || '';
       document.getElementById('modalLodgingNotes').value = l?.notes || '';
@@ -2295,9 +2333,48 @@
         } catch (err) { if (err.name === 'AbortError') return; }
       }
 
+      downloadJsonFile(json, name); resetBackupReminder(); showToast("Download abgeschlossen");
+    }
+
+    // Download als Datei (URL erst verzögert freigeben – sonst bricht der Download auf Android teils ab)
+    function downloadJsonFile(json, name) {
       const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-      Object.assign(document.createElement('a'), { href: url, download: name }).click();
-      URL.revokeObjectURL(url); resetBackupReminder(); showToast("Download abgeschlossen");
+      const a = Object.assign(document.createElement('a'), { href: url, download: name });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    }
+
+    // Datei über das System-Teilen-Menü senden (z. B. Android -> OneDrive / an den PC); Fallback: Download
+    async function shareTripFile() {
+      flushPendingSave(); await createRollingBackup(); await tripsSet('trip_data', tripData);
+      const json = JSON.stringify(await buildExportPayload(), null, 2);
+      const base = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
+      const d = new Date(), p = (n) => String(n).padStart(2, '0');
+      const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+      const name = `Reiseplan_${base}_Handy_${stamp}.json`;
+
+      // Manche Browser erlauben "application/json" nicht beim Teilen -> zusätzlich als text/plain versuchen
+      const candidates = [new File([json], name, { type: 'application/json' }), new File([json], name, { type: 'text/plain' })];
+      const file = (navigator.share && navigator.canShare) ? candidates.find(f => { try { return navigator.canShare({ files: [f] }); } catch { return false; } }) : null;
+      if (!file) {
+        downloadJsonFile(json, name); resetBackupReminder();
+        return showToast("Teilen nicht verfügbar – Datei wurde heruntergeladen");
+      }
+
+      const doShare = () => navigator.share({ files: [file], title: name });
+      try {
+        await doShare(); resetBackupReminder(); showToast("Datei geteilt");
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        if (err?.name === 'NotAllowedError') {
+          // Die Berührung ist beim Erstellen der Datei "abgelaufen" -> erneut per Tipp bestätigen lassen
+          if (!await showAppConfirm(`Die Datei „${name}“ ist bereit. Jetzt teilen?`, { title: 'Teilen', confirmText: 'Teilen', icon: 'fa-share-nodes' })) return;
+          try { await doShare(); resetBackupReminder(); showToast("Datei geteilt"); return; }
+          catch (e2) { if (e2?.name === 'AbortError') return; }
+        }
+        downloadJsonFile(json, name); resetBackupReminder();
+        showToast("Teilen fehlgeschlagen – Datei wurde heruntergeladen", true);
+      }
     }
 
     async function applyImportedTrip(parsed, name, handle = null) {
