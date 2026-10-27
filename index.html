@@ -1309,7 +1309,7 @@
     // --- LOGIK UNTERKÜNFTE & STATI ---
     const getLodgingForDay = d => d && tripData.lodgings ? tripData.lodgings.find(l => l.checkIn <= d && d < l.checkOut) || null : null;
     const isDayNoLodging = d => Boolean(d?.noLodgingNeeded);
-    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
     const isDayLodgingSettled = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
 
     function getLodgingStatusInfo(day) {
