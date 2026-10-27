@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.95</title>
+  <title>Reiseplaner Pro v1.96</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.95</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.96</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -406,20 +406,28 @@
         <button onclick="closeLodgingModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
       </div>
 
-      <!-- AUTO-FILL BOX FÜR BUCHUNGSTEXTE -->
-      <div class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/80 space-y-2">
-        <div class="flex items-center justify-between">
+      <!-- AUTO-FILL BOX FÜR BUCHUNGSTEXTE & PDF-IMPORT -->
+      <div id="autoFillBox" class="p-3 bg-indigo-50/70 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800/80 space-y-2 transition"
+           ondragover="event.preventDefault(); this.classList.add('drop-active')"
+           ondragleave="this.classList.remove('drop-active')"
+           ondrop="handleBookingPdfDrop(event)">
+        <div class="flex items-center justify-between gap-2">
           <span class="text-xs font-bold text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
-            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Buchungstext automatisch analysieren
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i> Buchung automatisch analysieren
           </span>
-          <span class="text-[10px] text-slate-500 dark:text-slate-400">Booking / Agoda / E-Mail Text</span>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400 text-right">PDF oder Text (Booking / Agoda / E-Mail)</span>
         </div>
-        <textarea id="autoFillBookingInput" rows="2" placeholder="Buchungsbestätigung hier einfügen (Hotel, Daten, Preis, Stornofrist)..." class="w-full bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
-        <div class="flex justify-end">
+        <textarea id="autoFillBookingInput" rows="2" placeholder="Buchungsbestätigung als PDF hierher ziehen, per Button importieren oder Text einfügen (Hotel, Daten, Preis, Stornofrist)..." class="w-full bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"></textarea>
+        <input type="file" id="bookingPdfInput" accept="application/pdf,.pdf" class="hidden" onchange="handleBookingPdfSelect(event)">
+        <div class="flex items-center justify-between gap-2">
+          <button type="button" id="bookingPdfBtn" onclick="document.getElementById('bookingPdfInput').click()" class="px-3 py-1.5 bg-white hover:bg-indigo-100 dark:bg-slate-900 dark:hover:bg-slate-700 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-700 rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-pdf text-[11px]"></i> PDF importieren
+          </button>
           <button type="button" onclick="parseBookingTextFromInput()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
             <i class="fa-solid fa-bolt text-[11px]"></i> Automatisch ausfüllen
           </button>
         </div>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock text-[9px]"></i> Das PDF wird lokal im Browser gelesen und nicht hochgeladen. Bitte die vorausgefüllten Felder vor dem Speichern prüfen.</p>
       </div>
 
       <input type="hidden" id="modalLodgingId">
@@ -663,13 +671,219 @@
       if (m) { m.classList.toggle('hidden', !show); m.classList.toggle('flex', show); }
     };
 
-    // --- SMART BUCHUNGSTEXT PARSER (v1.95) ---
-    function parseBookingTextFromInput() {
-      const text = document.getElementById('autoFillBookingInput')?.value || '';
-      if (!text.trim()) {
-        return showAppAlert("Bitte füge zuerst den Text deiner Buchung in das Textfeld ein.", "Kein Text vorhanden");
+    // --- PDF-IMPORT & BOOKING-PARSER (v1.96) ---
+    const BK_MONTHS = { jan: 1, feb: 2, 'mär': 3, mar: 3, apr: 4, mai: 5, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, oct: 10, nov: 11, dez: 12, dec: 12 };
+    const bkMonth = (s) => s ? (BK_MONTHS[String(s).toLowerCase().substring(0, 3)] || null) : null;
+    const bkPad = (n) => String(n).padStart(2, '0');
+
+    // Preis-String (z. B. "1.231,20", "33", "1,234.50") -> "1231,20" im deutschen Format mit 2 Nachkommastellen
+    function bkFormatPrice(raw) {
+      let s = String(raw || '').replace(/[^0-9.,]/g, '');
+      if (!s) return '';
+      const m = s.match(/[.,](\d{1,2})$/);
+      let intPart = s, dec = '00';
+      if (m) { intPart = s.slice(0, s.length - m[0].length); dec = m[1].padEnd(2, '0'); }
+      intPart = intPart.replace(/[.,]/g, '');
+      return intPart ? `${intPart},${dec}` : '';
+    }
+
+    // Jahr für Datumsangaben ohne Jahr ableiten (Stornodatum > Reisebeginn > heutiges Datum)
+    function bkInferYear(day, month, ctx = {}) {
+      const mk = (y) => Date.UTC(y, month - 1, day);
+      if (ctx.anchorISO) {
+        const a = ctx.anchorISO.split('-').map(Number), aT = Date.UTC(a[0], a[1] - 1, a[2]);
+        let y = a[0]; if (mk(y) < aT) y++;
+        return y;
+      }
+      if (ctx.tripStart) {
+        const p = ctx.tripStart.split('-').map(Number), sT = Date.UTC(p[0], p[1] - 1, p[2]);
+        let best = p[0], bestDiff = Infinity;
+        for (let y = p[0] - 1; y <= p[0] + 1; y++) { const d = Math.abs(mk(y) - sT); if (d < bestDiff) { bestDiff = d; best = y; } }
+        return best;
+      }
+      const now = new Date(); let y = now.getFullYear();
+      if (mk(y) < now.getTime() - 30 * 86400000) y++;
+      return y;
+    }
+
+    // Text-Items (mit Koordinaten) -> Zeilen; große Lücken werden mit Tab getrennt
+    function bkBuildLines(items) {
+      const sorted = items.filter(i => i.str && i.str.trim()).slice().sort((a, b) => (b.y - a.y) || (a.x - b.x));
+      const rows = [];
+      for (const it of sorted) {
+        const row = rows.find(r => Math.abs(r.y - it.y) <= 2.5);
+        if (row) row.items.push(it); else rows.push({ y: it.y, items: [it] });
+      }
+      rows.sort((a, b) => b.y - a.y);
+      return rows.map(r => {
+        r.items.sort((a, b) => a.x - b.x);
+        let out = '', prevEnd = null;
+        for (const it of r.items) {
+          const gap = prevEnd === null ? 0 : it.x - prevEnd;
+          if (prevEnd !== null) out += gap > 14 ? '\t' : ' ';
+          out += it.str.trim();
+          prevEnd = it.x + (it.w || 0);
+        }
+        return out;
+      });
+    }
+
+    // Booking.com-Layout: Spalten ANREISE/ABREISE und linker Kopfblock anhand der Koordinaten
+    function bkParseGeometry(items, ctx = {}) {
+      const find = (re) => items.find(i => re.test(i.str.trim()));
+      const a = find(/^(ANREISE|CHECK-?IN|ARRIVAL)$/i), b = find(/^(ABREISE|CHECK-?OUT|DEPARTURE)$/i);
+      if (!a || !b) return null;
+      const cx = (i) => i.x + (i.w || 0) / 2;
+      const D = Math.abs(cx(b) - cx(a)) || 80;
+      const column = (lab) => bkBuildLines(items.filter(i => i !== lab && i.y < lab.y - 1 && i.y > lab.y - D * 1.4 && Math.abs(cx(i) - cx(lab)) < D * 0.42));
+      const parseCell = (lines) => {
+        const day = (lines[0] || '').match(/^\d{1,2}$/);
+        const text = lines.join(' ');
+        const month = (text.match(/[A-Za-zäöüÄÖÜ]{3,}/g) || []).map(bkMonth).find(Boolean);
+        const times = text.match(/\d{1,2}:\d{2}/g) || [];
+        return day && month ? { day: +day[0], month, times } : null;
+      };
+      const cIn = parseCell(column(a)), cOut = parseCell(column(b));
+      const out = { in: cIn, out: cOut };
+
+      const pLabel = find(/^PREIS$/i);
+      const leftItems = items.filter(i => (i.x + (i.w || 0)) <= Math.min(a.x, b.x) - 5 && i.y <= a.y + 12 && (!pLabel || i.y > pLabel.y + 2));
+      const left = bkBuildLines(leftItems).map(l => l.replace(/\t/g, ' '));
+      const addrIdx = left.findIndex(l => /^(Adresse|Address)\s*:/i.test(l));
+      if (addrIdx > 0) {
+        out.name = left.slice(0, addrIdx).join(' ').replace(/\s+/g, ' ').trim();
+        const endIdx = left.findIndex((l, i) => i > addrIdx && /^(Telefon|Phone|GPS)/i.test(l));
+        const addrLines = left.slice(addrIdx, endIdx === -1 ? left.length : endIdx);
+        out.addressRaw = addrLines.join(' ').replace(/^(Adresse|Address)\s*:\s*/i, '').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim();
+        const ph = left.find(l => /^(Telefon|Phone)\s*:/i.test(l));
+        if (ph) out.phone = ph.replace(/^(Telefon|Phone)\s*:\s*/i, '').trim();
+      }
+      return out;
+    }
+
+
+    // Fallback ohne Koordinaten: Spalten ANREISE/ABREISE aus tab-getrennten Textzeilen lesen
+    function bkParseDatesFromLines(lines) {
+      const segs = (l) => l.split('\t').map(s => s.trim()).filter(Boolean);
+      const hi = lines.findIndex(l => { const s = segs(l); return s.length >= 2 && /^(ANREISE|CHECK-?IN|ARRIVAL)$/i.test(s[0]) && /^(ABREISE|CHECK-?OUT|DEPARTURE)$/i.test(s[1]); });
+      if (hi === -1) return null;
+      const win = lines.slice(hi + 1, hi + 12).map(segs);
+      const dayRow = win.find(s => s.length >= 2 && /^\d{1,2}$/.test(s[0]) && /^\d{1,2}$/.test(s[1]));
+      const monRow = win.find(s => s.length >= 2 && bkMonth(s[0]) && bkMonth(s[1]));
+      const timeRow = win.find(s => s.length >= 2 && /\d{1,2}:\d{2}/.test(s[0]) && /\d{1,2}:\d{2}/.test(s[1]));
+      if (!dayRow || !monRow) return null;
+      const t = (x) => x ? (x.match(/\d{1,2}:\d{2}/g) || []) : [];
+      return { in: { day: +dayRow[0], month: bkMonth(monRow[0]), times: t(timeRow?.[0]) }, out: { day: +dayRow[1], month: bkMonth(monRow[1]), times: t(timeRow?.[1]) } };
+    }
+
+    // Adresse bereinigen (doppelte Teile entfernen) und Ort ableiten
+    function bkCleanAddress(raw) {
+      const parts = String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!parts.length) return { address: '', city: '' };
+      const seen = new Set(), uniq = [];
+      for (const p of parts) { const k = p.toLowerCase(); if (!seen.has(k)) { seen.add(k); uniq.push(p); } }
+      const country = parts[parts.length - 1].toLowerCase();
+      const counts = {};
+      for (const p of parts) { const k = p.toLowerCase(); if (k !== country && !/^\d+$/.test(k) && !/\d/.test(k)) counts[k] = (counts[k] || 0) + 1; }
+      let city = '', best = 1;
+      for (const p of parts) { const c = counts[p.toLowerCase()] || 0; if (c > best) { best = c; city = p; } }
+      return { address: uniq.join(', '), city };
+    }
+
+    // Zentrale Parse-Funktion: Text (Zeilen) + optionale Geometrie -> { res, notes }
+    function bkParseBooking(text, geo, ctx = {}) {
+      const res = {}, notes = [];
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const segs = (l) => l.split('\t').map(s => s.trim()).filter(Boolean);
+      const fullDateRx = /(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})(?:\D{1,3}(\d{1,2}):(\d{2}))?/;
+
+      // Stornofrist: erste Zeile "bis <Datum> <Uhrzeit>: <Währung> 0"
+      let cancelAnchor = null;
+      const zeroFee = text.match(/bis\s+(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*:\s*(?:[A-Z]{3}|€)?\s*0(?:[.,]0+)?(?!\d)/i);
+      if (zeroFee && bkMonth(zeroFee[2])) {
+        cancelAnchor = `${zeroFee[3]}-${bkPad(bkMonth(zeroFee[2]))}-${bkPad(zeroFee[1])}`;
+        res.freeCancel = `${cancelAnchor}T${bkPad(zeroFee[4])}:${zeroFee[5]}`;
+      } else {
+        const gen = text.match(/(?:kostenlos(?:e|en)?\s+stornier(?:ung|bar)|stornieren\s+bis|free\s+cancellation\s+until)[:\s]*([^\n]+)/i);
+        const gm = gen && gen[1].match(fullDateRx);
+        if (gm && bkMonth(gm[2])) {
+          cancelAnchor = `${gm[3]}-${bkPad(bkMonth(gm[2]))}-${bkPad(gm[1])}`;
+          res.freeCancel = `${cancelAnchor}T${gm[4] ? bkPad(gm[4]) + ':' + gm[5] : '23:59'}`;
+        } else if (/Stornierungsgeb(?:ü|u)hren|Nicht erstattungsf(?:ä|a)hig|non-?refundable/i.test(text)) {
+          notes.push('Nicht kostenlos stornierbar');
+        }
+      }
+      const ictx = Object.assign({}, ctx, { anchorISO: cancelAnchor });
+
+      // Datum: zuerst Geometrie (Booking-Spalten), sonst Textzeilen mit vollem Datum
+      const dates = (geo && geo.in && geo.out) ? geo : bkParseDatesFromLines(lines);
+      if (dates && dates.in && dates.out) {
+        const yIn = bkInferYear(dates.in.day, dates.in.month, ictx);
+        res.checkIn = `${yIn}-${bkPad(dates.in.month)}-${bkPad(dates.in.day)}`;
+        let yOut = yIn; if (Date.UTC(yOut, dates.out.month - 1, dates.out.day) < Date.UTC(yIn, dates.in.month - 1, dates.in.day)) yOut++;
+        res.checkOut = `${yOut}-${bkPad(dates.out.month)}-${bkPad(dates.out.day)}`;
+        if (dates.in.times.length) notes.push(`Check-in ${dates.in.times.join('–')}`);
+        if (dates.out.times.length) notes.push(`Check-out ${dates.out.times.join('–')}`);
       }
 
+      // Name & Adresse aus Geometrie
+      if (geo?.name) res.name = geo.name;
+      if (geo?.addressRaw) {
+        const ca = bkCleanAddress(geo.addressRaw);
+        if (ca.address) res.address = ca.address;
+        if (ca.city) res.location = ca.city;
+      }
+      if (!res.address) {
+        const al = lines.map(l => segs(l)[0] || '').find(l => /^(Adresse|Address)\s*:/i.test(l));
+        if (al) { const ca = bkCleanAddress(al.replace(/^(Adresse|Address)\s*:\s*/i, '')); if (ca.address) res.address = ca.address; if (ca.city && !res.location) res.location = ca.city; }
+      }
+
+      // Buchungsnummer & PIN
+      const nr = text.match(/(?:BUCHUNGSNUMMER|Buchungsnummer|Confirmation\s*number|Booking\s*(?:number|id))\s*:?\s*(\d{3,}(?:[.\s-]\d{3,}){1,3}|[A-Z0-9]{6,})/i);
+      const pin = text.match(/PIN(?:[- ]?CODE)?\s*:?\s*(\d{3,8})/i);
+      if (nr) notes.unshift(`Buchungs-Nr.: ${nr[1].trim()}${pin ? ` (PIN ${pin[1]})` : ''}`);
+
+      // Zimmer & Gäste
+      const gi = lines.findIndex(l => /^Name des Gastes\s*:|^Guest name\s*:/i.test(segs(l)[0] || ''));
+      const roomLine = gi > 0 ? segs(lines[gi - 1])[0] : '';
+      const guests = text.match(/Anzahl der G(?:ä|a)ste\s*:\s*([^\t\n]+)/i);
+      const roomBits = [];
+      if (roomLine && roomLine.length < 70) roomBits.push(roomLine);
+      if (guests) roomBits.push(guests[1].trim());
+      if (roomBits.length) notes.push(`Zimmer: ${roomBits.join(', ')}`);
+
+      // Verpflegung
+      if (/Fr(?:ü|u)hst(?:ü|u)ck\s+(?:ist\s+)?(?:im\s+Endpreis\s+)?(?:inbegriffen|inklusive|enthalten)|breakfast\s+(?:is\s+)?included/i.test(text)) notes.push('Frühstück inklusive');
+
+      // Preis: Zeile "Preis ... ca. € 33" (EUR) + Originalwährung in der Folgezeile
+      let priceFound = false;
+      const pi = lines.findIndex(l => /^(?:Preis|Price)(?:\s|\t)/.test(l) && /(?:€|EUR)\s*[\d]|[\d]\s*(?:€|EUR)/.test(l));
+      if (pi !== -1) {
+        const cur = [lines[pi], lines[pi + 1] || '', lines[pi + 2] || ''];
+        const eur = cur[0].match(/(?:€|EUR)\s*(\d+(?:[.,]\d+)*)|(\d+(?:[.,]\d+)*)\s*(?:€|EUR)/);
+        if (eur) { res.price = bkFormatPrice(eur[1] || eur[2]); priceFound = true; if (/\bca\.?(?=\s)/i.test(cur[0])) notes.push('Preis in € ist ein ca.-Wert (Umrechnung)'); }
+        const foreign = (cur[0] + ' ' + cur[1]).match(/\b(THB|USD|GBP|CHF|JPY|VND|IDR|MYR|SGD|LAK|KHR)\s*(\d+(?:[.,]\d+)*)/);
+        if (foreign) notes.push(`Originalpreis: ${foreign[1]} ${foreign[2]}`);
+      }
+      if (!priceFound) {
+        const priceText = lines.filter(l => !/storn|geb(?:ü|u)hr|kaution|deposit|fee|cancel|steuer|tax|mehrwert/i.test(l) && !/(?:^|\t)(?:ab|bis|from|until)\s+\d/i.test(l)).join('\n');
+        const pm = priceText.match(/(?:gesamtpreis|total|betrag|summe|preis)[:\s\t]*(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i) || priceText.match(/(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i);
+        if (pm) res.price = bkFormatPrice(pm[1]);
+      }
+
+      // Kaution
+      const dep = text.match(/(?:Schadenskaution|Kaution|damage deposit)[^.\n]*?([A-Z]{3}|€)\s*(\d+(?:[.,]\d+)*)/i);
+      if (dep) {
+        const approx = text.match(/ungef(?:ä|a)hr\s+(EUR|€)\s*(\d+(?:[.,]\d+)*)/i);
+        notes.push(`Kaution bei Ankunft: ${dep[1]} ${dep[2]}${approx ? ` (ca. € ${approx[2]})` : ''}, bar`);
+      }
+
+      if (geo?.phone) notes.push(`Tel.: ${geo.phone}`);
+      return { res, notes };
+    }
+
+    // Ursprünglicher generischer Textparser (v1.95), jetzt als reine Funktion
+    function bkLegacyParse(text) {
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       const res = {};
 
@@ -708,9 +922,10 @@
       // Fallback: Erste zwei gefundene Datumsangaben im Gesamttext
       if (!res.checkIn || !res.checkOut) {
         const allDateMatches = [];
+        const dateText = lines.filter(l => !/storn|cancel|geb(?:ü|u)hr|fee|kaution|deposit|gedruckt|printed/i.test(l)).join('\n');
         const rx = /\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b|\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/g;
         let m;
-        while ((m = rx.exec(text)) !== null) {
+        while ((m = rx.exec(dateText)) !== null) {
           const parsed = parseDateString(m[0]);
           if (parsed && !allDateMatches.includes(parsed)) allDateMatches.push(parsed);
         }
@@ -743,8 +958,8 @@
         } else if (!res.name && /(hotel|resort|villa|hostel|guesthouse|bungalows?|palace|boutique)\b/i.test(line) && line.length < 60) {
           res.name = line.replace(/^(unterkunft|ihre unterkunft|hotelname)[:\s-]*/i, '').trim();
         }
-        if (!res.location && /(?:ort|region|stadt|location|city)[:\s]+([^\n,]+)/i.test(line)) {
-          const locMatch = line.match(/(?:ort|region|stadt|location|city)[:\s]+([^\n,]+)/i);
+        if (!res.location && /\b(?:ort|region|stadt|location|city)\s*:\s*([^\n,]+)/i.test(line)) {
+          const locMatch = line.match(/\b(?:ort|region|stadt|location|city)\s*:\s*([^\n,]+)/i);
           if (locMatch) res.location = locMatch[1].trim();
         }
       }
@@ -761,28 +976,124 @@
       if (/frühstück\s+(?:inbegriffen|inklusive|enthalten)|breakfast\s+included/i.test(text)) {
         notesArr.push('Frühstück inklusive');
       }
+      return { res, notes: notesArr };
+    }
 
-      // Gefundene Werte in die Formularfelder schreiben
-      let appliedCount = 0;
-      if (res.name) { document.getElementById('modalLodgingName').value = res.name; appliedCount++; }
-      if (res.location) { document.getElementById('modalLodgingLocation').value = res.location; appliedCount++; }
-      if (res.checkIn) { document.getElementById('modalLodgingCheckIn').value = res.checkIn; appliedCount++; }
-      if (res.checkOut) { document.getElementById('modalLodgingCheckOut').value = res.checkOut; appliedCount++; }
-      if (res.price) { document.getElementById('modalLodgingPrice').value = res.price; appliedCount++; }
-      if (res.freeCancel) { document.getElementById('modalLodgingFreeCancel').value = res.freeCancel; appliedCount++; }
-      if (notesArr.length) {
-        const curNotes = document.getElementById('modalLodgingNotes').value.trim();
-        document.getElementById('modalLodgingNotes').value = curNotes ? `${curNotes} | ${notesArr.join(', ')}` : notesArr.join(', ');
-        appliedCount++;
+    // Felder des Unterkunfts-Dialogs befüllen; Booking-Parser überschreibt den generischen Parser
+    function applyBookingParse(text, geo) {
+      const legacy = bkLegacyParse(text);
+      const bk = bkParseBooking(text, geo, { tripStart: (typeof tripData !== 'undefined' && tripData?.startDate) || '' });
+      const res = Object.assign({}, legacy.res, bk.res);
+      const notes = bk.notes.slice();
+      for (const n of legacy.notes) {
+        const key = n.startsWith('Buchungs-Nr') ? 'Buchungs-Nr' : (n.startsWith('Frühstück') ? 'Frühstück' : null);
+        if (!key || !notes.some(x => x.startsWith(key))) notes.push(n);
       }
 
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) { el.value = v; return 1; } return 0; };
+      let applied = 0;
+      applied += setVal('modalLodgingName', res.name);
+      applied += setVal('modalLodgingLocation', res.location);
+      applied += setVal('modalLodgingCheckIn', res.checkIn);
+      applied += setVal('modalLodgingCheckOut', res.checkOut);
+      applied += setVal('modalLodgingPrice', res.price);
+      applied += setVal('modalLodgingFreeCancel', res.freeCancel);
+      applied += setVal('modalLodgingAddress', res.address);
+
+      const notesEl = document.getElementById('modalLodgingNotes');
+      if (notesEl && notes.length) {
+        const cur = notesEl.value.trim();
+        const fresh = notes.filter(n => !cur.includes(n));
+        if (fresh.length) {
+          notesEl.value = cur ? `${cur} | ${fresh.join(' | ')}` : fresh.join(' | ');
+          applied++;
+        }
+      }
       updateModalNightsCalc();
+      return applied;
+    }
 
-      if (appliedCount > 0) {
-        showToast(`${appliedCount} Felder automatisch ausgefüllt`);
-      } else {
-        showToast("Keine passenden Felder im Text erkannt", true);
+    // Manueller Button: Text aus dem Textfeld analysieren (nutzt Koordinaten, falls Text unverändert aus dem PDF stammt)
+    function parseBookingTextFromInput() {
+      const text = document.getElementById('autoFillBookingInput')?.value || '';
+      if (!text.trim()) {
+        return showAppAlert("Bitte importiere zuerst ein PDF oder füge den Text deiner Buchung in das Textfeld ein.", "Keine Daten vorhanden");
       }
+      const geo = (lastBookingPdf && lastBookingPdf.text === text) ? lastBookingPdf.geo : null;
+      const applied = applyBookingParse(text, geo);
+      if (applied > 0) showToast(`${applied} Felder automatisch ausgefüllt – bitte prüfen`);
+      else showToast("Keine passenden Felder im Text erkannt", true);
+    }
+
+    // --- PDF.js (lazy von cdnjs geladen, vom Service Worker gecacht) ---
+    const PDFJS_VERSION = '3.11.174';
+    const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/`;
+    let pdfJsLoadPromise = null, lastBookingPdf = null;
+
+    function loadPdfJs() {
+      if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+      if (pdfJsLoadPromise) return pdfJsLoadPromise;
+      pdfJsLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = PDFJS_BASE + 'pdf.min.js';
+        s.onload = () => {
+          if (!window.pdfjsLib) return reject(new Error('PDF.js nicht verfügbar'));
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        };
+        s.onerror = () => reject(new Error('PDF.js konnte nicht geladen werden'));
+        document.head.appendChild(s);
+      }).catch(err => { pdfJsLoadPromise = null; throw err; });
+      return pdfJsLoadPromise;
+    }
+
+    async function importBookingPdf(file) {
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        return showAppAlert("Bitte eine PDF-Datei auswählen.", "Falsches Dateiformat");
+      }
+      const btn = document.getElementById('bookingPdfBtn');
+      const btnHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> Lese PDF…'; }
+      try {
+        const pdfjs = await loadPdfJs();
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+        const allLines = []; let firstItems = null;
+        for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) {
+          const tc = await (await pdf.getPage(p)).getTextContent();
+          const items = tc.items.filter(i => typeof i.str === 'string').map(i => ({ str: i.str, x: i.transform[4], y: i.transform[5], w: i.width, h: i.height }));
+          if (p === 1) firstItems = items;
+          allLines.push(...bkBuildLines(items));
+        }
+        const text = allLines.join('\n');
+        if (text.trim().length < 20) {
+          return showAppAlert("In diesem PDF wurde kein lesbarer Text gefunden (evtl. ein Scan oder Bild). Bitte das PDF direkt aus Booking.com speichern oder den Text manuell einfügen.", "Kein Text erkannt");
+        }
+        const geo = bkParseGeometry(firstItems || [], {});
+        document.getElementById('autoFillBookingInput').value = text;
+        lastBookingPdf = { text, geo };
+        const applied = applyBookingParse(text, geo);
+        if (applied > 0) showToast(`${applied} Felder aus PDF ausgefüllt – bitte prüfen`);
+        else showToast("Keine passenden Felder im PDF erkannt", true);
+      } catch (err) {
+        console.error('[PDF-Import]', err);
+        showAppAlert(`Das PDF konnte nicht gelesen werden: ${err.message || err}. Für den ersten Import wird eine Internetverbindung benötigt, damit PDF.js geladen werden kann.`, "PDF-Import fehlgeschlagen");
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = btnHtml; }
+      }
+    }
+
+    function handleBookingPdfSelect(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      importBookingPdf(f);
+    }
+
+    function handleBookingPdfDrop(ev) {
+      ev.preventDefault();
+      document.getElementById('autoFillBox')?.classList.remove('drop-active');
+      const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) importBookingPdf(f);
     }
 
     // --- APP-DIALOGE ---
@@ -1080,6 +1391,7 @@
       document.getElementById('lodgingModalTitle').innerHTML = `<i class="fa-solid fa-hotel text-indigo-500"></i> ${isEdit ? 'Unterkunft bearbeiten' : 'Neue Unterkunft anlegen'}`;
       document.getElementById('modalLodgingDeleteBtn').classList.toggle('hidden', !isEdit);
       document.getElementById('autoFillBookingInput').value = '';
+      lastBookingPdf = null;
       document.getElementById('modalLodgingId').value = isEdit ? l.id : '';
       document.getElementById('modalLodgingName').value = l?.name || '';
       document.getElementById('modalLodgingLocation').value = l?.location || '';
