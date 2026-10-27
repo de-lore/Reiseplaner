@@ -741,7 +741,7 @@
         const text = lines.join(' ');
         const month = (text.match(/[A-Za-zäöüÄÖÜ]{3,}/g) || []).map(bkMonth).find(Boolean);
         const times = text.match(/\d{1,2}:\d{2}/g) || [];
-        return day && month ? { day: +day[0], month, times } : null;
+        return day && month ? { day: +day[0], month, times, until: /\bbis\b|\buntil\b/i.test(text) } : null;
       };
       const cIn = parseCell(column(a)), cOut = parseCell(column(b));
       const out = { in: cIn, out: cOut };
@@ -762,6 +762,16 @@
     }
 
 
+    // Uhrzeiten aus der Anreise-/Abreisespalte lesbar formatieren
+    function bkFormatTimes(c) {
+      const tm = c.times || [];
+      if (!tm.length) return '';
+      if (c.until) return `bis ${tm[0]}`;
+      if (tm.length === 1) return tm[0];
+      if (tm[0] === tm[1]) return tm[0] === '00:00' ? 'ganztägig' : tm[0];
+      return `${tm[0]}–${tm[1]}`;
+    }
+
     // Fallback ohne Koordinaten: Spalten ANREISE/ABREISE aus tab-getrennten Textzeilen lesen
     function bkParseDatesFromLines(lines) {
       const segs = (l) => l.split('\t').map(s => s.trim()).filter(Boolean);
@@ -773,7 +783,8 @@
       const timeRow = win.find(s => s.length >= 2 && /\d{1,2}:\d{2}/.test(s[0]) && /\d{1,2}:\d{2}/.test(s[1]));
       if (!dayRow || !monRow) return null;
       const t = (x) => x ? (x.match(/\d{1,2}:\d{2}/g) || []) : [];
-      return { in: { day: +dayRow[0], month: bkMonth(monRow[0]), times: t(timeRow?.[0]) }, out: { day: +dayRow[1], month: bkMonth(monRow[1]), times: t(timeRow?.[1]) } };
+      const tr = timeRow;
+      return { in: { day: +dayRow[0], month: bkMonth(monRow[0]), times: t(tr?.[0]), until: /\bbis\b/i.test(tr?.[0] || '') }, out: { day: +dayRow[1], month: bkMonth(monRow[1]), times: t(tr?.[1]), until: /\bbis\b/i.test(tr?.[1] || '') } };
     }
 
     // Adresse bereinigen (doppelte Teile entfernen) und Ort ableiten
@@ -782,11 +793,23 @@
       if (!parts.length) return { address: '', city: '' };
       const seen = new Set(), uniq = [];
       for (const p of parts) { const k = p.toLowerCase(); if (!seen.has(k)) { seen.add(k); uniq.push(p); } }
-      const country = parts[parts.length - 1].toLowerCase();
-      const counts = {};
-      for (const p of parts) { const k = p.toLowerCase(); if (k !== country && !/^\d+$/.test(k) && !/\d/.test(k)) counts[k] = (counts[k] || 0) + 1; }
+      const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z]/g, '');
+      const country = norm(parts[parts.length - 1]);
+      // Kandidaten: Teile ohne Land und ohne reine Zahlen; führende Postleitzahl abschneiden
+      const cands = [];
+      for (const p of parts) {
+        if (norm(p) === country) continue;
+        const stripped = p.replace(/^\d[\d\s-]*\s+(?=\D)/, '').trim();
+        if (!stripped || /\d/.test(stripped)) continue;
+        cands.push({ text: stripped, key: norm(stripped), hadZip: stripped !== p });
+      }
       let city = '', best = 1;
-      for (const p of parts) { const c = counts[p.toLowerCase()] || 0; if (c > best) { best = c; city = p; } }
+      for (const c of cands) {
+        if (!c.key) continue;
+        const score = cands.filter(o => o.key.includes(c.key)).length;
+        if (score > best || (score === best && city && score > 1 && c.key.length < norm(city).length)) { best = score; city = c.text; }
+      }
+      if (!city) { const z = cands.find(c => c.hadZip); if (z) city = z.text; }
       return { address: uniq.join(', '), city };
     }
 
@@ -799,7 +822,7 @@
 
       // Stornofrist: erste Zeile "bis <Datum> <Uhrzeit>: <Währung> 0"
       let cancelAnchor = null;
-      const zeroFee = text.match(/bis\s+(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*:\s*(?:[A-Z]{3}|€)?\s*0(?:[.,]0+)?(?!\d)/i);
+      const zeroFee = text.match(/bis\s+(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*:\s*(?:[A-Z]{3}|[A-Z]{0,2}\$|€)?\s*0(?:[.,]0+)?(?!\d)/i);
       if (zeroFee && bkMonth(zeroFee[2])) {
         cancelAnchor = `${zeroFee[3]}-${bkPad(bkMonth(zeroFee[2]))}-${bkPad(zeroFee[1])}`;
         res.freeCancel = `${cancelAnchor}T${bkPad(zeroFee[4])}:${zeroFee[5]}`;
@@ -822,8 +845,8 @@
         res.checkIn = `${yIn}-${bkPad(dates.in.month)}-${bkPad(dates.in.day)}`;
         let yOut = yIn; if (Date.UTC(yOut, dates.out.month - 1, dates.out.day) < Date.UTC(yIn, dates.in.month - 1, dates.in.day)) yOut++;
         res.checkOut = `${yOut}-${bkPad(dates.out.month)}-${bkPad(dates.out.day)}`;
-        if (dates.in.times.length) notes.push(`Check-in ${dates.in.times.join('–')}`);
-        if (dates.out.times.length) notes.push(`Check-out ${dates.out.times.join('–')}`);
+        if (bkFormatTimes(dates.in)) notes.push(`Check-in ${bkFormatTimes(dates.in)}`);
+        if (bkFormatTimes(dates.out)) notes.push(`Check-out ${bkFormatTimes(dates.out)}`);
       }
 
       // Name & Adresse aus Geometrie
@@ -845,7 +868,11 @@
 
       // Zimmer & Gäste
       const gi = lines.findIndex(l => /^Name des Gastes\s*:|^Guest name\s*:/i.test(segs(l)[0] || ''));
-      const roomLine = gi > 0 ? segs(lines[gi - 1])[0] : '';
+      let roomLine = '';
+      for (let k = 1; k <= 3 && gi - k >= 0 && !roomLine; k++) {
+        const cand = segs(lines[gi - k])[0] || '';
+        if (cand && !/:\s*$/.test(cand) && cand.length < 70) roomLine = cand;
+      }
       const guests = text.match(/Anzahl der G(?:ä|a)ste\s*:\s*([^\t\n]+)/i);
       const roomBits = [];
       if (roomLine && roomLine.length < 70) roomBits.push(roomLine);
@@ -862,14 +889,19 @@
         const cur = [lines[pi], lines[pi + 1] || '', lines[pi + 2] || ''];
         const eur = cur[0].match(/(?:€|EUR)\s*(\d+(?:[.,]\d+)*)|(\d+(?:[.,]\d+)*)\s*(?:€|EUR)/);
         if (eur) { res.price = bkFormatPrice(eur[1] || eur[2]); priceFound = true; if (/\bca\.?(?=\s)/i.test(cur[0])) notes.push('Preis in € ist ein ca.-Wert (Umrechnung)'); }
-        const foreign = (cur[0] + ' ' + cur[1]).match(/\b(THB|USD|GBP|CHF|JPY|VND|IDR|MYR|SGD|LAK|KHR)\s*(\d+(?:[.,]\d+)*)/);
-        if (foreign) notes.push(`Originalpreis: ${foreign[1]} ${foreign[2]}`);
+        const foreign = (cur[0] + ' ' + cur[1]).match(/(?:\b(THB|USD|GBP|CHF|JPY|VND|IDR|MYR|SGD|LAK|KHR)|(US\$|A\$|C\$))\s*(\d+(?:[.,]\d+)*)/);
+        if (foreign) notes.push(`Originalpreis: ${foreign[1] || (foreign[2] === 'US$' ? 'USD' : foreign[2])} ${foreign[3]}`);
       }
       if (!priceFound) {
         const priceText = lines.filter(l => !/storn|geb(?:ü|u)hr|kaution|deposit|fee|cancel|steuer|tax|mehrwert/i.test(l) && !/(?:^|\t)(?:ab|bis|from|until)\s+\d/i.test(l)).join('\n');
         const pm = priceText.match(/(?:gesamtpreis|total|betrag|summe|preis)[:\s\t]*(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i) || priceText.match(/(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i);
         if (pm) res.price = bkFormatPrice(pm[1]);
       }
+
+      // Zahlung: Vorauszahlung / Zahlung vor Ort in Fremdwährung
+      if (/Sie entrichten als Vorauszahlung/i.test(text)) notes.push('Vorauszahlung 24 h vor Anreise (Gesamtpreis)');
+      const payCur = text.match(/Sie bezahlen die Unterkunft[^\n]*? in ([A-Z]{3}) gem(?:ä|a)(?:ß|ss)/i);
+      if (payCur) notes.push(`Zahlung vor Ort in ${payCur[1]}`);
 
       // Kaution
       const dep = text.match(/(?:Schadenskaution|Kaution|damage deposit)[^.\n]*?([A-Z]{3}|€)\s*(\d+(?:[.,]\d+)*)/i);
