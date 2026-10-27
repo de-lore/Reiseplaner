@@ -2012,7 +2012,17 @@
       if (!Array.isArray(tripData.days)) return;
       const willOpen = tripData.days[dayIdx].isCollapsed;
       tripData.days.forEach((d, i) => { d.isCollapsed = i === dayIdx ? !willOpen : true; });
-      saveToStorage(); renderDays();
+      saveToStorage(); 
+      renderDays();
+
+      if (willOpen) {
+        requestAnimationFrame(() => {
+          const el = document.getElementById('day-card-' + dayIdx);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      }
     }
 
     const toggleDayCollapse = (dayIdx) => openOnlyDay(dayIdx);
