@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v1.93</title>
+  <title>Reiseplaner Pro v1.931</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.93</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v1.931</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -110,7 +110,7 @@
       </div>
     </div>
 
-    <!-- FILTER-, SUCH-, HEUTE- & ALLE-AUF/ZU-LEISTE (FÜR REISEPLAN) -->
+    <!-- FILTER-, SUCH-, HEUTE- & ALLE-AUF/ZU-LEISTE -->
     <div id="headerFilterBar" class="border-t border-slate-200/80 dark:border-slate-700/60 px-3 sm:px-4 py-1.5 bg-slate-50/60 dark:bg-slate-800/60 no-print transition-all duration-200">
       <div class="max-w-6xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
         <div class="relative shrink-0">
@@ -168,7 +168,7 @@
             Backup-Erinnerung
             <span id="backupReminderCounter" class="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-200/80 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 font-mono font-semibold">10 Änderungen</span>
           </h2>
-          <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">Neue Änderungen erfasst. Neues JSON-Backup (inkl. Belege) sichern?</p>
+          <p class="text-xs text-slate-600 dark:text-slate-300 mt-0.5">Neue Änderungen erfasst. Neues JSON-Backup sichern?</p>
         </div>
       </div>
       <div class="flex items-center gap-2 self-end sm:self-auto shrink-0">
@@ -218,14 +218,14 @@
       <div id="daysContainer" class="space-y-2"></div>
     </div>
 
-    <!-- TAB 2: UNTERKÜNFTE (NEU v1.93) -->
+    <!-- TAB 2: UNTERKÜNFTE -->
     <div id="tabContent-lodgings" class="tab-content hidden space-y-4">
       <section class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 no-print">
         <div>
           <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-2">
             <i class="fa-solid fa-hotel"></i> Unterkünfte-Übersicht (Nach Ort gruppiert)
           </h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Hier pflegst du Hotels zentral mit Buchungsstatus, Gesamtpreis und kostenloser Stornierungsfrist.</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Zentrale Verwaltung: Hotels manuell pflegen oder Buchungstext per Klick einfügen.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <div class="flex items-center gap-1.5">
@@ -375,14 +375,14 @@
           </div>
         </div>
         <div>
-          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Persönliche Notfall-Daten (Versicherungsschein, Blutgruppe, Notfallkontakte):</label>
-          <textarea id="emergencyNotesInput" rows="3" placeholder="z. B. Auslandskrankenversicherung: ERGO Nr. 1234567, Notfalltelefon: ..., Kontakt daheim: ..." oninput="saveEmergencyNotes(this.value)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"></textarea>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Persönliche Notfall-Daten:</label>
+          <textarea id="emergencyNotesInput" rows="3" placeholder="z. B. Auslandskrankenversicherung: ERGO Nr. 1234567..." oninput="saveEmergencyNotes(this.value)" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:border-indigo-500"></textarea>
         </div>
       </section>
     </div>
   </main>
 
-  <!-- MOBILE BOTTOM NAVIGATION (INKL. UNTERKÜNFTE) -->
+  <!-- MOBILE BOTTOM NAVIGATION -->
   <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/95 dark:bg-slate-800/95 backdrop-blur border-t border-slate-200 dark:border-slate-700 px-2 py-1 flex items-center justify-around shadow-lg no-print">
     <button onclick="switchTab('plan')" id="mobTabBtn-plan" class="flex flex-col items-center justify-center py-1 px-3 text-indigo-600 dark:text-indigo-400 font-bold transition">
       <i class="fa-solid fa-calendar-days text-base mb-0.5"></i><span class="text-[10px]">Plan</span>
@@ -398,7 +398,7 @@
     </button>
   </nav>
 
-  <!-- MODAL: UNTERKUNFT ERFASSEN / BEARBEITEN (NEU v1.93) -->
+  <!-- MODAL: UNTERKUNFT ERFASSEN / BEARBEITEN / OPTION B TEXT-BOX -->
   <div id="lodgingModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeLodgingModal()">
     <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-xl w-full p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto" onclick="event.stopPropagation()">
       <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
@@ -408,17 +408,33 @@
         <button onclick="closeLodgingModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
       </div>
 
+      <!-- OPTION B: TEXT-EINFÜGEBOX MIT AUTOMATISCH-AUSFÜLLEN BUTTON -->
+      <div class="p-3.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+            <i class="fa-solid fa-wand-magic-sparkles text-indigo-600 dark:text-indigo-400"></i> Buchungstext einfügen (Schnell-Ausfüllen)
+          </span>
+          <span class="text-[10px] text-slate-500 dark:text-slate-400">Booking.com, etc.</span>
+        </div>
+        <textarea id="modalBookingTextInput" rows="2" placeholder="Text aus Bestätigungs-PDF / E-Mail kopieren und hier einfügen..." class="w-full bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 rounded-lg p-2 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:border-indigo-500"></textarea>
+        <div class="flex justify-end gap-2">
+          <button type="button" onclick="parseBookingTextFromInput()" class="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt"></i> Automatisch ausfüllen
+          </button>
+        </div>
+      </div>
+
       <input type="hidden" id="modalLodgingId">
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
         <div class="sm:col-span-2">
           <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Hotel- / Unterkunftsname *</label>
-          <input type="text" id="modalLodgingName" placeholder="z. B. Victoria Xiengthong Palace" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500">
+          <input type="text" id="modalLodgingName" placeholder="z. B. Victoria Xiengthong Palace" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500 font-semibold">
         </div>
 
         <div>
           <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Ort / Region *</label>
-          <input type="text" id="modalLodgingLocation" placeholder="z. B. Luang Prabang" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500">
+          <input type="text" id="modalLodgingLocation" placeholder="z. B. Luang Prabang" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500 font-semibold">
         </div>
 
         <div>
@@ -442,7 +458,7 @@
 
         <div class="sm:col-span-2 p-2.5 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-between">
           <span class="text-xs text-indigo-700 dark:text-indigo-300 font-semibold" id="modalNightsInfo">Dauer: Bitte Daten wählen</span>
-          <span class="text-[11px] text-slate-500 dark:text-slate-400">Wird automatisch den Tagen zugewiesen</span>
+          <span class="text-[11px] text-slate-500 dark:text-slate-400">Automatische Zuweisung an Tage</span>
         </div>
 
         <div>
@@ -458,8 +474,8 @@
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Adresse / Anfahrt (sichtbar am Reisetag für Taxi):</label>
-          <input type="text" id="modalLodgingAddress" placeholder="z. B. Khem Khong, Ban Khili, 06000 Luang Prabang" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500">
+          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Adresse (sichtbar am Reisetag für Taxi/Maps):</label>
+          <input type="text" id="modalLodgingAddress" placeholder="Vollständige Adresse..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:border-indigo-500">
         </div>
 
         <div class="sm:col-span-2">
@@ -468,7 +484,7 @@
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Notizen (z. B. Frühstück, Buchungsnummer, Spät-Check-in):</label>
+          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1">Notizen (Buchungsnr, PIN, Kaution, Check-in Zeiten):</label>
           <textarea id="modalLodgingNotes" rows="2" placeholder="Buchungsnummer, Kaution, Frühstück inklusive..." class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:border-indigo-500"></textarea>
         </div>
       </div>
@@ -504,74 +520,6 @@
       <div class="flex items-center justify-end gap-2 pt-2">
         <button type="button" id="appDialogCancelBtn" onclick="resolveAppDialog(false)" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
         <button type="button" id="appDialogConfirmBtn" onclick="resolveAppDialog(true)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5">OK</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL ZUM VERSCHIEBEN VON TRANSPORTEN / AKTIVITÄTEN AUF ANDEREN TAG -->
-  <div id="moveItemModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeMoveItemModal()">
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-        <div>
-          <h3 id="moveItemModalTitle" class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <i class="fa-solid fa-calendar-day text-indigo-500"></i> Eintrag auf anderen Tag verschieben
-          </h3>
-          <p id="moveItemModalSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate max-w-xs"></p>
-        </div>
-        <button onclick="closeMoveItemModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
-      </div>
-      <div class="space-y-3.5 text-xs">
-        <div id="moveItemQuickBtns" class="grid grid-cols-2 gap-2">
-          <button type="button" id="moveItemPrevDayBtn" onclick="confirmMoveItemToDay('prev')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-indigo-950/60 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 font-semibold transition flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-arrow-left text-[10px]"></i> <span>Auf Vortag</span>
-          </button>
-          <button type="button" id="moveItemNextDayBtn" onclick="confirmMoveItemToDay('next')" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-indigo-50 dark:bg-slate-700 dark:hover:bg-indigo-950/60 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-200 font-semibold transition flex items-center justify-center gap-1.5">
-            <span>Auf Folgetag</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>
-          </button>
-        </div>
-        <div>
-          <label class="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">Oder beliebigen Zieltag auswählen:</label>
-          <select id="moveItemTargetSelect" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold text-slate-900 dark:text-white focus:border-indigo-500"></select>
-        </div>
-      </div>
-      <div class="flex items-center justify-end gap-2 pt-2">
-        <button onclick="closeMoveItemModal()" class="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
-        <button onclick="confirmMoveItemToDay('select')" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold transition shadow flex items-center gap-1.5"><i class="fa-solid fa-check"></i> Verschieben</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- MODAL: TAGE EINFÜGEN / LÖSCHEN -->
-  <div id="dayActionModal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-50 hidden items-center justify-center p-4 no-print" onclick="closeDayActionModal()">
-    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4" onclick="event.stopPropagation()">
-      <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-700 pb-3">
-        <div>
-          <h3 id="dayActionModalTitle" class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2"></h3>
-          <p id="dayActionModalDesc" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5"></p>
-        </div>
-        <button onclick="closeDayActionModal()" class="text-slate-400 hover:text-slate-700 dark:hover:text-white text-xl font-bold">&times;</button>
-      </div>
-      <div id="dayActionModalWarnings" class="hidden"></div>
-      <div class="space-y-3">
-        <div class="p-3.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50/70 dark:bg-emerald-950/30 space-y-2">
-          <div class="flex items-center justify-between">
-            <span id="dayActionModalTitleA" class="text-xs font-bold text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5"></span>
-            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">Schutz aktiv</span>
-          </div>
-          <p id="dayActionModalDescA" class="text-xs text-slate-600 dark:text-slate-300"></p>
-          <button id="dayActionModalBtnA" onclick="executeDayAction('A')"></button>
-        </div>
-        <div class="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 space-y-2">
-          <div class="flex items-center justify-between">
-            <span id="dayActionModalTitleB" class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5"></span>
-            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Shift</span>
-          </div>
-          <p id="dayActionModalDescB" class="text-xs text-slate-500 dark:text-slate-400"></p>
-          <button id="dayActionModalBtnB" onclick="executeDayAction('B')"></button>
-        </div>
-      </div>
-      <div class="flex justify-end pt-1">
-        <button onclick="closeDayActionModal()" class="px-3.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200 transition">Abbrechen</button>
       </div>
     </div>
   </div>
@@ -646,7 +594,7 @@
     };
 
     let activeFileHandle = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
-    let saveDebounceTimer = null, pendingModalAction = null, pendingMoveItem = null, prePrintCollapsedStates = null;
+    let saveDebounceTimer = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
     let activeDialogResolver = null, activeDialogType = 'confirm';
@@ -658,13 +606,12 @@
     const activeMediaObjectUrls = new Map();
     let dbInstancePromise = null;
 
-    // --- ZENTRALER MODAL-HELFER ---
+    // --- MODAL & DIALOG HELFER ---
     function toggleModal(id, show) {
       const m = document.getElementById(id);
       if (m) { m.classList.toggle('hidden', !show); m.classList.toggle('flex', show); }
     }
 
-    // --- NATIVE APP-DIALOGE ---
     function openAppDialog({
       type = 'confirm', title = 'Hinweis', message = '', defaultValue = '',
       placeholder = '', confirmText = 'OK', cancelText = 'Abbrechen', variant = 'indigo', icon = 'fa-circle-question'
@@ -862,15 +809,14 @@
       return days;
     }
 
-    // --- ZENTRALE UNTERKÜNFTE-LOGIK (v1.93) ---
+    // --- ZENTRALE UNTERKÜNFTE-LOGIK & ZUWEISUNG ---
     function getLodgingForDay(dateStr) {
       if (!dateStr || !Array.isArray(tripData.lodgings)) return null;
       return tripData.lodgings.find(l => l.checkIn <= dateStr && dateStr < l.checkOut) || null;
     }
 
     function isDayNoLodging(day) {
-      if (!day) return false;
-      return Boolean(day.noLodgingNeeded);
+      return Boolean(day?.noLodgingNeeded);
     }
 
     function isDayBooked(day) {
@@ -956,15 +902,16 @@
           <div class="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-8 sm:p-12 text-center text-slate-500 dark:text-slate-400">
             <i class="fa-solid fa-hotel text-3xl sm:text-4xl mb-3 text-slate-400"></i>
             <p class="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">Noch keine Unterkünfte eingetragen</p>
-            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Trage deine gebuchten Hotels mit Zeitraum und Stornofrist ein – sie werden deinen Reisetagen automatisch zugewiesen.</p>
-            <button onclick="openLodgingModal(null)" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition">
-              + Erste Unterkunft eintragen
-            </button>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Erfasse Unterkünfte manuell oder nutze das Schnell-Ausfüllen im Formular.</p>
+            <div class="mt-4 flex items-center justify-center gap-2">
+              <button onclick="openLodgingModal(null)" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition">
+                + Erste Unterkunft anlegen
+              </button>
+            </div>
           </div>`;
         return;
       }
 
-      // Gruppierung nach Ort
       const grouped = {};
       lodgings.forEach(l => {
         const loc = (l.location || 'Ohne Ort').trim();
@@ -1068,6 +1015,9 @@
       titleEl.innerHTML = `<i class="fa-solid fa-hotel text-indigo-500"></i> ${isEdit ? 'Unterkunft bearbeiten' : 'Neue Unterkunft anlegen'}`;
       delBtn.classList.toggle('hidden', !isEdit);
 
+      const textInput = document.getElementById('modalBookingTextInput');
+      if (textInput) textInput.value = '';
+
       document.getElementById('modalLodgingId').value = isEdit ? l.id : '';
       document.getElementById('modalLodgingName').value = l ? (l.name || '') : '';
       document.getElementById('modalLodgingLocation').value = l ? (l.location || '') : '';
@@ -1099,11 +1049,111 @@
       if (pIn && pOut) {
         const nights = Math.floor((Date.UTC(pOut.y, pOut.m - 1, pOut.d) - Date.UTC(pIn.y, pIn.m - 1, pIn.d)) / 86400000);
         if (nights > 0) {
-          infoEl.innerText = `Dauer: ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'} (Zugewiesen an ${nights} Reisetage)`;
+          infoEl.innerText = `Dauer: ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'} (Automatisch an ${nights} Reisetage zugewiesen)`;
           return;
         }
       }
       infoEl.innerText = "Dauer: Bitte gültiges Check-in & Check-out Datum wählen (Check-out muss nach Check-in liegen)";
+    }
+
+    // --- PARSER FÜR OPTION B (TEXT-EINFÜGEBOX) ---
+    function parseBookingTextFromInput() {
+      const text = document.getElementById('modalBookingTextInput')?.value || '';
+      if (!text.trim()) {
+        return showToast("Bitte zuerst Text aus der Bestätigung einfügen", true);
+      }
+
+      const monthsMap = {
+        'januar': '01', 'februar': '02', 'märz': '03', 'april': '04',
+        'mai': '05', 'juni': '06', 'juli': '07', 'august': '08',
+        'september': '09', 'oktober': '10', 'november': '11', 'dezember': '12',
+        'january': '01', 'february': '02', 'march': '03', 'may': '05',
+        'june': '06', 'july': '07', 'october': '10', 'december': '12'
+      };
+
+      // 1. Hotelname
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const nameParts = [];
+      for (const line of lines) {
+        if (/A\s*d\s*r\s*e\s*s\s*s\s*e/i.test(line) || /P\s*R\s*E\s*I\s*S/i.test(line)) break;
+        nameParts.push(line);
+        if (nameParts.length >= 2) break;
+      }
+      if (nameParts.length > 0) {
+        document.getElementById('modalLodgingName').value = nameParts.join(' ').trim();
+      }
+
+      // 2. Adresse
+      const addrMatch = text.match(/A\s*d\s*r\s*e\s*s\s*s\s*e\s*:\s*([\s\S]+?)(?=T\s*e\s*l\s*e\s*f\s*o\s*n|GPS|P\s*R\s*E\s*I\s*S|$)/i);
+      let addressVal = '';
+      if (addrMatch) {
+        addressVal = addrMatch[1].replace(/\s+/g, ' ').trim();
+        document.getElementById('modalLodgingAddress').value = addressVal;
+      }
+
+      // 3. Ort
+      const cities = ['Bangkok', 'Luang Prabang', 'Vang Vieng', 'Vientiane', 'Thakhek', 'Pakse', 'Ban Krut', 'Phuket', 'Chiang Mai', 'Nong Khiaw', 'Ubon Ratchathani', 'Don Det', 'Muang Ngoy'];
+      for (const city of cities) {
+        if ((addressVal + ' ' + text).toLowerCase().includes(city.toLowerCase())) {
+          document.getElementById('modalLodgingLocation').value = city;
+          break;
+        }
+      }
+
+      // 4. Jahr
+      const yearMatch = text.match(/202[5-9]/);
+      const year = yearMatch ? yearMatch[0] : (new Date().getFullYear() + 1);
+
+      // 5. Anreise & Abreise
+      let checkInTime = '', checkOutTime = '';
+      const anreiseMatch = text.match(/A\s*N\s*R\s*E\s*I\s*S\s*E\s*([0-9\s]{1,4})\s*([A-Za-zäöü]+)\s*[A-Za-zäöü]+\s*([0-9]{2}:[0-9]{2}\s*-\s*[0-9]{2}:[0-9]{2})?/i);
+      if (anreiseMatch) {
+        const dStr = anreiseMatch[1].replace(/\s+/g, '').padStart(2, '0');
+        const mStr = monthsMap[anreiseMatch[2].toLowerCase()] || '01';
+        document.getElementById('modalLodgingCheckIn').value = `${year}-${mStr}-${dStr}`;
+        if (anreiseMatch[3]) checkInTime = anreiseMatch[3].trim();
+      }
+
+      const abreiseMatch = text.match(/A\s*B\s*R\s*E\s*I\s*S\s*E\s*([0-9\s]{1,4})\s*([A-Za-zäöü]+)\s*[A-Za-zäöü]+\s*([0-9]{2}:[0-9]{2}\s*-\s*[0-9]{2}:[0-9]{2})?/i);
+      if (abreiseMatch) {
+        const dStr = abreiseMatch[1].replace(/\s+/g, '').padStart(2, '0');
+        const mStr = monthsMap[abreiseMatch[2].toLowerCase()] || '01';
+        document.getElementById('modalLodgingCheckOut').value = `${year}-${mStr}-${dStr}`;
+        if (abreiseMatch[3]) checkOutTime = abreiseMatch[3].trim();
+      }
+
+      // 6. Kostenlose Stornierung bis (Datum & Uhrzeit)
+      const stornoMatch = text.match(/bis\s*([0-9]{1,2})\.?\s*([A-Za-zäöü]+)\s*(202[5-9])\s*([0-9]{2}:[0-9]{2})?\s*:\s*(?:THB|EUR|€)\s*0/i);
+      if (stornoMatch) {
+        const sDay = stornoMatch[1].padStart(2, '0');
+        const sMonth = monthsMap[stornoMatch[2].toLowerCase()] || '01';
+        const sYear = stornoMatch[3];
+        const sTime = stornoMatch[4] || '23:59';
+        document.getElementById('modalLodgingFreeCancel').value = `${sYear}-${sMonth}-${sDay}T${sTime}`;
+      }
+
+      // 7. Gesamtpreis (€)
+      const preisMatch = text.match(/P\s*r\s*e\s*i\s*s\s*\(für[^\)]+\)\s*ca\.\s*€\s*([0-9\s]+(?:[.,][0-9]{2})?)/i) ||
+                         text.match(/€\s*([0-9\s]+(?:[.,][0-9]{2})?)/);
+      if (preisMatch) {
+        document.getElementById('modalLodgingPrice').value = preisMatch[1].replace(/\s+/g, '').replace(',', '.').trim();
+      }
+
+      // 8. Notizen
+      const notes = [];
+      const nrMatch = text.match(/BUCHUNGSNUMMER:\s*([0-9.]+)/i);
+      const pinMatch = text.match(/PIN-CODE:\s*([0-9]+)/i);
+      if (nrMatch) notes.push(`Buchungsnr: ${nrMatch[1].trim()}`);
+      if (pinMatch) notes.push(`PIN: ${pinMatch[1].trim()}`);
+      if (text.includes('Frühstück ist im Endpreis inbegriffen')) notes.push("Frühstück inbegriffen");
+      if (checkInTime) notes.push(`Check-in: ${checkInTime}`);
+      if (checkOutTime) notes.push(`Check-out: ${checkOutTime}`);
+      if (notes.length) {
+        document.getElementById('modalLodgingNotes').value = notes.join(' | ');
+      }
+
+      updateModalNightsCalc();
+      showToast("Felder automatisch ausgefüllt – bitte prüfen");
     }
 
     function saveLodgingFromModal() {
@@ -1768,9 +1818,8 @@
 
     // --- CSV EXPORT ---
     function exportToCSV() {
-      const rows = [["Tag / Zeitraum", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (EUR)", "Status", "Hinweis / Link"]];
+      const rows = [["Bereich / Tag", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (EUR)", "Status", "Hinweis / Details"]];
 
-      // Unterkünfte ausgeben
       (tripData.lodgings || []).forEach(l => {
         rows.push([
           `Aufenthalt (${l.checkIn} bis ${l.checkOut})`,
@@ -1784,7 +1833,6 @@
         ]);
       });
 
-      // Transporte und Aktivitäten ausgeben
       (tripData.days || []).forEach((d, idx) => {
         const dayNr = idx + 1, loc = d.location || '';
         const pushRow = (cat, title, cost, status, hint, link) => rows.push([
@@ -2079,1035 +2127,7 @@
       });
     }
 
-    // --- BACKUP & RESTORE ---
-    async function createRollingBackup() {
-      try {
-        let backups = (await tripsGet('backups')) || [];
-        if (!Array.isArray(backups)) backups = [];
-        const currentSnapshot = JSON.stringify(tripData);
-        if (backups.length > 0 && JSON.stringify(backups[0].data) === currentSnapshot) return;
-
-        const now = new Date();
-        backups.unshift({
-          timestamp: `${now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} um ${now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`,
-          title: tripData.title || 'Unbenannte Reise',
-          daysCount: (tripData.days || []).length,
-          data: JSON.parse(currentSnapshot)
-        });
-
-        const droppedBackups = backups.splice(3);
-        await tripsSet('backups', backups);
-
-        for (const oldB of droppedBackups) {
-          for (const d of (oldB.data?.days || [])) {
-            for (const img of (d?.images || [])) {
-              if (img?.id) await safeDeleteMedia(img.id);
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    async function showRestoreModal() {
-      const list = document.getElementById('backupList');
-      if (!list) return;
-      const backups = (await tripsGet('backups')) || [];
-      list.innerHTML = !backups.length
-        ? '<p class="text-xs text-slate-500 italic p-3 text-center">Noch keine Sicherungsstände vorhanden.</p>'
-        : backups.map((b, idx) => `
-          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
-            <div>
-              <div class="font-bold text-slate-800 dark:text-white flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Stand ${idx + 1}: ${escapeHtml(b.timestamp)}</div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(b.title)} (${b.daysCount} Tage)</div>
-            </div>
-            <button onclick="restoreBackup(${idx})" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shrink-0 shadow">Laden</button>
-          </div>`).join('');
-      toggleModal('restoreModal', true);
-    }
-
-    const closeRestoreModal = () => toggleModal('restoreModal', false);
-
-    async function restoreBackup(idx) {
-      try {
-        const backups = (await tripsGet('backups')) || [];
-        if (!backups[idx]?.data) return;
-        const ok = await showAppConfirm(
-          `Möchtest du den Sicherungsstand vom ${backups[idx].timestamp} (${backups[idx].title}) wirklich laden?`,
-          { title: "Speicherstand laden", confirmText: "Stand laden", variant: "amber", icon: "fa-rotate-left" }
-        );
-        if (!ok) return;
-        tripData = JSON.parse(JSON.stringify(backups[idx].data));
-        await migrateImagesToMediaStore(tripData.days);
-        normalizeDataModel(); recordChangeForReminder(); saveToStorage(); syncUI(); closeRestoreModal();
-        showToast("Stand geladen");
-      } catch (e) { showToast("Fehler beim Wiederherstellen", true); }
-    }
-
-    function normalizeDataModel() {
-      if (!tripData || typeof tripData !== 'object') {
-        tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })), lodgings: [], days: [] };
-      }
-      tripData.generalNotes ??= "";
-      tripData.emergencyNotes ??= "";
-      if (!Array.isArray(tripData.checklist)) tripData.checklist = DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
-      if (!Array.isArray(tripData.lodgings)) tripData.lodgings = [];
-      if (!Array.isArray(tripData.days)) { tripData.days = []; return; }
-
-      // Automatische Migration: Falls alte day.lodging Einträge vorliegen und tripData.lodgings leer ist
-      if (tripData.lodgings.length === 0 && tripData.days.some(d => d.lodging && (d.lodging.name || d.lodging.price))) {
-        let currentGroup = null;
-        tripData.days.forEach((day, idx) => {
-          const l = day.lodging;
-          if (l && l.costStatus !== 'keine' && (l.name || l.price)) {
-            if (currentGroup && currentGroup.name === l.name && currentGroup.location === (day.location || '')) {
-              currentGroup.checkOut = addDaysISO(day.date, 1);
-              if (parseFlexibleNumber(l.price) > 0 && !currentGroup.totalPrice) currentGroup.totalPrice = l.price;
-            } else {
-              if (currentGroup) tripData.lodgings.push(currentGroup);
-              currentGroup = {
-                id: generateUUID(),
-                name: l.name || 'Hotel',
-                location: day.location || '',
-                checkIn: day.date,
-                checkOut: addDaysISO(day.date, 1),
-                status: l.costStatus || (l.isBooked ? 'gebucht' : 'geplant'),
-                totalPrice: l.price || '',
-                freeCancellationUntil: '',
-                address: l.notes || '',
-                link: l.link || '',
-                notes: l.hint || ''
-              };
-            }
-          } else {
-            if (currentGroup) { tripData.lodgings.push(currentGroup); currentGroup = null; }
-          }
-        });
-        if (currentGroup) tripData.lodgings.push(currentGroup);
-      }
-
-      tripData.days.forEach(day => {
-        if (!day || typeof day !== 'object') return;
-        day.location ??= '';
-        day.notes ??= '';
-        day.isCollapsed ??= true;
-        day.noLodgingNeeded = Boolean(day.noLodgingNeeded || (day.lodging && day.lodging.costStatus === 'keine'));
-        if (!Array.isArray(day.images)) day.images = [];
-
-        day.transports = Array.isArray(day.transports) ? day.transports.map(t => t && ({
-          title: t.title ?? '', category: t.category ?? '', cost: t.cost ?? '', costStatus: t.costStatus || 'geplant', hint: t.hint ?? '', link: t.link ?? ''
-        })).filter(Boolean) : [];
-
-        day.activities = Array.isArray(day.activities) ? day.activities.map(a => a && ({
-          title: a.title ?? '', cost: a.cost ?? '', costStatus: a.costStatus || 'geplant', hint: a.hint ?? '', link: a.link ?? '', done: Boolean(a.done)
-        })).filter(Boolean) : [];
-      });
-    }
-
-    function saveToStorage() {
-      clearTimeout(saveDebounceTimer);
-      saveDebounceTimer = setTimeout(async () => {
-        saveDebounceTimer = null;
-        await tripsSet('trip_data', tripData);
-        updateStats();
-        updateHeadline();
-      }, 250);
-    }
-
-    async function loadFromStorage() {
-      let saved = await tripsGet('trip_data');
-      if (!saved) {
-        try { saved = JSON.parse(localStorage.getItem('reiseplaner_pro_pwa_data')); } catch (e) {}
-      }
-
-      if (saved) {
-        try {
-          tripData = saved;
-          await migrateImagesToMediaStore(tripData.days);
-          normalizeDataModel();
-          await tripsSet('trip_data', tripData);
-          syncUI();
-        } catch (e) { updateStats(); }
-      } else {
-        normalizeDataModel();
-        syncUI();
-      }
-      updateFileStatus(null);
-    }
-
-    async function saveToFile(forceSaveAs) {
-      flushPendingSave();
-      await createRollingBackup();
-      await tripsSet('trip_data', tripData);
-      const jsonContent = JSON.stringify(await buildExportPayload(), null, 2);
-      const fileName = `Reiseplan_${(tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer'}.json`;
-
-      if ('showSaveFilePicker' in window) {
-        try {
-          if (!activeFileHandle || forceSaveAs) {
-            activeFileHandle = await window.showSaveFilePicker({
-              suggestedName: fileName,
-              types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }]
-            });
-          }
-          const writable = await activeFileHandle.createWritable();
-          await writable.write(jsonContent);
-          await writable.close();
-          updateFileStatus(activeFileHandle.name);
-          resetBackupReminder();
-          return showToast('Gespeichert in: ' + activeFileHandle.name);
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      const url = URL.createObjectURL(new Blob([jsonContent], { type: 'application/json' }));
-      Object.assign(document.createElement('a'), { href: url, download: fileName }).click();
-      URL.revokeObjectURL(url);
-      resetBackupReminder();
-      showToast("Download gestartet (inkl. Belege)");
-    }
-
-    async function applyImportedTrip(parsed, fileName, handle = null) {
-      if (!parsed || !Array.isArray(parsed.days)) return;
-      await createRollingBackup();
-      activeFileHandle = handle;
-      tripData = parsed;
-      await migrateImagesToMediaStore(tripData.days);
-      normalizeDataModel();
-      await createRollingBackup();
-      resetBackupReminder();
-      saveToStorage();
-      syncUI();
-      updateHeadline();
-      updateFileStatus(fileName);
-      showToast(handle ? 'Datei geöffnet' : 'Datei geladen');
-    }
-
-    async function openFile() {
-      if ('showOpenFilePicker' in window) {
-        try {
-          const [handle] = await window.showOpenFilePicker({
-            types: [{ description: 'JSON Reiseplan-Datei', accept: { 'application/json': ['.json'] } }],
-            multiple: false
-          });
-          const file = await handle.getFile();
-          await applyImportedTrip(JSON.parse(await file.text()), handle.name, handle);
-          return;
-        } catch (err) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-      document.getElementById('importInput').click();
-    }
-
-    function importJSONFallback(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try { await applyImportedTrip(JSON.parse(e.target.result), file.name, null); }
-        catch (err) { showToast("Fehler beim Lesen", true); }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-    }
-
-    function syncUI() {
-      document.getElementById('tripTitle').value = tripData.title || '';
-      document.getElementById('startDate').value = tripData.startDate || '';
-      document.getElementById('endDate').value = tripData.endDate || '';
-      document.getElementById('generalNotes').value = tripData.generalNotes || '';
-      const emInput = document.getElementById('emergencyNotesInput');
-      if (emInput) emInput.value = tripData.emergencyNotes || '';
-
-      document.getElementById('tripConfigSection')?.classList.toggle('hidden', Boolean(tripData.days?.length));
-      updateHeadline(); renderChecklist(); renderAllAttachmentsOverview(); renderLodgingsTab(); renderDays();
-    }
-
-    function saveMetaData() {
-      tripData.title = document.getElementById('tripTitle').value;
-      recordChangeForReminder(); saveToStorage(); updateHeadline();
-    }
-
-    function saveGeneralNotes(val) {
-      tripData.generalNotes = val;
-      recordChangeForReminder(); saveToStorage();
-    }
-
-    async function generateOrUpdateDays() {
-      const start = document.getElementById('startDate').value, end = document.getElementById('endDate').value;
-      if (!start || !end) {
-        return showAppAlert("Bitte wähle zuerst ein Start- und ein Enddatum für deine Reise aus.", "Zeitraum unvollständig", "amber", "fa-calendar-xmark");
-      }
-      const pStart = parseISOParts(start), pEnd = parseISOParts(end);
-      if (!pStart || !pEnd) return;
-
-      const dStart = Date.UTC(pStart.y, pStart.m - 1, pStart.d), dEnd = Date.UTC(pEnd.y, pEnd.m - 1, pEnd.d);
-      if (dStart > dEnd) {
-        return showAppAlert("Das Startdatum darf nicht nach dem Enddatum liegen.", "Ungültiger Zeitraum", "danger", "fa-calendar-xmark");
-      }
-
-      normalizeDataModel();
-      const msPerDay = 86400000;
-      const newTotalDays = Math.floor((dEnd - dStart) / msPerDay) + 1;
-      const hasExistingDays = tripData.days?.length > 0;
-      const oldStartDate = tripData.days[0]?.date || tripData.startDate;
-
-      await createRollingBackup();
-
-      let shiftRoute = false;
-      if (hasExistingDays && oldStartDate && oldStartDate !== start) {
-        const oldF = formatISODate(oldStartDate).dayFormatted, newF = formatISODate(start).dayFormatted;
-        shiftRoute = await showAppConfirm(
-          `Das Startdatum wurde geändert (${oldF} → ${newF}).\n\n• „Route verschieben“: Gesamte Reiseroute verschieben.\n• „Kalendertage behalten“: Bisherige Daten an fixen Kalendertagen belassen.`,
-          { title: "Startdatum geändert", confirmText: "Route verschieben", cancelText: "Kalendertage behalten", variant: "indigo", icon: "fa-calendar-days" }
-        );
-      }
-
-      const newDays = [];
-      const oldMediaIds = new Set();
-      (tripData.days || []).forEach(d => (d?.images || []).forEach(img => { if (img?.id) oldMediaIds.add(img.id); }));
-
-      if (hasExistingDays && shiftRoute) {
-        for (let i = 0; i < newTotalDays; i++) {
-          const iso = addDaysISO(start, i);
-          newDays.push(i < tripData.days.length ? Object.assign(tripData.days[i], { date: iso }) : createEmptyDay(iso, true));
-        }
-      } else {
-        const existingMap = new Map(tripData.days.filter(d => d?.date).map(d => [d.date, d]));
-        const targetDatesSet = new Set(Array.from({ length: newTotalDays }, (_, i) => addDaysISO(start, i)));
-        targetDatesSet.forEach(iso => newDays.push(existingMap.get(iso) || createEmptyDay(iso, true)));
-      }
-
-      tripData.title = document.getElementById('tripTitle').value;
-      tripData.startDate = start;
-      tripData.endDate = end;
-      tripData.days = newDays;
-      normalizeDataModel();
-
-      for (const id of oldMediaIds) await safeDeleteMedia(id);
-      recordChangeForReminder(); saveToStorage();
-      document.getElementById('tripConfigSection')?.classList.add('hidden');
-      updateHeadline(); renderDays(); renderLodgingsTab(); renderAllAttachmentsOverview();
-      showToast("Tage generiert & Reiseplan aktualisiert");
-    }
-
-    // --- RENDERING TAGE ---
-    function renderDays() {
-      const container = document.getElementById('daysContainer');
-      if (!container) return;
-      container.innerHTML = '';
-      updateToggleAllBtnState();
-
-      if (!tripData.days?.length) {
-        container.innerHTML = `<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-12 text-center text-slate-500 dark:text-slate-400 no-print"><i class="fa-solid fa-map text-3xl sm:text-4xl mb-3 text-slate-400"></i><p class="text-xs sm:text-sm">Noch keine Tage vorhanden. Klicke im Menü oder oben auf den Stift, um den Reisezeitraum festzulegen und Tage zu generieren.</p></div>`;
-        return updateStats();
-      }
-
-      const todayIso = getTodayIso();
-      let matchCount = 0;
-
-      tripData.days.forEach((day, index) => {
-        const l = getLodgingForDay(day.date);
-        const filterMap = {
-          all: true,
-          booked_lodging: isDayBooked(day),
-          open_lodging: !isDayBooked(day) && !isDayNoLodging(day),
-          booked_flights: hasBookedFlight(day),
-          open_flights: hasOpenFlight(day),
-          open_transports: hasOpenTransport(day),
-          with_attachments: hasAttachments(day)
-        };
-        if (!filterMap[currentFilter]) return;
-
-        if (searchQuery) {
-          const hay = [
-            day.location, l?.name, l?.address, day.notes,
-            ...(day.transports || []).map(t => `${t.title || ''} ${t.hint || ''}`),
-            ...(day.activities || []).map(a => `${a.title || ''} ${a.hint || ''}`),
-            ...(day.images || []).map(img => img?.name || '')
-          ].join(' ').toLowerCase();
-          if (!hay.includes(searchQuery)) return;
-        }
-
-        matchCount++;
-        container.appendChild(createDayElement(day, index, day.date === todayIso));
-        if (!day.isCollapsed) updateImagesDOM(index);
-      });
-
-      if (!matchCount) {
-        container.innerHTML = `<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 sm:p-8 text-center text-slate-600 dark:text-slate-400 no-print"><p class="text-xs sm:text-sm font-semibold">Keine Tage für diesen Filter/Suche gefunden</p><button onclick="setFilter('all'); clearSearch();" class="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Filter zurücksetzen</button></div>`;
-      }
-      updateStats();
-      autoResizeAllTextareas();
-    }
-
-    // --- SCHLANKE TAGES-UNTERKUNFT (v1.93) ---
-    function renderDayLodgingSummaryHTML(day, index) {
-      const noLodging = isDayNoLodging(day);
-      const l = getLodgingForDay(day.date);
-
-      if (noLodging) {
-        return `
-          <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <span class="text-base text-slate-400">✈️</span>
-              <div>
-                <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Keine Übernachtung nötig</span>
-                <span class="block text-[11px] text-slate-400">Nachtflug, Weiterreise oder Ausflug</span>
-              </div>
-            </div>
-            <button onclick="toggleDayNoLodging(${index})" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-300 transition no-print">
-              Wieder aktivieren
-            </button>
-          </div>`;
-      }
-
-      if (!l) {
-        return `
-          <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-dashed border-amber-300 dark:border-amber-800/80 flex items-center justify-between gap-3 shadow-sm">
-            <div class="flex items-center gap-2.5">
-              <span class="text-base text-amber-500">🏨</span>
-              <div>
-                <span class="text-xs font-bold text-amber-800 dark:text-amber-300">Noch keine Unterkunft zugewiesen</span>
-                <span class="block text-[11px] text-slate-500 dark:text-slate-400">Für dieses Datum liegt keine Hotelbuchung vor</span>
-              </div>
-            </div>
-            <div class="flex items-center gap-1.5 no-print">
-              <button onclick="toggleDayNoLodging(${index})" class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-                Keine Übernachtung
-              </button>
-              <button onclick="openLodgingForDay('${day.date}')" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold transition shadow-sm flex items-center gap-1">
-                <i class="fa-solid fa-plus text-[10px]"></i> Hotel zuweisen
-              </button>
-            </div>
-          </div>`;
-      }
-
-      const st = (l.status || 'geplant').toLowerCase();
-      const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
-      const statusText = st === 'gebucht' ? 'Gebucht' : (st === 'reserviert' ? 'Reserviert' : 'Geplant');
-
-      return `
-        <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <span class="text-base">🏨</span>
-            <div class="truncate">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(l.name)}</span>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border ${statusBadge}">${statusText}</span>
-              </div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate flex items-center gap-1.5 mt-0.5">
-                <i class="fa-solid fa-map-pin text-[10px] text-slate-400"></i>
-                <span class="truncate">${escapeHtml(l.address || 'Keine Adresse hinterlegt')}</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-1.5 shrink-0 no-print">
-            <button onclick="copyHotelInfo(${index})" title="Hotelname & Adresse für Taxi kopieren" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs transition">
-              <i class="fa-regular fa-copy"></i>
-            </button>
-            <button onclick="openHotelMaps(${index})" title="In Google Maps öffnen" class="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs transition">
-              <i class="fa-solid fa-location-dot"></i>
-            </button>
-            <button onclick="openLodgingForDay('${day.date}')" title="Details & Storno in Unterkünfte ansehen" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 hover:text-indigo-600 text-xs transition">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i>
-            </button>
-          </div>
-        </div>`;
-    }
-
-    function toggleDayNoLodging(dayIndex) {
-      const day = tripData.days[dayIndex];
-      if (!day) return;
-      day.noLodgingNeeded = !day.noLodgingNeeded;
-      recordChangeForReminder();
-      saveToStorage();
-      renderDays();
-      updateStats();
-      showToast(day.noLodgingNeeded ? "Keine Übernachtung nötig markiert" : "Übernachtung wieder aktiviert");
-    }
-
-    function createDayElement(day, index, isToday) {
-      const visual = getDayVisualClasses(day, isToday);
-      const { dayName, dayFormatted } = formatISODate(day.date);
-      const dayCosts = getDayCostBreakdown(day);
-      const hasTransports = day.transports?.length > 0, hasActivities = day.activities?.length > 0;
-      const images = day.images || [];
-      const hasNotes = Boolean((day.notes || '').trim()), hasLocation = Boolean((day.location || '').trim());
-      const hasPrevDay = index > 0, hasNextDay = index < tripData.days.length - 1;
-      const lodging = getLodgingForDay(day.date);
-
-      const card = document.createElement('div');
-      card.id = 'day-card-' + index;
-
-      if (day.isCollapsed) {
-        card.className = `day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ${visual.cardClass}`;
-        card.setAttribute('data-action', 'toggle-collapse');
-        card.setAttribute('data-day-index', index);
-        card.title = "Klicken, um Tag zu öffnen";
-
-        const shortDate = dayFormatted ? dayFormatted.slice(0, 5) : '--.--';
-        const trText = hasTransports ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') : '—';
-        const lodgingText = isDayNoLodging(day)
-          ? `✈️ Keine Übernachtung`
-          : (lodging ? `🏨 ${lodging.name}` : '—');
-        const indicatorsHtml = (hasNotes || images.length) ? `<span class="text-slate-400/70 dark:text-slate-500">|</span><span class="inline-flex items-center gap-1.5">${hasNotes ? '<span class="text-xs" title="Notiz vorhanden">📝</span>' : ''}${images.length ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : ''}</span>` : '';
-
-        card.innerHTML = `
-          <div class="flex-1 flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2 pointer-events-none">
-            <span class="font-black text-slate-900 dark:text-white">Tag ${index + 1}</span>
-            <span class="text-slate-400/70 dark:text-slate-500">|</span>
-            <span class="text-slate-700 dark:text-slate-300 font-mono">${shortDate} (${dayName})</span>
-            <span class="text-slate-400/70 dark:text-slate-500">|</span>
-            <span class="font-bold text-slate-900 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
-            <span class="text-slate-400/70 dark:text-slate-500">|</span>
-            <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trText)}</span>
-            <span class="text-slate-400/70 dark:text-slate-500">|</span>
-            <span class="text-slate-700 dark:text-slate-300">${escapeHtml(lodgingText)}</span>
-            ${indicatorsHtml}
-            <span class="text-slate-400/70 dark:text-slate-500">|</span>
-            <span class="font-mono font-black text-slate-900 dark:text-white">${formatEuro(dayCosts.total)}</span>
-          </div>
-          <div class="flex items-center gap-1.5 shrink-0 no-print pointer-events-none">
-            <span class="p-1 text-slate-500 dark:text-slate-400"><i class="fa-solid fa-chevron-down text-xs"></i></span>
-          </div>`;
-        return card;
-      }
-
-      card.className = `day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ${visual.cardClass}`;
-      const statusInfo = getLodgingStatusInfo(day);
-
-      card.innerHTML = `
-        <div id="day-header-${index}" class="px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ${visual.headerClass}">
-          <div class="flex items-center gap-2.5 sm:gap-3 cursor-pointer" data-action="toggle-collapse" data-day-index="${index}" title="Tag zuklappen">
-            <div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-center border border-slate-200 dark:border-slate-700 shrink-0 ${isToday ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70' : ''}">
-              <div class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">${dayName}</div>
-              <div class="text-xs font-bold">${dayFormatted}</div>
-            </div>
-            <div>
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Tag ${index + 1}</span>
-                ${isToday ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-indigo-500 text-white tracking-wider animate-pulse no-print">HEUTE</span>' : ''}
-              </div>
-            </div>
-          </div>
-
-          <div class="flex-1 max-w-xl flex flex-col gap-1.5 justify-center">
-            <div id="loc-box-${index}" class="${getLocationBoxClasses(day)}">
-              <button type="button" data-action="open-maps" data-day-index="${index}" class="${getLocationMapsIconClasses(day)}" title="${hasLocation ? 'In Google Maps öffnen' : 'Tagesort eintragen'}">
-                <i class="fa-solid fa-map-location-dot text-base sm:text-lg pointer-events-none"></i>
-              </button>
-              <button type="button" data-action="open-offline-maps" data-day-index="${index}" class="mr-2.5 shrink-0 transition no-print sm:hidden ${hasLocation ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'hidden'}" title="In lokaler Karten-App öffnen">
-                <i class="fa-solid fa-compass text-sm pointer-events-none"></i>
-              </button>
-              <input type="text" value="${escapeHtml(day.location || '')}" placeholder="Tagesort / Etappe eintragen..." data-day-index="${index}" data-field="location" class="w-full bg-transparent text-base sm:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">
-            </div>
-          </div>
-
-          <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 self-end md:self-auto">
-            <div class="px-2.5 py-1 sm:py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-mono flex items-center gap-1.5" title="Tagessumme (Transport & Aktivitäten)">
-              <i class="fa-solid fa-wallet text-violet-500"></i>
-              <span id="day-cost-display-${index}" class="font-bold text-slate-800 dark:text-slate-200">${formatEuro(dayCosts.total)}</span>
-            </div>
-            <button onclick="openLodgingForDay('${day.date}')" class="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow no-print ${visual.btnClass}">
-              <i class="fa-solid ${statusInfo.btnIcon} pointer-events-none"></i> <span>${statusInfo.btnLabel}</span>
-            </button>
-            <button data-action="swap-day-prev" data-day-index="${index}" ${!hasPrevDay ? 'disabled' : ''} class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${hasPrevDay ? 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}" title="Tagesinhalt nach oben tauschen">
-              <i class="fa-solid fa-arrow-up text-xs pointer-events-none"></i>
-            </button>
-            <button data-action="swap-day-next" data-day-index="${index}" ${!hasNextDay ? 'disabled' : ''} class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${hasNextDay ? 'text-slate-600 dark:text-slate-300 hover:text-indigo-600 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}" title="Tagesinhalt nach unten tauschen">
-              <i class="fa-solid fa-arrow-down text-xs pointer-events-none"></i>
-            </button>
-            <button data-action="insert-day" data-day-index="${index}" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 flex items-center justify-center transition no-print" title="Neuen Tag danach einfügen">
-              <i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i>
-            </button>
-            <button data-action="delete-day" data-day-index="${index}" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-rose-600 flex items-center justify-center transition no-print" title="Diesen Tag leeren / entfernen">
-              <i class="fa-solid fa-trash-can text-xs pointer-events-none"></i>
-            </button>
-            <button data-action="toggle-collapse" data-day-index="${index}" class="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-slate-900 flex items-center justify-center transition no-print" title="Tag zuklappen">
-              <i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i>
-            </button>
-          </div>
-        </div>
-
-        <div id="day-body-${index}" class="p-4 sm:p-5 print-compact space-y-4 sm:space-y-5">
-          <div id="day-modules-grid-${index}" class="${hasTransports && hasActivities ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5' : 'space-y-4'}">
-            ${hasTransports ? renderTransportModuleHTML(day, index) : ''}
-            ${hasActivities ? renderActivityModuleHTML(day, index) : ''}
-          </div>
-
-          <div id="day-add-buttons-${index}" class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 no-print ${hasTransports && hasActivities ? 'hidden' : ''}">
-            ${!hasTransports ? `<button data-action="add-transport" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 dark:border-cyan-800/80 bg-cyan-50/70 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/40 text-cyan-800 dark:text-cyan-300 text-xs font-semibold transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-plus text-[10px] pointer-events-none"></i> + Transport hinzufügen</button>` : ''}
-            ${!hasActivities ? `<button data-action="add-activity" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 dark:border-emerald-800/80 bg-emerald-50/70 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-semibold transition flex items-center justify-center gap-1.5"><i class="fa-solid fa-plus text-[10px] pointer-events-none"></i> + Aktivität hinzufügen</button>` : ''}
-          </div>
-
-          <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2.5 sm:space-y-3 rounded-xl transition-all p-1 -m-1">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                <i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege (PDF & Bilder)
-              </span>
-              <div class="flex items-center gap-2 no-print">
-                <input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})">
-                <button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1">
-                  <i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen
-                </button>
-                <span class="text-[10px] text-slate-400 hidden sm:inline">(Drag & Drop oder Strg+V)</span>
-              </div>
-            </div>
-            <textarea rows="2" placeholder="Notizen für diesen Tag..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
-            <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
-          </div>
-
-          <!-- SCHLANKE UNTERKUNFT-BOX IN DER TAGESKARTE -->
-          ${renderDayLodgingSummaryHTML(day, index)}
-        </div>`;
-      return card;
-    }
-
-    function renderTransportModuleHTML(day, index) {
-      const total = day.transports.length;
-      const cats = [
-        ['', 'Auto-Icon'], ['flugzeug', '✈️ Flugzeug'], ['zug', '🚆 Zug / Bahn'], ['bus', '🚌 Bus'],
-        ['boot', '🚤 Boot / Fähre'], ['mietwagen', '🚗 Mietwagen'], ['roller', '🛵 Roller'], ['taxi', '🚕 Taxi / Grab']
-      ];
-      return `
-        <div id="transport-box-${index}" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-plane-departure text-cyan-600"></i> Transport & Route</h3>
-              <button data-action="add-transport" data-day-index="${index}" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weiterer Transport</button>
-            </div>
-            <div class="space-y-2.5">
-              ${day.transports.map((tr, trIdx) => {
-                const trSafeUrl = formatSafeUrl(tr.link), isFirst = trIdx === 0, isLast = trIdx === total - 1, st = tr.costStatus || 'geplant';
-                return `
-                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
-                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                      <div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">
-                        <button data-action="move-transport-up" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>
-                        <button data-action="move-transport-down" data-day-index="${index}" data-tr-index="${trIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>
-                      </div>
-                      <select data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">
-                        ${cats.map(([val, label]) => `<option value="${val}" ${(tr.category || '') === val ? 'selected' : ''}>${label}</option>`).join('')}
-                      </select>
-                      <input type="text" placeholder="Art (z. B. Flug, Fähre)" value="${escapeHtml(tr.title || '')}" data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white">
-                      <div class="relative flex items-center w-24 shrink-0">
-                        <input type="text" inputmode="decimal" placeholder="Kosten" value="${escapeHtml(tr.cost || '')}" data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
-                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
-                      </div>
-                      <select data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ${getStatusBadgeClass(st)}">
-                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
-                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
-                        <option value="bezahlt" ${st === 'bezahlt' || st === 'gebucht' ? 'selected' : ''}>✅ Bezahlt</option>
-                      </select>
-                      <button data-action="move-transport-day" data-day-index="${index}" data-tr-index="${trIdx}" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 no-print transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
-                      <button data-action="remove-transport" data-day-index="${index}" data-tr-index="${trIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print" title="Löschen">&times;</button>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <textarea rows="1" placeholder="Hinweise (z. B. Gleis, Abflugzeit)" data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(tr.hint || '')}</textarea>
-                      <input type="url" placeholder="Buchungs-URL" value="${escapeHtml(tr.link || '')}" data-day-index="${index}" data-tr-index="${trIdx}" data-tr-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
-                      <a id="tr-link-btn-${index}-${trIdx}" href="${escapeHtml(trSafeUrl || '#')}" target="_blank" class="${trSafeUrl ? '' : 'hidden'} px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-                    </div>
-                  </div>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>`;
-    }
-
-    function renderActivityModuleHTML(day, index) {
-      const total = day.activities.length;
-      return `
-        <div id="activity-box-${index}" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid fa-ticket text-emerald-600"></i> Aktivitäten & Tickets</h3>
-              <button data-action="add-activity" data-day-index="${index}" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">+ Weitere Aktivität</button>
-            </div>
-            <div class="space-y-2.5">
-              ${day.activities.map((act, actIdx) => {
-                const actSafeUrl = formatSafeUrl(act.link), isFirst = actIdx === 0, isLast = actIdx === total - 1, st = act.costStatus || 'geplant';
-                return `
-                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
-                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                      <div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">
-                        <button data-action="move-activity-up" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach oben" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>
-                        <button data-action="move-activity-down" data-day-index="${index}" data-act-index="${actIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-white'}" title="Nach unten" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>
-                      </div>
-                      <input type="checkbox" ${act.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${index}" data-act-index="${actIdx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">
-                      <input type="text" id="act-title-input-${index}-${actIdx}" placeholder="Aktivität / Plan" value="${escapeHtml(act.title || '')}" data-day-index="${index}" data-act-index="${actIdx}" data-act-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ${act.done ? 'line-through text-slate-400' : ''}">
-                      <div class="relative flex items-center w-24 shrink-0">
-                        <input type="text" inputmode="decimal" placeholder="Kosten" value="${escapeHtml(act.cost || '')}" data-day-index="${index}" data-act-index="${actIdx}" data-act-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
-                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
-                      </div>
-                      <select data-day-index="${index}" data-act-index="${actIdx}" data-act-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ${getStatusBadgeClass(st)}">
-                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
-                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
-                        <option value="bezahlt" ${st === 'bezahlt' || st === 'gebucht' ? 'selected' : ''}>✅ Bezahlt</option>
-                      </select>
-                      <button data-action="move-activity-day" data-day-index="${index}" data-act-index="${actIdx}" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 no-print transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
-                      <button data-action="remove-activity" data-day-index="${index}" data-act-index="${actIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print" title="Löschen">&times;</button>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <textarea rows="1" placeholder="Hinweise (z. B. Einlasszeit)" data-day-index="${index}" data-act-index="${actIdx}" data-act-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(act.hint || '')}</textarea>
-                      <input type="url" placeholder="Webseite / Ticket" value="${escapeHtml(act.link || '')}" data-day-index="${index}" data-act-index="${actIdx}" data-act-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
-                      <a id="act-link-btn-${index}-${actIdx}" href="${escapeHtml(actSafeUrl || '#')}" target="_blank" class="${actSafeUrl ? '' : 'hidden'} px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow" title="Link öffnen"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-                    </div>
-                  </div>`;
-              }).join('')}
-            </div>
-          </div>
-        </div>`;
-    }
-
-    function updateDynamicLinkButton(btnId, urlVal) {
-      const btn = document.getElementById(btnId);
-      if (!btn) return;
-      const safeUrl = formatSafeUrl(urlVal);
-      btn.href = safeUrl || '#';
-      btn.classList.toggle('hidden', !safeUrl);
-    }
-
-    function setupEventDelegation() {
-      const container = document.getElementById('daysContainer');
-      const checklistCont = document.getElementById('checklistContainer');
-
-      container.addEventListener('click', (e) => {
-        const target = e.target.closest('[data-action]');
-        if (!target) return;
-        const action = target.getAttribute('data-action');
-        const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
-        const trIdx = parseInt(target.getAttribute('data-tr-index'), 10);
-        const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
-
-        const actions = {
-          'open-maps': () => tripData.days[dayIdx] && openGoogleMaps(tripData.days[dayIdx].location),
-          'open-offline-maps': () => tripData.days[dayIdx] && openOfflineMaps(tripData.days[dayIdx].location),
-          'swap-day-prev': () => swapDayWithAdjacent(dayIdx, -1),
-          'swap-day-next': () => swapDayWithAdjacent(dayIdx, 1),
-          'insert-day': () => openDayActionModal('insert', dayIdx),
-          'delete-day': () => openDayActionModal('delete', dayIdx),
-          'toggle-collapse': () => toggleDayCollapse(dayIdx),
-          'add-transport': () => addTransportRow(dayIdx),
-          'remove-transport': () => removeTransportItem(dayIdx, trIdx),
-          'move-transport-up': () => moveTransportItem(dayIdx, trIdx, -1),
-          'move-transport-down': () => moveTransportItem(dayIdx, trIdx, 1),
-          'move-transport-day': () => openMoveItemModal(dayIdx, 'transports', trIdx),
-          'add-activity': () => addActivityRow(dayIdx),
-          'remove-activity': () => removeActivityItem(dayIdx, actIdx),
-          'move-activity-up': () => moveActivityItem(dayIdx, actIdx, -1),
-          'move-activity-down': () => moveActivityItem(dayIdx, actIdx, 1),
-          'move-activity-day': () => openMoveItemModal(dayIdx, 'activities', actIdx),
-          'trigger-file-upload': () => document.getElementById('file-upload-' + dayIdx)?.click(),
-          'open-lightbox': () => openLightbox(target.getAttribute('data-media-id'), dayIdx),
-          'open-pdf': () => openPdfAttachment(target.getAttribute('data-media-id'), target.getAttribute('data-file-name')),
-          'rename-attachment': () => renameDayAttachment(dayIdx, parseInt(target.getAttribute('data-item-index'), 10)),
-          'delete-attachment': () => deleteDayAttachment(dayIdx, parseInt(target.getAttribute('data-item-index'), 10))
-        };
-        actions[action]?.();
-      });
-
-      const handleFieldUpdate = (e) => {
-        const target = e.target;
-        const dayIdx = parseInt(target.getAttribute('data-day-index'), 10);
-        const day = tripData.days[dayIdx];
-        if (!day) return;
-
-        if (e.type === 'input' && target.classList.contains('auto-hint')) autoResizeTextarea(target);
-
-        if (e.type === 'change' && target.getAttribute('data-action') === 'toggle-activity-done') {
-          const actIdx = parseInt(target.getAttribute('data-act-index'), 10);
-          if (day.activities[actIdx]) {
-            day.activities[actIdx].done = target.checked;
-            const titleInput = document.getElementById(`act-title-input-${dayIdx}-${actIdx}`);
-            if (titleInput) {
-              titleInput.classList.toggle('line-through', target.checked);
-              titleInput.classList.toggle('text-slate-400', target.checked);
-            }
-            recordChangeForReminder(); saveToStorage();
-          }
-          return;
-        }
-
-        const field = target.getAttribute('data-field');
-        if (field) {
-          if (field === 'location') {
-            day.location = target.value;
-            updateDayCardVisualStatus(dayIdx);
-            if (day.images?.length) renderAllAttachmentsOverview();
-          } else if (field === 'notes') {
-            day.notes = target.value;
-          }
-          recordChangeForReminder(); saveToStorage();
-          return;
-        }
-
-        const updateSubListField = (attrField, attrIdx, listKey, linkPrefix) => {
-          const f = target.getAttribute(attrField);
-          if (!f) return false;
-          const idx = parseInt(target.getAttribute(attrIdx), 10);
-          if (day[listKey]?.[idx]) {
-            day[listKey][idx][f] = target.value;
-            if (f === 'costStatus') target.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(target.value);
-            if (f === 'link') updateDynamicLinkButton(`${linkPrefix}-${dayIdx}-${idx}`, target.value);
-            refreshDayHeaderCost(dayIdx);
-            recordChangeForReminder(); saveToStorage();
-          }
-          return true;
-        };
-
-        if (!updateSubListField('data-tr-field', 'data-tr-index', 'transports', 'tr-link-btn')) {
-          updateSubListField('data-act-field', 'data-act-index', 'activities', 'act-link-btn');
-        }
-      };
-
-      container.addEventListener('change', handleFieldUpdate);
-      container.addEventListener('input', handleFieldUpdate);
-
-      if (checklistCont) {
-        checklistCont.addEventListener('change', (e) => {
-          if (e.target.getAttribute('data-action') === 'toggle-checklist-item') toggleChecklistItem(parseInt(e.target.getAttribute('data-idx'), 10));
-        });
-        checklistCont.addEventListener('click', (e) => {
-          const btn = e.target.closest('[data-action="remove-checklist-item"]');
-          if (btn) removeChecklistItem(parseInt(btn.getAttribute('data-idx'), 10));
-        });
-      }
-    }
-
-    function updateDayCardVisualStatus(dayIndex) {
-      const day = tripData.days[dayIndex];
-      if (!day) return;
-      const visual = getDayVisualClasses(day, day.date === getTodayIso());
-      const hasLoc = Boolean((day.location || '').trim());
-
-      const card = document.getElementById('day-card-' + dayIndex);
-      if (card) {
-        card.className = day.isCollapsed
-          ? `day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ${visual.cardClass}`
-          : `day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ${visual.cardClass}`;
-      }
-      const header = document.getElementById('day-header-' + dayIndex);
-      if (header) header.className = `px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ${visual.headerClass}`;
-
-      const locBox = document.getElementById('loc-box-' + dayIndex);
-      if (locBox) {
-        locBox.className = getLocationBoxClasses(day);
-        const mapsBtn = locBox.querySelector('[data-action="open-maps"]');
-        const offlineMapsBtn = locBox.querySelector('[data-action="open-offline-maps"]');
-        if (mapsBtn) { mapsBtn.className = getLocationMapsIconClasses(day); mapsBtn.title = hasLoc ? "In Google Maps öffnen" : "Tagesort eintragen"; }
-        if (offlineMapsBtn) offlineMapsBtn.className = `mr-2.5 shrink-0 transition no-print sm:hidden ${hasLoc ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'hidden'}`;
-      }
-
-      refreshDayHeaderCost(dayIndex);
-      updateStats();
-    }
-
-    function refreshDayHeaderCost(dayIndex) {
-      if (!tripData.days[dayIndex]) return;
-      const display = document.getElementById('day-cost-display-' + dayIndex);
-      if (display) display.innerText = formatEuro(getDayCostBreakdown(tripData.days[dayIndex]).total);
-      updateStats();
-    }
-
-    function addListRow(dayIndex, listKey, defaultObj, focusSelectorFn) {
-      const day = tripData.days[dayIndex];
-      if (!day) return;
-      if (!Array.isArray(day[listKey])) day[listKey] = [];
-      day[listKey].push(defaultObj);
-      recordChangeForReminder(); saveToStorage(); renderDays();
-      setTimeout(() => document.querySelector(focusSelectorFn(day[listKey].length - 1))?.focus(), 50);
-    }
-
-    function removeListRow(dayIndex, listKey, itemIndex) {
-      if (!tripData.days[dayIndex]?.[listKey]) return;
-      tripData.days[dayIndex][listKey].splice(itemIndex, 1);
-      recordChangeForReminder(); saveToStorage(); renderDays();
-    }
-
-    const addTransportRow = (dayIdx) => addListRow(dayIdx, 'transports', { title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' }, idx => `input[data-day-index="${dayIdx}"][data-tr-index="${idx}"][data-tr-field="title"]`);
-    const removeTransportItem = (dayIdx, itemIdx) => removeListRow(dayIdx, 'transports', itemIdx);
-    const addActivityRow = (dayIdx) => addListRow(dayIdx, 'activities', { title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false }, idx => `#act-title-input-${dayIdx}-${idx}`);
-    const removeActivityItem = (dayIdx, itemIdx) => removeListRow(dayIdx, 'activities', itemIdx);
-
-    // --- MOVE ITEM MODAL ---
-    function openMoveItemModal(dayIndex, listKey, itemIndex) {
-      if (!tripData.days || tripData.days.length <= 1) return showToast("Mindestens 2 Reisetage erforderlich", true);
-      const item = tripData.days[dayIndex]?.[listKey]?.[itemIndex];
-      if (!item) return;
-
-      pendingMoveItem = { dayIndex, listKey, itemIndex };
-      const select = document.getElementById('moveItemTargetSelect');
-      const prevBtn = document.getElementById('moveItemPrevDayBtn');
-      const nextBtn = document.getElementById('moveItemNextDayBtn');
-      if (!select) return;
-
-      const isTr = listKey === 'transports';
-      document.getElementById('moveItemModalTitle').innerHTML = `<i class="fa-solid fa-calendar-day text-indigo-500"></i> ${isTr ? 'Transport' : 'Aktivität'} auf anderen Tag verschieben`;
-      document.getElementById('moveItemModalSubtitle').innerText = `Tag ${dayIndex + 1}: ${item.title || (isTr ? 'Unbenannter Transport' : 'Unbenannte Aktivität')}`;
-
-      if (prevBtn) {
-        const hasPrev = dayIndex > 0;
-        prevBtn.disabled = !hasPrev;
-        prevBtn.classList.toggle('opacity-40', !hasPrev);
-        prevBtn.classList.toggle('cursor-not-allowed', !hasPrev);
-        prevBtn.innerHTML = `<i class="fa-solid fa-arrow-left text-[10px]"></i> <span>${hasPrev ? `Vortag (Tag ${dayIndex})` : 'Kein Vortag'}</span>`;
-      }
-      if (nextBtn) {
-        const hasNext = dayIndex < tripData.days.length - 1;
-        nextBtn.disabled = !hasNext;
-        nextBtn.classList.toggle('opacity-40', !hasNext);
-        nextBtn.classList.toggle('cursor-not-allowed', !hasNext);
-        nextBtn.innerHTML = `<span>${hasNext ? `Folgetag (Tag ${dayIndex + 2})` : 'Kein Folgetag'}</span> <i class="fa-solid fa-arrow-right text-[10px]"></i>`;
-      }
-
-      select.innerHTML = '';
-      tripData.days.forEach((d, idx) => {
-        if (idx === dayIndex) return;
-        const { dayName, dayFormatted } = formatISODate(d.date);
-        const opt = new Option(`Tag ${idx + 1} (${dayFormatted}, ${dayName}) – ${d.location || 'Ohne Ort'}`, String(idx));
-        if (idx === dayIndex + 1 || (dayIndex === tripData.days.length - 1 && idx === dayIndex - 1)) opt.selected = true;
-        select.add(opt);
-      });
-
-      toggleModal('moveItemModal', true);
-    }
-
-    function closeMoveItemModal() {
-      toggleModal('moveItemModal', false);
-      pendingMoveItem = null;
-    }
-
-    function confirmMoveItemToDay(mode) {
-      if (!pendingMoveItem) return;
-      const { dayIndex, listKey, itemIndex } = pendingMoveItem;
-      const targetIdx = mode === 'prev' ? dayIndex - 1 : (mode === 'next' ? dayIndex + 1 : parseInt(document.getElementById('moveItemTargetSelect')?.value ?? '-1', 10));
-
-      if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) return closeMoveItemModal();
-
-      const sourceList = tripData.days[dayIndex]?.[listKey];
-      if (!Array.isArray(sourceList) || !sourceList[itemIndex]) return closeMoveItemModal();
-
-      const [movedItem] = sourceList.splice(itemIndex, 1);
-      if (!Array.isArray(tripData.days[targetIdx][listKey])) tripData.days[targetIdx][listKey] = [];
-      tripData.days[targetIdx][listKey].push(movedItem);
-
-      closeMoveItemModal();
-      recordChangeForReminder(); saveToStorage(); renderDays();
-      showToast(`${listKey === 'transports' ? 'Transport' : 'Aktivität'} auf Tag ${targetIdx + 1} verschoben`);
-    }
-
-    function moveArrayItem(dayIndex, listKey, itemIndex, direction, msg) {
-      const list = tripData.days[dayIndex]?.[listKey];
-      const targetIndex = itemIndex + direction;
-      if (!Array.isArray(list) || targetIndex < 0 || targetIndex >= list.length) return;
-      const [item] = list.splice(itemIndex, 1);
-      list.splice(targetIndex, 0, item);
-      recordChangeForReminder(); saveToStorage(); renderDays();
-      showToast(msg);
-    }
-
-    const moveTransportItem = (dayIdx, itemIdx, dir) => moveArrayItem(dayIdx, 'transports', itemIdx, dir, "Transport verschoben");
-    const moveActivityItem = (dayIdx, itemIdx, dir) => moveArrayItem(dayIdx, 'activities', itemIdx, dir, "Aktivität verschoben");
-
-    // --- SWAP & BUCHUNGSSCHUTZ ---
-    async function swapDayWithAdjacent(dayIndex, direction) {
-      const targetIndex = dayIndex + direction;
-      const dayA = tripData.days?.[dayIndex], dayB = tripData.days?.[targetIndex];
-      if (!dayA || !dayB) return;
-
-      await createRollingBackup();
-      const [fixedDateA, fixedDateB] = [dayA.date, dayB.date];
-      tripData.days[dayIndex] = Object.assign(dayB, { date: fixedDateA, isCollapsed: true });
-      tripData.days[targetIndex] = Object.assign(dayA, { date: fixedDateB, isCollapsed: false });
-
-      recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
-      showToast(`Tag ${dayIndex + 1} mit Tag ${targetIndex + 1} getauscht`);
-    }
-
-    function openDayActionModal(type, dayIndex) {
-      pendingModalAction = { type, dayIndex };
-      const day = tripData.days[dayIndex];
-      if (!day) return;
-
-      const dayNum = dayIndex + 1, { dayName, dayFormatted } = formatISODate(day.date);
-      const setEl = (id, prop, val) => { const el = document.getElementById(id); if (el) el[prop] = val; };
-
-      document.getElementById('dayActionModalWarnings').classList.add('hidden');
-
-      if (type === 'delete') {
-        setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayNum} leeren / entfernen`);
-        setEl('dayActionModalDesc', 'innerHTML', `Datum: <b>${dayFormatted} (${dayName})</b>`);
-        setEl('dayActionModalTitleA', 'innerText', "Modus A: Tag leeren & Kalender behalten");
-        setEl('dayActionModalDescA', 'innerText', `Tag ${dayNum} wird geleert, bleibt aber als Kalendertag erhalten.`);
-        setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-shield-halved"></i> Tag leeren (Modus A)`);
-        setEl('dayActionModalBtnA', 'className', "w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5");
-        setEl('dayActionModalTitleB', 'innerText', "Modus B: Reise verkürzen (-1 Tag)");
-        setEl('dayActionModalDescB', 'innerText', `Tag ${dayNum} wird komplett gelöscht. Alle Folgetage rücken um 1 Tag vor.`);
-        setEl('dayActionModalBtnB', 'innerHTML', `<i class="fa-solid fa-calendar-minus"></i> Tag löschen & kürzen (Modus B)`);
-        setEl('dayActionModalBtnB', 'className', "w-full py-2 px-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5");
-      } else {
-        setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-calendar-plus text-indigo-500"></i> Tag einfügen`);
-        setEl('dayActionModalDesc', 'innerHTML', `Neuer Tag nach Tag ${dayNum} (${dayFormatted}).`);
-        setEl('dayActionModalTitleA', 'innerText', "Modus A / B: Reise verlängern (+1 Tag)");
-        setEl('dayActionModalDescA', 'innerText', `Fügt einen neuen Tag ein. Alle Folgetage rücken um 1 Tag nach hinten.`);
-        setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-calendar-plus"></i> Tag einfügen (+1 Tag)`);
-        setEl('dayActionModalBtnA', 'className', "w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs transition shadow flex items-center justify-center gap-1.5");
-        setEl('dayActionModalTitleB', 'innerText', "Abbrechen");
-        setEl('dayActionModalDescB', 'innerText', `Aktion abbrechen.`);
-        setEl('dayActionModalBtnB', 'innerHTML', `Abbrechen`);
-        setEl('dayActionModalBtnB', 'className', "w-full py-2 px-3 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs transition shadow");
-      }
-      toggleModal('dayActionModal', true);
-    }
-
-    function closeDayActionModal() {
-      toggleModal('dayActionModal', false);
-      pendingModalAction = null;
-    }
-
-    async function executeDayAction(mode) {
-      if (!pendingModalAction) return;
-      const { type, dayIndex } = pendingModalAction;
-      closeDayActionModal();
-      await createRollingBackup();
-
-      if (type === 'delete') {
-        const day = tripData.days[dayIndex];
-        const removedMediaIds = (day?.images || []).map(img => img?.id).filter(Boolean);
-        if (mode === 'A') {
-          Object.assign(day, createEmptyDay(day.date, day.isCollapsed));
-          for (const id of removedMediaIds) await safeDeleteMedia(id);
-          recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
-          showToast(`Tag ${dayIndex + 1} geleert (Modus A)`);
-        } else {
-          tripData.days.splice(dayIndex, 1);
-          for (let i = dayIndex; i < tripData.days.length; i++) tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
-          if (tripData.endDate) {
-            tripData.endDate = addDaysISO(tripData.endDate, -1);
-            document.getElementById('endDate').value = tripData.endDate;
-          }
-          for (const id of removedMediaIds) await safeDeleteMedia(id);
-          normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
-          showToast(`Tag ${dayIndex + 1} gelöscht & Reise verkürzt (Modus B)`);
-        }
-      } else if (type === 'insert' && mode === 'A') {
-        const curDay = tripData.days[dayIndex];
-        if (!curDay) return;
-        tripData.days.splice(dayIndex + 1, 0, createEmptyDay(addDaysISO(curDay.date, 1), false));
-        for (let i = dayIndex + 2; i < tripData.days.length; i++) tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
-        if (tripData.endDate) {
-          tripData.endDate = addDaysISO(tripData.endDate, 1);
-          document.getElementById('endDate').value = tripData.endDate;
-        }
-        tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
-        normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
-        showToast(`Neuer Tag nach Tag ${dayIndex + 1} eingefügt (+1 Tag)`);
-      }
-    }
-
-    // --- BUDGET & STATISTIKEN (v1.93) ---
+    // --- BUDGET & STATISTIKEN ---
     function updateStats() {
       const days = tripData.days || [];
       const nightsDays = days.filter(d => !isDayNoLodging(d));
@@ -3116,7 +2136,6 @@
 
       let grandTotal = 0, grandPaid = 0, sumLodging = 0, sumTransport = 0, sumActivity = 0;
 
-      // Unterkünfte summieren
       (tripData.lodgings || []).forEach(l => {
         const cost = parseFlexibleNumber(l.totalPrice);
         sumLodging += cost;
@@ -3126,7 +2145,6 @@
         }
       });
 
-      // Transporte & Aktivitäten summieren
       days.forEach(d => {
         if (!d) return;
         const b = getDayCostBreakdown(d);
