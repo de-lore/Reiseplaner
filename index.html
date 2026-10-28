@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.03</title>
+  <title>Reiseplaner Pro v2.04</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -54,7 +54,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.03</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.04</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -64,7 +64,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.03</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.04</span>
           </div>
         </div>
       </div>
@@ -2629,17 +2629,47 @@
       if (emo) emo.textContent = getTransportEmoji(it);
     }
 
+    // Aktivität: Zeile 1 Status + Erledigt | Zeile 2 Aktivität (voller Text) | Zeile 3 Hinweise | Zeile 4 Preis + URL
+    function renderActivityItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) {
+      const attr = (field) => `data-sub-list="activities" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="${field}"`;
+      const base = `data-sub-list="activities" data-day-index="${dayIdx}" data-item-index="${itemIdx}"`;
+      const arrow = (dir, disabled, icon) => `<button data-action="move-item-${dir}" ${base} class="w-6 h-6 rounded flex items-center justify-center text-[10px] ${disabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon} pointer-events-none"></i></button>`;
+      return `
+                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <select ${attr('costStatus')} class="text-[11px] font-bold rounded px-2 py-1.5 border transition ${getStatusBadgeClass(st)}">
+                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
+                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
+                        <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
+                      </select>
+                      <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                        <input type="checkbox" ${it.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${dayIdx}" data-act-index="${itemIdx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0"> Erledigt
+                      </label>
+                      <div class="ml-auto flex items-center gap-0.5 no-print">
+                        ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
+                        <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                        <button data-action="remove-item" ${base} class="text-rose-500 hover:text-rose-700 px-1.5 text-base leading-none" title="Löschen">&times;</button>
+                      </div>
+                    </div>
+                    <textarea rows="1" id="act-title-input-${dayIdx}-${itemIdx}" placeholder="Aktivität / Plan" ${attr('title')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 font-semibold text-slate-900 dark:text-white ${it.done ? 'line-through text-slate-400' : ''}">${escapeHtml(it.title || '')}</textarea>
+                    <textarea rows="1" placeholder="Hinweise..." ${attr('hint')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(it.hint || '')}</textarea>
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex items-center w-28 shrink-0">
+                        <input type="text" inputmode="decimal" placeholder="Preis" value="${escapeHtml(it.cost || '')}" ${attr('cost')} class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
+                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
+                      </div>
+                      <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
+                      <a id="activities-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
+                  </div>`;
+    }
+
     function renderSubItemListHTML(day, dayIdx, type) {
       const isTr = type === 'transports', items = day[type] || [], total = items.length;
       const title = isTr ? 'Transport & Route' : 'Aktivitäten & Tickets';
       const icon = isTr ? 'fa-plane-departure text-cyan-600' : 'fa-ticket text-emerald-600';
       const addAct = isTr ? 'add-transport' : 'add-activity';
       const addTxt = isTr ? '+ Weiterer Transport' : '+ Weitere Aktivität';
-
-      const cats = [
-        ['', 'Auto-Icon'], ['flugzeug', '✈️ Flugzeug'], ['zug', '🚆 Zug / Bahn'], ['bus', '🚌 Bus'],
-        ['boot', '🚤 Boot / Fähre'], ['mietwagen', '🚗 Mietwagen'], ['roller', '🛵 Roller'], ['taxi', '🚕 Taxi / Grab']
-      ];
 
       return `
         <div id="${type}-box-${dayIdx}" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
@@ -2651,38 +2681,7 @@
             <div class="space-y-2.5">
               ${items.map((it, itemIdx) => {
                 const safeUrl = formatSafeUrl(it.link), isFirst = itemIdx === 0, isLast = itemIdx === total - 1, st = it.costStatus || 'geplant';
-                if (isTr) return renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl);
-                return `
-                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
-                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                      <div class="flex flex-col gap-0.5 no-print mr-0.5 shrink-0">
-                        <button data-action="move-item-up" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isFirst ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${isFirst ? 'disabled' : ''}><i class="fa-solid fa-chevron-up pointer-events-none"></i></button>
-                        <button data-action="move-item-down" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="w-4 h-3 rounded flex items-center justify-center text-[9px] ${isLast ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${isLast ? 'disabled' : ''}><i class="fa-solid fa-chevron-down pointer-events-none"></i></button>
-                      </div>
-                      ${!isTr ? `<input type="checkbox" ${it.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${dayIdx}" data-act-index="${itemIdx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 no-print">` : ''}
-                      ${isTr ? `
-                        <select data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="category" class="bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 dark:text-white shrink-0">
-                          ${cats.map(([val, label]) => `<option value="${val}" ${(it.category || '') === val ? 'selected' : ''}>${label}</option>`).join('')}
-                        </select>` : ''}
-                      <input type="text" id="${isTr ? '' : `act-title-input-${dayIdx}-${itemIdx}`}" placeholder="${isTr ? 'Art (z. B. Flug)' : 'Aktivität / Plan'}" value="${escapeHtml(it.title || '')}" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="title" class="flex-1 min-w-[140px] bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 text-slate-900 dark:text-white ${(!isTr && it.done) ? 'line-through text-slate-400' : ''}">
-                      <div class="relative flex items-center w-24 shrink-0">
-                        <input type="text" inputmode="decimal" placeholder="Kosten" value="${escapeHtml(it.cost || '')}" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="cost" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
-                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
-                      </div>
-                      <select data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="costStatus" class="text-[11px] font-bold rounded px-2 py-1 border transition ${getStatusBadgeClass(st)}">
-                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
-                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
-                        <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
-                      </select>
-                      <button data-action="move-item-day" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1 no-print transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
-                      <button data-action="remove-item" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="text-rose-500 hover:text-rose-700 px-1 no-print" title="Löschen">&times;</button>
-                    </div>
-                    <div class="flex items-start gap-2">
-                      <textarea rows="1" placeholder="Hinweise..." data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="hint" class="auto-hint flex-1 bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(it.hint || '')}</textarea>
-                      <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" data-sub-list="${type}" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="link" class="w-1/3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
-                      <a id="${type}-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
-                    </div>
-                  </div>`;
+                return isTr ? renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) : renderActivityItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl);
               }).join('')}
             </div>
           </div>
@@ -2700,11 +2699,12 @@
         card.className = `day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ${visual.cardClass}`;
         card.setAttribute('data-action', 'toggle-collapse'); card.setAttribute('data-day-index', index);
         const trTxt = hasTr ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') : '—';
-        const lodHtml = isDayNoLodging(day) ? '✈️ Keine Übernachtung' : (l ? `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}` : '—');
+        const lodHtml = isDayNoLodging(day) ? '✈️ Keine Übernachtung' : (l ? `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}` : `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> <span class="italic text-slate-400 dark:text-slate-500">Noch keine Unterkunft</span>`);
         const ind = (day.notes?.trim() || images.length) ? `<span class="text-slate-400">|</span><span class="inline-flex items-center gap-1.5">${day.notes?.trim() ? '📝' : ''}${images.length ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : ''}</span>` : '';
 
         card.innerHTML = `
-          <div class="flex-1 flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap min-w-0 pr-2">
+          <div class="flex-1 min-w-0 pr-2">
+           <div class="flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap">
             <span class="font-black text-slate-900 dark:text-white">Tag ${index + 1}</span>
             <span class="text-slate-400">|</span>
             <span class="text-slate-700 dark:text-slate-300 font-mono">${dayFormatted ? dayFormatted.slice(0, 5) : '--.--'} (${dayName})</span>
@@ -2712,9 +2712,9 @@
             <span class="font-bold text-slate-900 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
             <span class="text-slate-400">|</span>
             <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trTxt)}</span>
-            <span class="text-slate-400">|</span>
-            <span class="text-slate-700 dark:text-slate-300">${lodHtml}</span>
             ${ind}
+           </div>
+           <div class="mt-0.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 truncate">${lodHtml}</div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0 no-print"><span class="p-1 text-slate-500"><i class="fa-solid fa-chevron-down text-xs"></i></span></div>`;
         return card;
