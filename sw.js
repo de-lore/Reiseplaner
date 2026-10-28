@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-pro-v2.11';
+const CACHE_NAME = 'reiseplaner-pro-v2.10';
 
 const LOCAL_ASSETS = [
   './',
@@ -64,7 +64,7 @@ self.addEventListener('fetch', (event) => {
         const networkFetch = fetch(req).then((res) => {
           if (res && (res.status === 200 || res.type === 'opaque')) cache.put(req, res.clone());
           return res;
-        }).catch(() => Response.error());
+        }).catch(() => null);
         return cached || networkFetch;
       })
     );
@@ -83,13 +83,7 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(async () => {
         const cache = await caches.open(CACHE_NAME);
-        const cached = await cache.match(req, { ignoreSearch: true });
-        if (cached) return cached;
-        if (req.mode === 'navigate') {
-          const appShell = await cache.match('./index.html');
-          if (appShell) return appShell;
-        }
-        return Response.error();
+        return (await cache.match(req, { ignoreSearch: true })) || (req.mode === 'navigate' ? cache.match('./index.html') : undefined);
       })
   );
 });
