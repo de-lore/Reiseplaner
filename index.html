@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.10</title>
+  <title>Reiseplaner Pro v2.11</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,7 +55,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.10</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.11</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -65,7 +65,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.10</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.11</span>
           </div>
         </div>
       </div>
@@ -1314,7 +1314,7 @@
 
     // --- LOGIK UNTERKÜNFTE & STATI ---
     const getLodgingForDay = d => d && tripData.lodgings ? tripData.lodgings.find(l => l.checkIn <= d && d < l.checkOut) || null : null;
-    const hasFixedLodging = day => ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(day?.date)?.status || '').toLowerCase());
+    const hasFixedLodging = day => (tripData.lodgings || []).some(l => l.checkIn <= day?.date && day?.date < l.checkOut && ['gebucht', 'bezahlt', 'reserviert'].includes((l.status || '').toLowerCase()));
     const isDayNoLodging = d => Boolean(d?.noLodgingNeeded);
     const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
     const isNightDay = (d, i, arr) => Boolean(d) && !isDayNoLodging(d) && (i < arr.length - 1 || Boolean(getLodgingForDay(d.date)));
@@ -1482,6 +1482,12 @@
       if (!name || !location) return showAppAlert("Name und Ort sind erforderlich.", "Eingabe unvollständig");
       if (!checkIn || !checkOut || checkIn >= checkOut) return showAppAlert("Check-out muss nach Check-in liegen.", "Ungültiger Zeitraum");
 
+      const overlapping = (tripData.lodgings || []).find(l => (!id || l.id !== id) && typeof l.checkIn === 'string' && typeof l.checkOut === 'string' && checkIn < l.checkOut && l.checkIn < checkOut);
+      if (overlapping) return showAppAlert(
+        'Der Zeitraum überschneidet sich mit „' + (overlapping.name || 'einer anderen Unterkunft') + '“ (' + overlapping.checkIn + ' bis ' + overlapping.checkOut + '). Bitte prüfe die Daten.',
+        'Unterkunftszeiträume überschneiden sich', 'danger'
+      );
+
       const obj = {
         id: id || generateUUID(), name, location,
         status: document.getElementById('modalLodgingStatus').value, checkIn, checkOut,
@@ -1563,7 +1569,7 @@
     function updateHeadline() {
       const titleEl = document.getElementById('headerTripTitle'), datesEl = document.getElementById('headerTripDates'), countEl = document.getElementById('headerTripDaysCount');
       if (titleEl) titleEl.innerText = (tripData.title || '').trim() || 'Reiseplaner';
-      const days = tripData.days || [], nights = days.filter(d => !isDayNoLodging(d)).length;
+      const days = tripData.days || [], nights = days.filter(isNightDay).length;
       if (datesEl) {
         const s = document.getElementById('startDate')?.value || tripData.startDate, e = document.getElementById('endDate')?.value || tripData.endDate;
         datesEl.innerText = (s && e) ? `${formatISODate(s).dayFormatted} – ${formatISODate(e).dayFormatted}` : 'Kein Reisezeitraum festgelegt';
@@ -1849,8 +1855,8 @@
       const target = images[itemIdx];
       if (!await showAppConfirm(`Beleg „${target.name || 'Dokument'}“ wirklich löschen?`, { title: "Beleg löschen", confirmText: "Löschen", variant: "danger", icon: "fa-trash-can" })) return;
 
-      const [removed] = images.splice(itemIdx, 1);
-      if (removed?.id) await safeDeleteMedia(removed.id);
+      await createRollingBackup();
+      images.splice(itemIdx, 1);
       recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
       showToast("Beleg entfernt");
     }
@@ -2088,16 +2094,36 @@
 
     function parseFlexibleNumber(v) {
       if (v === null || v === undefined || v === '') return 0;
-      if (typeof v === 'number') return isNaN(v) ? 0 : v;
-      let s = String(v).trim().replace(/[^0-9.,-]/g, '').replace(/(?!^)-/g, '');
-      if (!s) return 0;
-      if (s.includes(',') && s.includes('.')) s = s.lastIndexOf(',') > s.lastIndexOf('.') ? s.replace(/\./g, '').replace(',', '.') : s.replace(/,/g, '');
-      else if (s.includes(',')) s = s.split(',').length > 2 ? s.replace(/,/g, '') : s.replace(',', '.');
-      else if (s.includes('.') && s.split('.').length > 2) s = s.replace(/\./g, '');
-      const n = parseFloat(s);
-      return isNaN(n) ? 0 : n;
-    }
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      let raw = String(v).trim().replace(/[^0-9.,-]/g, '');
+      const negative = raw.startsWith('-');
+      raw = raw.replace(/-/g, '');
+      if (!raw) return 0;
 
+      const hasDot = raw.includes('.'), hasComma = raw.includes(',');
+      if (hasDot && hasComma) {
+        const decimal = raw.lastIndexOf('.') > raw.lastIndexOf(',') ? '.' : ',';
+        const decimalAt = raw.lastIndexOf(decimal);
+        const whole = raw.slice(0, decimalAt).replace(/[.,]/g, '');
+        const fraction = raw.slice(decimalAt + 1).replace(/[.,]/g, '');
+        raw = (whole || '0') + (fraction ? '.' + fraction : '');
+      } else if (hasDot) {
+        if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, '');
+        else if ((raw.match(/\./g) || []).length > 1) {
+          const at = raw.lastIndexOf('.');
+          raw = raw.slice(0, at).replace(/\./g, '') + '.' + raw.slice(at + 1);
+        }
+      } else if (hasComma) {
+        if (/^\d{1,3}(?:,\d{3})+$/.test(raw)) raw = raw.replace(/,/g, '');
+        else if ((raw.match(/,/g) || []).length > 1) {
+          const at = raw.lastIndexOf(',');
+          raw = raw.slice(0, at).replace(/,/g, '') + '.' + raw.slice(at + 1);
+        } else raw = raw.replace(',', '.');
+      }
+
+      const n = Number(raw);
+      return Number.isFinite(n) ? (negative ? -n : n) : 0;
+    }
     // --- PACKLISTE ---
     const sortChecklist = () => tripData.checklist?.sort((a, b) => Number(Boolean(a?.done)) - Number(Boolean(b?.done)));
 
@@ -2240,6 +2266,14 @@
       requestAnimationFrame(() => document.querySelectorAll('textarea.auto-hint').forEach(ta => { if (ta.offsetParent !== null) autoResizeTextarea(ta); }));
     }
 
+    function collectMediaIdsFromTrips(trips = []) {
+      const ids = new Set();
+      for (const trip of trips) for (const day of (trip?.days || [])) {
+        for (const item of (day?.images || [])) if (item?.id) ids.add(item.id);
+      }
+      return ids;
+    }
+
     // --- ROLLIERENDE BACKUPS ---
     async function createRollingBackup() {
       try {
@@ -2253,11 +2287,9 @@
         });
         const dropped = backups.splice(3);
         await tripsSet('backups', backups);
-        for (const old of dropped) {
-          for (const d of (old.data?.days || [])) {
-            for (const img of (d?.images || [])) if (img?.id) await safeDeleteMedia(img.id);
-          }
-        }
+        const retainedMediaIds = collectMediaIdsFromTrips([tripData, ...backups.map(b => b?.data)]);
+        const droppedMediaIds = collectMediaIdsFromTrips(dropped.map(b => b?.data));
+        for (const id of droppedMediaIds) if (!retainedMediaIds.has(id)) await safeDeleteMedia(id);
       } catch {}
     }
 
@@ -2399,8 +2431,39 @@
       }
     }
 
+    function getImportValidationError(parsed) {
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'Die Datei enthält kein gültiges Reiseobjekt.';
+      if (!Array.isArray(parsed.days)) return 'Die Reisedaten enthalten keine gültige Tagesliste.';
+      for (const key of ['lodgings', 'checklist']) {
+        if (parsed[key] !== undefined && !Array.isArray(parsed[key])) return 'Die Liste „' + key + '“ hat ein ungültiges Format.';
+      }
+      for (let i = 0; i < parsed.days.length; i++) {
+        const day = parsed.days[i];
+        if (!day || typeof day !== 'object' || Array.isArray(day)) return 'Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+        for (const key of ['images', 'transports', 'activities']) {
+          if (day[key] !== undefined && !Array.isArray(day[key])) return 'Die Liste „' + key + '“ in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+          if (Array.isArray(day[key])) {
+            const invalidItem = day[key].some(item => key === 'images'
+              ? (!item || (typeof item !== 'string' && (typeof item !== 'object' || Array.isArray(item)))
+              : (!item || typeof item !== 'object' || Array.isArray(item)));
+            if (invalidItem) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+          }
+        }
+      }
+      for (let i = 0; i < (parsed.lodgings || []).length; i++) {
+        const lodging = parsed.lodgings[i];
+        if (!lodging || typeof lodging !== 'object' || Array.isArray(lodging) || typeof lodging.checkIn !== 'string' || typeof lodging.checkOut !== 'string' || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
+        for (let j = 0; j < i; j++) {
+          const other = parsed.lodgings[j];
+          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut) return 'Die Zeiträume der Unterkünfte „' + (other.name || (j + 1)) + '“ und „' + (lodging.name || (i + 1)) + '“ überschneiden sich.';
+        }
+      }
+      return '';
+    }
+
     async function applyImportedTrip(parsed, name, handle = null) {
-      if (!parsed?.days) return;
+      const validationError = getImportValidationError(parsed);
+      if (validationError) return showAppAlert(validationError, 'Datei kann nicht geladen werden', 'danger');
       await createRollingBackup();
       activeFileHandle = handle; tripData = parsed;
       await migrateImagesToMediaStore(tripData.days);
@@ -2457,8 +2520,10 @@
         shift = await showAppConfirm(`Startdatum geändert (${formatISODate(oldS).dayFormatted} → ${formatISODate(s).dayFormatted}). Route mitverschieben?`, { title: "Startdatum geändert", confirmText: "Route verschieben", cancelText: "Kalender behalten" });
       }
 
-      const newDays = [], oldMed = new Set();
-      tripData.days.forEach(d => (d?.images || []).forEach(img => { if (img?.id) oldMed.add(img.id); }));
+      if (shift && tripData.days.some(hasFixedLodging)) {
+        return showAppAlert('Die Route kann nicht verschoben werden, weil mindestens ein Tag eine gebuchte, bezahlte oder reservierte Unterkunft hat. Wähle „Kalender behalten“ oder breche ab.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      const newDays = [];
 
       if (hasDays && shift) {
         for (let i = 0; i < count; i++) {
@@ -2470,12 +2535,13 @@
         for (let i = 0; i < count; i++) { const iso = addDaysISO(s, i); newDays.push(map.get(iso) || createEmptyDay(iso, true)); }
       }
 
+      const retainedDays = new Set(newDays);
+      if (tripData.days.some(d => hasFixedLodging(d) && !retainedDays.has(d))) {
+        return showAppAlert('Der neue Zeitraum würde einen Tag mit gebuchter oder reservierter Unterkunft entfernen. Passe den Zeitraum so an, dass dieser Tag erhalten bleibt.', 'Unterkunft schützt Reisetag', 'danger');
+      }
       tripData.title = document.getElementById('tripTitle').value;
       tripData.startDate = s; tripData.endDate = e; tripData.days = newDays;
       normalizeDataModel();
-      const retainedMed = new Set();
-      tripData.days.forEach(d => (d?.images || []).forEach(img => { if (img?.id) retainedMed.add(img.id); }));
-      for (const id of oldMed) if (!retainedMed.has(id)) await safeDeleteMedia(id);
 
       recordChangeForReminder(); saveToStorage();
       document.getElementById('tripConfigSection')?.classList.add('hidden');
@@ -3019,20 +3085,26 @@
     async function executeDayAction(mode) {
       if (!pendingModalAction) return;
       const { type, dayIndex } = pendingModalAction;
+      if (type === 'insert' && mode === 'A' && tripData.days.slice(dayIndex + 1).some(hasFixedLodging)) {
+        closeDayActionModal();
+        return showAppAlert('Ein Tag nach dieser Position hat eine gebuchte oder reservierte Unterkunft und kann nicht verschoben werden.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      if (type === 'delete' && mode === 'B' && tripData.days.slice(dayIndex).some(hasFixedLodging)) {
+        closeDayActionModal();
+        return showAppAlert('Dieser Tag oder ein Folgetag hat eine gebuchte oder reservierte Unterkunft und kann nicht verschoben werden.', 'Unterkunft schützt Reisetag', 'danger');
+      }
       closeDayActionModal(); await createRollingBackup();
 
       if (type === 'delete') {
-        const d = tripData.days[dayIndex], ids = (d?.images || []).map(i => i.id).filter(Boolean);
+        const d = tripData.days[dayIndex];
         if (mode === 'A') {
           Object.assign(d, createEmptyDay(d.date, d.isCollapsed));
-          for (const id of ids) await safeDeleteMedia(id);
-          showToast(`Tag ${dayIndex + 1} geleert (Modus A)`);
+                    showToast(`Tag ${dayIndex + 1} geleert (Modus A)`);
         } else {
           tripData.days.splice(dayIndex, 1);
           for (let i = dayIndex; i < tripData.days.length; i++) tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
           if (tripData.endDate) { tripData.endDate = addDaysISO(tripData.endDate, -1); document.getElementById('endDate').value = tripData.endDate; }
-          for (const id of ids) await safeDeleteMedia(id);
-          showToast(`Tag ${dayIndex + 1} gelöscht (Modus B)`);
+                    showToast(`Tag ${dayIndex + 1} gelöscht (Modus B)`);
         }
       } else if (type === 'insert' && mode === 'A') {
         const cur = tripData.days[dayIndex];
@@ -3118,3 +3190,6 @@
   </script>
 </body>
 </html>
+
+
+
