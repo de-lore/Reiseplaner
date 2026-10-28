@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.20</title>
+  <title>Reiseplaner Pro v2.21</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,7 +55,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.20</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.21</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -67,7 +67,7 @@
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
             <span id="saveStatusBadge" role="status" aria-live="polite" title="Lokaler Speicherstatus" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 shrink-0"><i id="saveStatusIcon" class="fa-solid fa-circle-check"></i><span id="saveStatusText">Bereit</span></span>
             <span id="offlineAssetsBadge" title="Offline-Verfügbarkeit der App-Ressourcen" class="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0"></span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.20</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.21</span>
           </div>
         </div>
       </div>
@@ -438,7 +438,17 @@
             <i class="fa-solid fa-bolt text-[11px]"></i> Automatisch ausfüllen
           </button>
         </div>
-        <p class="text-[10px] text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock text-[9px]"></i> Das PDF wird lokal im Browser gelesen und nicht hochgeladen. Bitte die vorausgefüllten Felder vor dem Speichern prüfen.</p>
+        <p class="text-[10px] text-slate-500 dark:text-slate-400"><i class="fa-solid fa-lock text-[9px]"></i> Das PDF wird lokal im Browser gelesen und nicht hochgeladen.</p>
+        <div id="bookingImportPreview" class="hidden rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/50" aria-live="polite">
+          <div class="text-xs font-bold text-amber-900 dark:text-amber-200">Erkannte Buchungsdaten – bitte prüfen</div>
+          <p class="mt-1 text-[10px] text-amber-800 dark:text-amber-300">Noch wurde nichts in die Unterkunft übernommen.</p>
+          <p id="bookingImportSource" class="mt-1 text-[10px] text-slate-500 dark:text-slate-400"></p>
+          <ul id="bookingImportPreviewList" class="mt-2 space-y-1 text-xs text-slate-700 dark:text-slate-200"></ul>
+          <div class="mt-3 flex justify-end gap-2">
+            <button type="button" onclick="cancelBookingImportPreview()" class="px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-600 text-xs font-semibold text-slate-700 dark:text-slate-200">Abbrechen</button>
+            <button type="button" onclick="confirmBookingImportPreview()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold text-white">Werte übernehmen</button>
+          </div>
+        </div>
       </div>
 
       <input type="hidden" id="modalLodgingId">
@@ -1073,17 +1083,47 @@
       return { res, notes: notesArr };
     }
 
-    // Felder des Unterkunfts-Dialogs befüllen; Booking-Parser überschreibt den generischen Parser
-    function applyBookingParse(text, geo) {
-      const legacy = bkLegacyParse(text);
-      const bk = bkParseBooking(text, geo, { tripStart: (typeof tripData !== 'undefined' && tripData?.startDate) || '' });
-      const res = Object.assign({}, legacy.res, bk.res);
-      const notes = bk.notes.slice();
-      for (const n of legacy.notes) {
-        const key = n.startsWith('Buchungs-Nr') ? 'Buchungs-Nr' : (n.startsWith('Frühstück') ? 'Frühstück' : null);
-        if (!key || !notes.some(x => x.startsWith(key))) notes.push(n);
-      }
+    // Erkannte Daten zunächst prüfen lassen, bevor sie Unterkunftsfelder ändern.
+    let pendingBookingImport = null;
+    const bookingPreviewFields = [
+      ['name', 'Unterkunft'], ['location', 'Ort'], ['checkIn', 'Anreise'], ['checkOut', 'Abreise'],
+      ['price', 'Gesamtpreis'], ['freeCancel', 'Kostenlose Stornierung bis'], ['address', 'Adresse']
+    ];
 
+    function showBookingImportPreview(res, notes, sourceLabel) {
+      const preview = document.getElementById('bookingImportPreview');
+      const list = document.getElementById('bookingImportPreviewList');
+      if (!preview || !list) return;
+      pendingBookingImport = { res, notes };
+      list.replaceChildren();
+      const detected = bookingPreviewFields.filter(([key]) => String(res[key] || '').trim());
+      for (const [key, label] of bookingPreviewFields) {
+        const li = document.createElement('li');
+        li.className = 'flex gap-2';
+        const value = String(res[key] || '').trim();
+        const shown = key === 'freeCancel' && value ? toDateTimeLocalValue(value).replace('T', ' ') : value;
+        li.textContent = `${value ? '✓' : '–'} ${label}: ${shown || 'nicht erkannt'}`;
+        list.appendChild(li);
+      }
+      if (notes.length) {
+        const li = document.createElement('li');
+        li.textContent = `Hinweise: ${notes.join(' · ')}`;
+        list.appendChild(li);
+      }
+      preview.classList.remove('hidden');
+      preview.dataset.source = sourceLabel || 'Buchungstext';
+      const source = document.getElementById('bookingImportSource');
+      if (source) source.textContent = `Quelle: ${sourceLabel || 'Buchungstext'}`;
+      if (!detected.length) showToast('Es wurden keine passenden Buchungsfelder erkannt', true);
+      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function cancelBookingImportPreview() {
+      pendingBookingImport = null;
+      document.getElementById('bookingImportPreview')?.classList.add('hidden');
+    }
+
+    function applyBookingValues(res, notes) {
       const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) { el.value = v; return 1; } return 0; };
       let applied = 0;
       applied += setVal('modalLodgingName', res.name);
@@ -1108,6 +1148,28 @@
       return applied;
     }
 
+    function confirmBookingImportPreview() {
+      if (!pendingBookingImport) return;
+      const { res, notes } = pendingBookingImport;
+      const applied = applyBookingValues(res, notes);
+      cancelBookingImportPreview();
+      if (applied > 0) showToast(`${applied} erkannte Felder übernommen – bitte vor dem Speichern prüfen`);
+      else showToast('Es wurden keine passenden Felder erkannt', true);
+    }
+
+    function applyBookingParse(text, geo, sourceLabel = 'Buchungstext') {
+      const legacy = bkLegacyParse(text);
+      const bk = bkParseBooking(text, geo, { tripStart: (typeof tripData !== 'undefined' && tripData?.startDate) || '' });
+      const res = Object.assign({}, legacy.res, bk.res);
+      const notes = bk.notes.slice();
+      for (const n of legacy.notes) {
+        const key = n.startsWith('Buchungs-Nr') ? 'Buchungs-Nr' : (n.startsWith('Frühstück') ? 'Frühstück' : null);
+        if (!key || !notes.some(x => x.startsWith(key))) notes.push(n);
+      }
+      showBookingImportPreview(res, notes, sourceLabel);
+      return Object.values(res).some(v => String(v || '').trim()) ? 1 : 0;
+    }
+
     // Manueller Button: Text aus dem Textfeld analysieren (nutzt Koordinaten, falls Text unverändert aus dem PDF stammt)
     function parseBookingTextFromInput() {
       const text = document.getElementById('autoFillBookingInput')?.value || '';
@@ -1115,9 +1177,7 @@
         return showAppAlert("Bitte importiere zuerst ein PDF oder füge den Text deiner Buchung in das Textfeld ein.", "Keine Daten vorhanden");
       }
       const geo = (lastBookingPdf && lastBookingPdf.text === text) ? lastBookingPdf.geo : null;
-      const applied = applyBookingParse(text, geo);
-      if (applied > 0) showToast(`${applied} Felder automatisch ausgefüllt – bitte prüfen`);
-      else showToast("Keine passenden Felder im Text erkannt", true);
+      applyBookingParse(text, geo, lastBookingPdf && lastBookingPdf.text === text ? 'PDF' : 'Buchungstext');
     }
 
     // --- PDF.js (lazy von cdnjs geladen, vom Service Worker gecacht) ---
@@ -1167,9 +1227,7 @@
         const geo = bkParseGeometry(firstItems || [], {});
         document.getElementById('autoFillBookingInput').value = text;
         lastBookingPdf = { text, geo };
-        const applied = applyBookingParse(text, geo);
-        if (applied > 0) showToast(`${applied} Felder aus PDF ausgefüllt – bitte prüfen`);
-        else showToast("Keine passenden Felder im PDF erkannt", true);
+        applyBookingParse(text, geo, `PDF: ${file.name}`);
       } catch (err) {
         console.error('[PDF-Import]', err);
         showAppAlert(`Das PDF konnte nicht gelesen werden: ${err.message || err}. Für den ersten Import wird eine Internetverbindung benötigt, damit PDF.js geladen werden kann.`, "PDF-Import fehlgeschlagen");
@@ -1833,6 +1891,17 @@
         return null;
       }
       const text = String(value).trim();
+      // datetime-local-Stornofristen aus JSON mit Uhrzeit vollständig erhalten.
+      const localDateTime = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)$/);
+      if (localDateTime && isValidISODateTimeLocal(localDateTime[1])) return toDateTimeLocalValue(localDateTime[1]);
+      // Zeitstempel mit Zeitzone in lokale Eingabezeit umwandeln.
+      if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
+        const instant = new Date(text);
+        if (!Number.isNaN(instant.getTime())) {
+          const local = `${instant.getFullYear()}-${String(instant.getMonth() + 1).padStart(2, '0')}-${String(instant.getDate()).padStart(2, '0')}T${String(instant.getHours()).padStart(2, '0')}:${String(instant.getMinutes()).padStart(2, '0')}`;
+          if (isValidISODateTimeLocal(local)) return local;
+        }
+      }
       const isoPrefix = text.match(/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/);
       if (isoPrefix && isValidISODate(isoPrefix[1])) return isoPrefix[1];
       const dmy = text.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
