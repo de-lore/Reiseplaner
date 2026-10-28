@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-pro-v2.14';
+const CACHE_NAME = 'reiseplaner-pro-v2.15';
 
 const LOCAL_ASSETS = [
   './',
@@ -45,6 +45,27 @@ self.addEventListener('activate', (event) => {
       .then((keys) => Promise.all(keys.map((k) => k !== CACHE_NAME && caches.delete(k))))
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data?.type !== 'CHECK_OFFLINE_ASSETS') return;
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    for (const url of CDN_ASSETS) {
+      if (await cache.match(url, { ignoreVary: true })) continue;
+      if (self.navigator?.onLine === false) continue;
+      try {
+        let response = await fetch(new Request(url, { mode: 'cors' }));
+        if (!response.ok) response = await fetch(new Request(url, { mode: 'no-cors' }));
+        if (response.ok || response.type === 'opaque') await cache.put(url, response);
+      } catch (error) {
+        console.warn('[SW] Offline-Asset konnte nicht nachgeladen werden:', url, error);
+      }
+    }
+    let missing = 0;
+    for (const url of CDN_ASSETS) if (!(await cache.match(url, { ignoreVary: true }))) missing++;
+    event.ports?.[0]?.postMessage({ missing, total: CDN_ASSETS.length });
+  })());
 });
 
 self.addEventListener('fetch', (event) => {
