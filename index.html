@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.05</title>
+  <title>Reiseplaner Pro v2.06</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -54,7 +54,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.05</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.06</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -64,7 +64,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.05</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.06</span>
           </div>
         </div>
       </div>
@@ -1314,7 +1314,7 @@
     // --- LOGIK UNTERKÜNFTE & STATI ---
     const getLodgingForDay = d => d && tripData.lodgings ? tripData.lodgings.find(l => l.checkIn <= d && d < l.checkOut) || null : null;
     const isDayNoLodging = d => Boolean(d?.noLodgingNeeded);
-    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
     const isNightDay = (d, i, arr) => Boolean(d) && !isDayNoLodging(d) && (i < arr.length - 1 || Boolean(getLodgingForDay(d.date)));
     const isDayLodgingSettled = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
 
