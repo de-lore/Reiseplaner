@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.01</title>
+  <title>Reiseplaner Pro v2.02</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -49,7 +49,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.01</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.02</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -59,7 +59,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.01</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.02</span>
           </div>
         </div>
       </div>
@@ -2562,6 +2562,68 @@
       showToast(d.noLodgingNeeded ? "Keine Übernachtung markiert" : "Übernachtung aktiviert");
     }
 
+    // Verkehrsmittel: Icon-Auswahl -> Text wird zunächst übernommen, bleibt aber frei änderbar
+    const TRANSPORT_CATS = [
+      ['', 'Auto-Icon', ''], ['flugzeug', 'Flugzeug', '✈️'], ['zug', 'Zug / Bahn', '🚆'], ['bus', 'Bus', '🚌'],
+      ['boot', 'Boot / Fähre', '🚤'], ['mietwagen', 'Mietwagen', '🚗'], ['roller', 'Roller', '🛵'], ['taxi', 'Taxi / Grab', '🚕']
+    ];
+    const TRANSPORT_LABELS = Object.fromEntries(TRANSPORT_CATS.filter(c => c[0]).map(c => [c[0], c[1]]));
+
+    // Zeile 1: Icon + Status (+ Sortieren/Verschieben/Löschen) | Zeile 2: Art | Zeile 3: Hinweise | Zeile 4: Preis + URL
+    function renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) {
+      const attr = (field) => `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="${field}"`;
+      const base = `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}"`;
+      const arrow = (dir, disabled, icon) => `<button data-action="move-item-${dir}" ${base} class="w-6 h-6 rounded flex items-center justify-center text-[10px] ${disabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon} pointer-events-none"></i></button>`;
+      return `
+                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
+                    <div class="flex items-center gap-2">
+                      <div class="relative w-11 h-8 shrink-0">
+                        <span id="tr-emoji-${dayIdx}-${itemIdx}" class="absolute inset-0 flex items-center justify-center text-lg rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 pointer-events-none">${getTransportEmoji(it)}</span>
+                        <i class="fa-solid fa-caret-down absolute right-0.5 bottom-0.5 text-[8px] text-slate-400 pointer-events-none no-print"></i>
+                        <select ${attr('category')} aria-label="Verkehrsmittel" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                          ${TRANSPORT_CATS.map(([val, label, emo]) => `<option value="${val}" ${(it.category || '') === val ? 'selected' : ''}>${emo ? emo + ' ' : ''}${label}</option>`).join('')}
+                        </select>
+                      </div>
+                      <select ${attr('costStatus')} class="text-[11px] font-bold rounded px-2 py-1.5 border transition ${getStatusBadgeClass(st)}">
+                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
+                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
+                        <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
+                      </select>
+                      <div class="ml-auto flex items-center gap-0.5 no-print">
+                        ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
+                        <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                        <button data-action="remove-item" ${base} class="text-rose-500 hover:text-rose-700 px-1.5 text-base leading-none" title="Löschen">&times;</button>
+                      </div>
+                    </div>
+                    <textarea rows="1" placeholder="Art (z. B. Flug Bangkok – Luang Prabang)" ${attr('title')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 font-semibold text-slate-900 dark:text-white">${escapeHtml(it.title || '')}</textarea>
+                    <textarea rows="1" placeholder="Hinweise..." ${attr('hint')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(it.hint || '')}</textarea>
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex items-center w-28 shrink-0">
+                        <input type="text" inputmode="decimal" placeholder="Preis" value="${escapeHtml(it.cost || '')}" ${attr('cost')} class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
+                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
+                      </div>
+                      <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
+                      <a id="transports-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
+                  </div>`;
+    }
+
+    // Wird bei Änderung von Kategorie/Titel aufgerufen: Text übernehmen (nur wenn leer/Standardtext) + Icon aktualisieren
+    function syncTransportIconAndTitle(day, dayIdx, idx, changedField) {
+      const it = day.transports?.[idx]; if (!it) return;
+      if (changedField === 'category') {
+        const label = TRANSPORT_LABELS[it.category];
+        const cur = (it.title || '').trim();
+        if (label && (!cur || Object.values(TRANSPORT_LABELS).includes(cur))) {
+          it.title = label;
+          const ta = document.querySelector(`textarea[data-sub-list="transports"][data-day-index="${dayIdx}"][data-item-index="${idx}"][data-sub-field="title"]`);
+          if (ta) { ta.value = label; autoResizeTextarea(ta); }
+        }
+      }
+      const emo = document.getElementById(`tr-emoji-${dayIdx}-${idx}`);
+      if (emo) emo.textContent = getTransportEmoji(it);
+    }
+
     function renderSubItemListHTML(day, dayIdx, type) {
       const isTr = type === 'transports', items = day[type] || [], total = items.length;
       const title = isTr ? 'Transport & Route' : 'Aktivitäten & Tickets';
@@ -2584,6 +2646,7 @@
             <div class="space-y-2.5">
               ${items.map((it, itemIdx) => {
                 const safeUrl = formatSafeUrl(it.link), isFirst = itemIdx === 0, isLast = itemIdx === total - 1, st = it.costStatus || 'geplant';
+                if (isTr) return renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl);
                 return `
                   <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
                     <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
@@ -2694,7 +2757,7 @@
         </div>
 
         <div id="day-body-${index}" class="p-4 sm:p-5 print-compact space-y-4 sm:space-y-5">
-          <div id="day-modules-grid-${index}" class="${hasTr && hasAct ? 'grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5' : 'space-y-4'}">
+          <div id="day-modules-grid-${index}" class="space-y-4 sm:space-y-5">
             ${hasTr ? renderSubItemListHTML(day, index, 'transports') : ''}
             ${hasAct ? renderSubItemListHTML(day, index, 'activities') : ''}
           </div>
@@ -2788,6 +2851,7 @@
         const subList = t.getAttribute('data-sub-list'), subField = t.getAttribute('data-sub-field'), idx = parseInt(t.getAttribute('data-item-index'), 10);
         if (subList && subField && day[subList]?.[idx]) {
           day[subList][idx][subField] = t.value;
+          if (subList === 'transports' && (subField === 'category' || subField === 'title')) syncTransportIconAndTitle(day, dayIdx, idx, subField);
           if (subField === 'costStatus') t.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(t.value);
           if (subField === 'link') {
             const btn = document.getElementById(`${subList}-link-btn-${dayIdx}-${idx}`);
