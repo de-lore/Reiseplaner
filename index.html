@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.12</title>
+  <title>Reiseplaner Pro v2.13</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -55,7 +55,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.12</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.13</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -65,7 +65,7 @@
             <span id="headerTripDates" class="truncate">Kein Reisezeitraum</span>
             <span id="headerTripDaysCount" class="hidden px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-[9px] sm:text-[10px] font-bold shrink-0"></span>
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.12</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.13</span>
           </div>
         </div>
       </div>
@@ -1551,6 +1551,10 @@
     document.addEventListener('click', e => {
       const menu = document.getElementById('moreMenuDropdown'), btn = document.getElementById('moreMenuBtn');
       if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn?.contains(e.target)) menu.classList.add('hidden');
+      if (!e.target.closest('.activity-action-dropdown') && !e.target.closest('[data-action="toggle-activity-menu"]')) {
+        document.querySelectorAll('.activity-action-dropdown').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[data-action="toggle-activity-menu"]').forEach(el => el.setAttribute('aria-expanded', 'false'));
+      }
     });
 
     function toggleConfigPanel() {
@@ -2713,12 +2717,18 @@
                         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
                         <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
                       </select>
-                      <label class="inline-flex items-center gap-1.5 px-2 py-1.5 rounded border border-slate-300 dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-[11px] font-bold text-slate-700 dark:text-slate-200 cursor-pointer select-none">
-                        <input type="checkbox" ${it.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${dayIdx}" data-act-index="${itemIdx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0"> Erledigt
-                      </label>
                       <div class="ml-auto flex items-center gap-0.5 no-print">
                         ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
                         <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                        <div class="relative">
+                          <button type="button" data-action="toggle-activity-menu" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 py-1 rounded transition" title="Weitere Optionen" aria-label="Weitere Optionen" aria-expanded="false"><i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i></button>
+                          <div id="activity-menu-${dayIdx}-${itemIdx}" class="activity-action-dropdown hidden absolute right-0 top-full mt-1 w-40 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20">
+                            <label class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                              <input type="checkbox" ${it.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${dayIdx}" data-act-index="${itemIdx}" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-0">
+                              <span>Erledigt</span>
+                            </label>
+                          </div>
+                        </div>
                         <button data-action="remove-item" ${base} class="text-rose-500 hover:text-rose-700 px-1.5 text-base leading-none" title="Löschen">&times;</button>
                       </div>
                     </div>
@@ -2892,6 +2902,14 @@
           'move-item-up': () => moveArrayItem(dayIdx, subList, itemIdx, -1),
           'move-item-down': () => moveArrayItem(dayIdx, subList, itemIdx, 1),
           'move-item-day': () => openMoveItemModal(dayIdx, subList, itemIdx),
+          'toggle-activity-menu': () => {
+            const menu = document.getElementById(`activity-menu-${dayIdx}-${itemIdx}`);
+            const willOpen = menu?.classList.contains('hidden');
+            document.querySelectorAll('.activity-action-dropdown').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[data-action="toggle-activity-menu"]').forEach(el => el.setAttribute('aria-expanded', 'false'));
+            menu?.classList.toggle('hidden', !willOpen);
+            actionEl.setAttribute('aria-expanded', String(!!willOpen));
+          },
           'trigger-file-upload': () => document.getElementById('file-upload-' + dayIdx)?.click(),
           'open-lightbox': () => openLightbox(actionEl.getAttribute('data-media-id'), dayIdx),
           'open-pdf': () => openPdfAttachment(actionEl.getAttribute('data-media-id'), actionEl.getAttribute('data-file-name')),
