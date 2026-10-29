@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.28</title>
+  <title>Reiseplaner Pro v2.29</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,6 +38,24 @@
     .drop-active { border-color: #6366f1 !important; background-color: rgba(99, 102, 241, 0.08) !important; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important; }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .header-title-watermark { position: relative; isolation: isolate; }
+    .header-title-watermark::before {
+      content: "";
+      position: absolute;
+      z-index: 0;
+      left: -4px;
+      top: 50%;
+      width: 58px;
+      height: 58px;
+      transform: translateY(-50%);
+      background: url("./icon-512-v2.png") center / contain no-repeat;
+      opacity: .12;
+      pointer-events: none;
+    }
+    .header-title-watermark > * { position: relative; z-index: 1; }
+    @media (min-width: 640px) {
+      .header-title-watermark::before { width: 72px; height: 72px; opacity: .14; }
+    }
     .day-card { overflow-wrap: anywhere; }
     @media (pointer: coarse) {
       .day-action-button { min-width: 40px; min-height: 40px; }
@@ -62,17 +80,14 @@
   <!-- HEADER -->
   <header class="bg-white/95 dark:bg-slate-800/95 backdrop-blur border-b border-slate-200 dark:border-slate-700 sticky top-0 z-30 shadow-sm transition-colors duration-200">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 py-1.5 sm:py-2.5 flex items-center justify-between gap-2 sm:gap-3">
-      <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div class="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-gradient-to-tr from-indigo-600 to-indigo-400 flex items-center justify-center text-white shadow-sm sm:shadow-md shrink-0">
-          <i class="fa-solid fa-map-location-dot text-xs sm:text-lg"></i>
-        </div>
-        <div class="min-w-0 flex-1">
+      <div class="flex items-center min-w-0">
+        <div class="header-title-watermark min-w-0 flex-1">
           <div class="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <h1 id="headerTripTitle" class="text-sm sm:text-lg font-black tracking-tight text-slate-900 dark:text-white truncate">Reiseplaner</h1>
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-      <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.28</span>
+            <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.29</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -84,7 +99,7 @@
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
             <span id="saveStatusBadge" role="status" aria-live="polite" title="Lokaler Speicherstatus" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 shrink-0"><i id="saveStatusIcon" class="fa-solid fa-circle-check"></i><span id="saveStatusText">Bereit</span></span>
             <span id="offlineAssetsBadge" title="Offline-Verfügbarkeit der App-Ressourcen" class="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0"></span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.28</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.29</span>
           </div>
         </div>
       </div>
