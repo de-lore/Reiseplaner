@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reiseplaner Pro v2.25</title>
+  <title>Reiseplaner Pro v2.26</title>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#0f172a">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -72,7 +72,7 @@
             <button onclick="toggleConfigPanel()" class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 text-[11px] sm:text-xs transition no-print" title="Reisedaten & Titel bearbeiten">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-      <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.25</span>
+      <span class="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">v2.26</span>
             <span id="tripCountdownBadge" class="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80 shrink-0"></span>
             <span id="networkBadge" class="hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800 items-center gap-1 shrink-0">
               <span id="networkDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> <span id="networkText">Online</span>
@@ -84,7 +84,7 @@
             <span id="fileStatusText" class="hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate">Keine Datei verknüpft (Speichert in IndexedDB)</span>
             <span id="saveStatusBadge" role="status" aria-live="polite" title="Lokaler Speicherstatus" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 shrink-0"><i id="saveStatusIcon" class="fa-solid fa-circle-check"></i><span id="saveStatusText">Bereit</span></span>
             <span id="offlineAssetsBadge" title="Offline-Verfügbarkeit der App-Ressourcen" class="hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0"></span>
-            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.25</span>
+            <span class="sm:hidden shrink-0 text-[9px] text-slate-400 dark:text-slate-500 font-normal">v2.26</span>
           </div>
         </div>
       </div>
@@ -3127,8 +3127,8 @@
       const canSwapNext = hasNext && !hasFixedLodging(day) && !hasFixedLodging(tripData.days[index + 1]);
 
       card.innerHTML = `
-        <div id="day-header-${index}" class="px-3 py-2 sm:px-5 sm:py-4 print-compact grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-2 border-b ${visual.headerClass}">
-          <div class="col-start-1 row-start-1 flex items-center gap-1.5 sm:gap-2 cursor-pointer min-w-0" data-action="toggle-collapse" data-day-index="${index}">
+        <div id="day-header-${index}" class="px-3 py-2 sm:px-5 sm:py-4 print-compact flex flex-wrap items-center gap-x-2 gap-y-2 border-b ${visual.headerClass}">
+          <div class="flex items-center gap-1.5 sm:gap-2 cursor-pointer min-w-0 shrink-0" data-action="toggle-collapse" data-day-index="${index}">
             <div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-center border border-indigo-500 shrink-0 shadow-sm">
               <div class="text-[9px] uppercase font-bold text-indigo-100">Tag ${index + 1} · ${dayName}</div>
               <div class="text-sm sm:text-lg font-black tracking-tight">${dayFormatted}</div>
@@ -3138,15 +3138,15 @@
             </div>
           </div>
 
-          <div class="col-start-2 row-start-1 flex flex-wrap items-center justify-end gap-1 sm:gap-1.5">
+          <div class="flex flex-1 min-w-[190px] flex-wrap items-center gap-1 sm:gap-1.5">
+            <button type="button" title="Tag löschen" aria-label="Tag löschen" data-action="delete-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-300 dark:hover:text-rose-200 dark:hover:bg-rose-950/50 flex items-center justify-center no-print"><i class="fa-solid fa-trash-can text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tag einfügen" aria-label="Tag einfügen" data-action="insert-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:text-indigo-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-950/60 flex items-center justify-center no-print"><i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i></button>
             <button type="button" title="Tag nach oben tauschen" aria-label="Tag nach oben tauschen" data-action="swap-day-prev" data-day-index="${index}" ${!canSwapPrev ? 'disabled' : ''} class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${canSwapPrev ? 'text-slate-600 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}"><i class="fa-solid fa-arrow-up text-xs pointer-events-none"></i></button>
             <button type="button" title="Tag nach unten tauschen" aria-label="Tag nach unten tauschen" data-action="swap-day-next" data-day-index="${index}" ${!canSwapNext ? 'disabled' : ''} class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${canSwapNext ? 'text-slate-600 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}"><i class="fa-solid fa-arrow-down text-xs pointer-events-none"></i></button>
-            <button type="button" title="Tag einfügen" aria-label="Tag einfügen" data-action="insert-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:text-indigo-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-950/60 flex items-center justify-center no-print"><i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i></button>
-            <button type="button" title="Tag löschen" aria-label="Tag löschen" data-action="delete-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-300 dark:hover:text-rose-200 dark:hover:bg-rose-950/50 flex items-center justify-center no-print"><i class="fa-solid fa-trash-can text-xs pointer-events-none"></i></button>
-            <button type="button" title="Tagesansicht zuklappen" aria-label="Tagesansicht zuklappen" data-action="toggle-collapse" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 flex items-center justify-center no-print"><i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tagesansicht zuklappen" aria-label="Tagesansicht zuklappen" data-action="toggle-collapse" data-day-index="${index}" class="day-action-button ml-auto w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 flex items-center justify-center no-print"><i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i></button>
           </div>
 
-          <div class="col-span-2 row-start-2 min-w-0">
+          <div class="w-full min-w-0">
             <div id="loc-box-${index}" class="${getLocationBoxClasses(day)}">
               <button type="button" data-action="open-maps" data-day-index="${index}" class="${getLocationMapsIconClasses(day)}"><i class="fa-solid fa-map-location-dot text-base sm:text-lg pointer-events-none"></i></button>
               <button type="button" data-action="open-offline-maps" data-day-index="${index}" class="mr-2.5 shrink-0 transition no-print sm:hidden ${day.location?.trim() ? 'text-emerald-600' : 'hidden'}"><i class="fa-solid fa-compass text-sm pointer-events-none"></i></button>
@@ -3154,7 +3154,7 @@
             </div>
           </div>
 
-          <div class="col-span-2 row-start-3 flex min-w-0 items-center justify-between gap-1">
+          <div class="w-full flex min-w-0 items-center justify-between gap-1">
             <div class="flex min-w-0 items-center gap-1">
               <button type="button" title="${lodgingBadgeLabel}" aria-label="${lodgingBadgeLabel}" onclick="openLodgingForDay('${day.date}')" class="h-7 max-w-[220px] sm:max-w-none min-w-0 justify-center px-1.5 sm:px-3 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-bold transition flex items-center gap-1 shadow no-print whitespace-nowrap overflow-hidden ${visual.btnClass}">
                 <svg class="ico-house pointer-events-none shrink-0" aria-hidden="true"><use href="#icon-house"></use></svg><span class="min-w-0 truncate">${statusInfo.btnLabel}</span>${hasDailyLodgingPrice ? `<span class="shrink-0 opacity-70">·</span><span class="shrink-0 font-mono">pro Tag ${lodgingDailyCost}</span>` : ''}
