@@ -1,11 +1,11 @@
-const CACHE_NAME = 'reiseplaner-pro-v2.29';
+const CACHE_NAME = 'reiseplaner-pro-v2.30';
 
 const LOCAL_ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  './icon-192-v2.png',
+  './icon-512-v2.png'
 ];
 
 const CDN_ASSETS = [
