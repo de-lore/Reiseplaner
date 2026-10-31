@@ -63,18 +63,12 @@ const DEFAULT_CHECKLIST = [
         quota: ['Speicher fast voll', 'fa-hard-drive', 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70']
       };
       const [saveLabel, iconClass, classes] = saveStates[state] || saveStates.ready;
-      const networkLabel = navigator.onLine ? 'Online' : (offlineAssetsReady ? 'Offline bereit' : 'Offline');
       const cacheLabel = offlineAssetsReady ? 'Offline bereit' : offlineAssetsLabel;
-      const summary = navigator.onLine
-        ? `${networkLabel} · ${cacheLabel} · ${saveLabel}`
-        : `${networkLabel} · ${saveLabel}`;
-
-      text.innerText = summary;
+      text.innerText = `${cacheLabel} · ${saveLabel}`;
       icon.className = 'fa-solid ' + iconClass;
       const displayClasses = !offlineAssetsReady && ['ready', 'saved', 'fileSaved'].includes(state) ? 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70' : classes;
       badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + displayClasses;
-      const networkDetail = navigator.onLine ? 'Internetverbindung besteht' : 'Keine Internetverbindung';
-      badge.title = `${networkDetail} · ${offlineAssetsLabel} · ${saveLabel}`;
+      badge.title = `Offline-Paket: ${offlineAssetsLabel} · Speicherstatus: ${saveLabel}`;
     }
     async function checkStorageCapacity(force = false) {
       if (!navigator.storage?.estimate) return;
@@ -1091,12 +1085,22 @@ const DEFAULT_CHECKLIST = [
         initTheme(); updateNetworkBadge();
         window.addEventListener('online', () => { updateNetworkBadge(); checkOfflineReadiness(); });
         window.addEventListener('offline', () => { updateNetworkBadge(); checkOfflineReadiness(); });
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') { updateNetworkBadge(); checkOfflineReadiness(); }
+        });
         initBackupReminderState();
         await loadFromStorage();
         await checkStorageCapacity(true);
         if ('serviceWorker' in navigator && location.protocol !== 'file:') {
           navigator.serviceWorker.addEventListener('controllerchange', checkOfflineReadiness);
-          navigator.serviceWorker.register('sw.js').then(r => r.update()).then(() => navigator.serviceWorker.ready).then(checkOfflineReadiness).catch(() => updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false));
+          navigator.serviceWorker.register('sw.js')
+            .then(registration => {
+              // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
+              try { registration.update().catch(() => {}); } catch {}
+              return navigator.serviceWorker.ready;
+            })
+            .then(checkOfflineReadiness)
+            .catch(() => updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false));
         } else updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false);
         initPersistentStorage();
         setupKeyboardShortcuts(); setupLightboxSwipeGestures(); setupLifecycleSaveFlush(); setupEventDelegation();
