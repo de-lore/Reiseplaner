@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0f172a">
+  <title>Reiseplaner aktualisieren</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; box-sizing: border-box; background: #0f172a; color: #e2e8f0; font: 16px system-ui, sans-serif; }
+    main { width: min(100%, 420px); text-align: center; }
+    h1 { font-size: 1.25rem; }
+    p { color: #cbd5e1; line-height: 1.5; }
+    a { color: #a5b4fc; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Reiseplaner wird aktualisiert</h1>
+    <p id="updateStatus" role="status" aria-live="polite">Bitte kurz warten. Deine gespeicherte Reise bleibt erhalten.</p>
+    <p><a href="./index.html">Zur App</a></p>
+  </main>
+  <script>
+    (async () => {
+      const status = document.getElementById('updateStatus');
+      const scriptUrl = './sw.js?v=2.48';
+      const targetScript = new URL(scriptUrl, location.href).href;
+      const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+      try {
+        if (!('serviceWorker' in navigator)) throw new Error('Dieser Browser unterstützt keine Offline-App-Updates.');
+        status.textContent = 'Neue App-Dateien werden geladen …';
+        const registration = await navigator.serviceWorker.register(scriptUrl, {
+          scope: './',
+          updateViaCache: 'none'
+        });
+        await registration.update();
+
+        let worker = null;
+        const deadline = Date.now() + 30000;
+        while (!worker && Date.now() < deadline) {
+          worker = [registration.installing, registration.waiting, registration.active]
+            .find(candidate => candidate?.scriptURL === targetScript) || null;
+          if (!worker) await delay(200);
+        }
+        if (!worker) throw new Error('Version 2.48 wurde vom Server noch nicht bereitgestellt.');
+
+        while (worker.state !== 'activated' && Date.now() < deadline) {
+          await new Promise(resolve => {
+            const timer = setTimeout(resolve, 250);
+            worker.addEventListener('statechange', () => { clearTimeout(timer); resolve(); }, { once: true });
+          });
+        }
+        if (worker.state !== 'activated') throw new Error('Der neue App-Worker konnte nicht aktiviert werden.');
+
+        status.textContent = 'Update bereit. App wird geöffnet …';
+        location.replace('./index.html');
+      } catch (error) {
+        status.textContent = `${error.message} Deine Reisedaten wurden nicht gelöscht.`;
+      }
+    })();
+  </script>
+</body>
+</html>
