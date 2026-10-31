@@ -1106,7 +1106,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.56', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.57', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2063,7 +2063,7 @@ const DEFAULT_CHECKLIST = [
           activeFileName = targetHandle.name;
           updateFileStatus(activeFileName); resetBackupReminder();
           if (locallySaved) updateSaveStatus('fileSaved');
-          return showExportConfirmation(activeFileName, 'Datei wurde am ausgewählten Speicherort gespeichert.');
+          return showExportConfirmation(activeFileName, 'Speicherort wurde im Dateidialog ausgewählt.', forceSaveAs ? 'JSON-Datei unter gewähltem Namen gespeichert' : 'Geöffnete JSON-Datei aktualisiert');
         } catch (err) {
           return showAppAlert(`„${targetHandle.name}“ konnte nicht gespeichert werden. Prüfe den Schreibzugriff oder nutze „Speichern unter“.`, 'Speichern fehlgeschlagen', 'danger', 'fa-triangle-exclamation');
         }
@@ -2071,7 +2071,7 @@ const DEFAULT_CHECKLIST = [
 
       downloadJsonFile(json, name); resetBackupReminder();
       if (locallySaved) updateSaveStatus('fileSaved');
-      return showExportConfirmation(name, 'Downloads-Ordner des Browsers. Dies ist eine neue Datei; eine zuvor geöffnete Datei wurde nicht überschrieben.');
+      return showExportConfirmation(name, 'Downloads-Ordner des Browsers. Eine neue Datei wurde erstellt.', 'Neue JSON-Sicherung erstellt');
     }
     // Download als Datei (URL erst verzögert freigeben – sonst bricht der Download auf Android teils ab)
     function downloadJsonFile(json, name) {
@@ -2085,8 +2085,8 @@ const DEFAULT_CHECKLIST = [
       return saveToFile(Boolean(activeFileName && !activeFileHandle));
     }
 
-    function showExportConfirmation(name, location) {
-      return showAppAlert(`Datei: ${name}\nSpeicherort: ${location}`, 'JSON-Sicherung erstellt', 'indigo', 'fa-file-circle-check');
+    function showExportConfirmation(name, location, title = 'JSON-Datei gespeichert') {
+      return showAppAlert(`Datei: ${name}\nSpeicherort: ${location}`, title, 'indigo', 'fa-file-circle-check');
     }
     // Datei über das System-Teilen-Menü senden (z. B. Android -> OneDrive / an den PC); Fallback: Download
     async function shareTripFile() {
@@ -2109,13 +2109,13 @@ const DEFAULT_CHECKLIST = [
 
       const doShare = () => navigator.share({ files: [file], title: name });
       try {
-        await doShare(); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved'); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.');
+        await doShare(); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved'); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.', 'JSON-Datei zum Teilen übergeben');
       } catch (err) {
         if (err?.name === 'AbortError') return;
         if (err?.name === 'NotAllowedError') {
           // Die Berührung ist beim Erstellen der Datei "abgelaufen" -> erneut per Tipp bestätigen lassen
           if (!await showAppConfirm(`Die Datei „${name}“ ist bereit. Jetzt teilen?`, { title: 'Teilen', confirmText: 'Teilen', icon: 'fa-share-nodes' })) return;
-          try { await doShare(); resetBackupReminder(); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.'); return; }
+          try { await doShare(); resetBackupReminder(); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.', 'JSON-Datei zum Teilen übergeben'); return; }
           catch (e2) { if (e2?.name === 'AbortError') return; }
         }
         downloadJsonFile(json, name); resetBackupReminder();
@@ -2235,24 +2235,29 @@ const DEFAULT_CHECKLIST = [
       syncUI(); updateHeadline(); updateFileStatus(name);
       showToast(preservedCancellationNotes
         ? `Datei geladen; ${preservedCancellationNotes} alte Stornierungsangabe(n) in Unterkunftsnotizen gesichert.`
-        : (handle ? 'Datei geöffnet' : 'Datei geladen'));
+        : 'JSON geöffnet und Reise in die App geladen');
     }
     async function openFile() {
       if ('showOpenFilePicker' in window) {
         try {
-          const [h] = await window.showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }], multiple: false });
-          const f = await h.getFile();
-          await applyImportedTrip(JSON.parse(await f.text()), h.name, h);
-          return;
-        } catch (err) { if (err.name === 'AbortError') return; }
+          const [handle] = await window.showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }], multiple: false });
+          const file = await handle.getFile();
+          let parsed;
+          try { parsed = JSON.parse(await file.text()); }
+          catch { return showAppAlert('Die ausgewählte Datei enthält kein lesbares JSON.', 'JSON konnte nicht geöffnet werden', 'danger'); }
+          await applyImportedTrip(parsed, handle.name, handle);
+        } catch (err) {
+          if (err.name === 'AbortError') return;
+          showAppAlert('Die Datei konnte nicht geöffnet werden. ' + (err?.message || ''), 'JSON konnte nicht geöffnet werden', 'danger');
+        }
+        return;
       }
       document.getElementById('importInput').click();
     }
-
     function importJSONFallback(e) {
       const f = e.target.files[0]; if (!f) return;
       const r = new FileReader();
-      r.onload = async ev => { try { await applyImportedTrip(JSON.parse(ev.target.result), f.name); } catch { showToast("Lesefehler", true); } };
+      r.onload = async ev => { try { await applyImportedTrip(JSON.parse(ev.target.result), f.name); } catch { showAppAlert('Die ausgewählte Datei enthält kein lesbares JSON.', 'JSON konnte nicht geöffnet werden', 'danger'); } };
       r.readAsText(f); e.target.value = '';
     }
 
