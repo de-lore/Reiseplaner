@@ -1009,25 +1009,33 @@ const DEFAULT_CHECKLIST = [
 
     // --- NAVIGATION & VIEWS ---
     function switchTab(t) {
+      if (t === 'flights' && !getFlightsForOverview().length) t = 'plan';
       currentTab = t;
-      ['plan', 'lodgings', 'budget', 'notes'].forEach(tab => {
+      const flightsVisible = getFlightsForOverview().length > 0;
+      ['plan', 'lodgings', 'budget', 'notes', 'flights'].forEach(tab => {
         const act = tab === t;
         document.getElementById('tabContent-' + tab)?.classList.toggle('hidden', !act);
         const dBtn = document.getElementById('deskTabBtn-' + tab), mBtn = document.getElementById('mobTabBtn-' + tab);
-        if (dBtn) dBtn.className = act ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0" : "px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0";
-        if (dBtn) dBtn.setAttribute('aria-current', act ? 'page' : 'false');
+        if (dBtn) {
+          dBtn.className = act ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0" : "px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0";
+          if (tab === 'flights') dBtn.classList.toggle('hidden', !flightsVisible);
+          dBtn.setAttribute('aria-current', act ? 'page' : 'false');
+        }
         if (mBtn) {
           mBtn.className = act ? "mobile-tab-button w-full min-w-0 flex flex-col items-center justify-center py-1 px-0 text-indigo-600 dark:text-indigo-400 font-bold transition" : "mobile-tab-button w-full min-w-0 flex flex-col items-center justify-center py-1 px-0 text-slate-500 dark:text-slate-400 font-medium transition";
+          if (tab === 'flights') mBtn.classList.toggle('hidden', !flightsVisible);
           mBtn.setAttribute('aria-current', act ? 'page' : 'false');
         }
       });
+      const mobileNav = document.getElementById('mobileTabNav');
+      if (mobileNav) mobileNav.style.gridTemplateColumns = flightsVisible ? 'repeat(5, minmax(0, 1fr))' : '';
       document.getElementById('headerFilterBar')?.classList.toggle('hidden', t !== 'plan');
       if (t === 'lodgings') renderLodgingsTab();
       if (t === 'budget') updateStats();
       if (t === 'notes') renderAllAttachmentsOverview();
+      if (t === 'flights') renderFlightsView();
       if (['plan', 'notes'].includes(t)) autoResizeAllTextareas();
     }
-
     const toggleMoreMenu = () => document.getElementById('moreMenuDropdown')?.classList.toggle('hidden');
 
     document.addEventListener('click', e => {
@@ -1106,7 +1114,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.57', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.58', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1211,6 +1219,7 @@ const DEFAULT_CHECKLIST = [
       writeLocalSetting(CHANGES_COUNT_KEY, String(unsavedChangesCount));
       checkBackupReminder();
       updateCombinedStatus();
+      updateFlightsTabAvailability();
     }
 
     function resetBackupReminder(markSnapshot = true) {
@@ -1835,7 +1844,51 @@ const DEFAULT_CHECKLIST = [
 
     // --- FILTER & AUSWERTUNGEN ---
     const isStatusFixed = s => ['gebucht', 'bezahlt', 'reserviert'].includes((s || '').toLowerCase());
-    const isFlight = t => t?.category === 'flugzeug' || ['flug', 'flight', 'airline', 'airport'].some(k => (t?.title || '').toLowerCase().includes(k));
+    const isFlight = t => String(t?.category || '').toLowerCase() === 'flugzeug' || ['flug', 'flight', 'airline', 'airport'].some(k => String(t?.title || '').toLowerCase().includes(k));
+
+    function getFlightsForOverview() {
+      const flights = [];
+      (tripData.days || []).forEach((day, dayIndex) => (day?.transports || []).forEach((item, itemIndex) => {
+        if (!isFlight(item)) return;
+        const rawStatus = String(item.costStatus || 'geplant').toLowerCase();
+        if (!['geplant', 'reserviert', 'gebucht', 'bezahlt'].includes(rawStatus)) return;
+        flights.push({ day, dayIndex, item, itemIndex, status: rawStatus === 'bezahlt' ? 'gebucht' : rawStatus });
+      }));
+      return flights;
+    }
+
+    function renderFlightsView() {
+      const list = document.getElementById('flightsViewList'), countsEl = document.getElementById('flightStatusCounts');
+      if (!list || !countsEl) return;
+      const flights = getFlightsForOverview();
+      const states = [['geplant', 'Geplant', 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60'], ['reserviert', 'Reserviert', 'text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60'], ['gebucht', 'Gebucht', 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60']];
+      countsEl.innerHTML = states.map(([key, label, cls]) => `<div class="rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 text-center"><div class="text-xl font-black text-slate-900 dark:text-white">${flights.filter(f => f.status === key).length}</div><div class="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${cls}">${label}</div></div>`).join('');
+      list.innerHTML = flights.map(({ day, dayIndex, item, status }) => {
+        const statusMeta = states.find(([key]) => key === status) || states[0];
+        const date = formatISODate(day.date).dayFormatted;
+        const link = formatSafeUrl(item.link);
+        const amount = parseFlexibleNumber(item.cost);
+        return `<article class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0"><h3 class="font-bold text-sm text-slate-900 dark:text-white truncate">✈️ ${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}${day.location ? ` · ${escapeHtml(day.location)}` : ''}</p></div>
+            <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${statusMeta[2]}">${statusMeta[1]}${item.costStatus?.toLowerCase() === 'bezahlt' ? ' · bezahlt' : ''}</span>
+          </div>
+          ${item.hint ? `<p class="mt-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line">${escapeHtml(item.hint)}</p>` : ''}
+          <div class="mt-3 flex items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div>
+        </article>`;
+      }).join('');
+    }
+
+    function updateFlightsTabAvailability() {
+      const visible = getFlightsForOverview().length > 0;
+      document.getElementById('deskTabBtn-flights')?.classList.toggle('hidden', !visible);
+      document.getElementById('mobTabBtn-flights')?.classList.toggle('hidden', !visible);
+      const mobileNav = document.getElementById('mobileTabNav');
+      if (mobileNav) mobileNav.style.gridTemplateColumns = visible ? 'repeat(5, minmax(0, 1fr))' : '';
+      if (!visible && currentTab === 'flights') switchTab('plan');
+      else if (visible && currentTab === 'flights') renderFlightsView();
+    }
 
     function setFilter(f) {
       currentFilter = f;
@@ -2322,6 +2375,7 @@ const DEFAULT_CHECKLIST = [
 
     // --- TAGESKARTEN RENDERN ---
     function renderDays() {
+      updateFlightsTabAvailability();
       const container = document.getElementById('daysContainer');
       if (!container) return;
       container.innerHTML = ''; updateToggleAllBtnState();
