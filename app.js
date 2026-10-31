@@ -22,7 +22,7 @@ const DEFAULT_CHECKLIST = [
     let activeFileHandle = null, activeFileName = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
     let saveDebounceTimer = null, pendingModalAction = null, pendingMoveItem = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
-    let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
+    let unsavedChangesCount = 0, lastExportTimestamp = Date.now(), hasJsonSnapshot = false;
     let saveStatusState = 'ready', saveFailureNotified = false, storageQuotaWarning = false, storageQuotaWarned = false, lastStorageEstimateAt = 0;
     const OFFLINE_READY_KEY = 'reiseplaner_pro_offline_ready_v1';
     let offlineAssetsReady = (() => { try { return localStorage.getItem(OFFLINE_READY_KEY) === 'true'; } catch { return false; } })();
@@ -30,7 +30,7 @@ const DEFAULT_CHECKLIST = [
     let serviceWorkerPageReloaded = false;
     let activeDialogResolver = null, activeDialogType = 'confirm';
 
-    const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
+    const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes', HAS_JSON_SNAPSHOT_KEY = 'reiseplaner_pro_has_json_snapshot';
     const DB_NAME = 'ReiseplanerPro_DB_v2', DB_VERSION = 1, TRIPS_STORE = 'trips_store', MEDIA_STORE = 'media_store';
     const activeMediaObjectUrls = new Map();
     let dbInstancePromise = null;
@@ -71,7 +71,9 @@ const DEFAULT_CHECKLIST = [
       icon.className = 'fa-solid ' + iconClass;
       const displayClasses = !offlineAssetsReady && ['ready', 'saved', 'fileSaved'].includes(state) ? 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70' : classes;
       badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + displayClasses;
-      badge.title = `Offline-Paket: ${offlineAssetsLabel} · Speicherstatus: ${saveLabel}`;
+      const localStoreInfo = ['saving', 'error'].includes(saveStatusState) ? `Lokaler Speicher: ${saveLabel}` : `Lokal gespeichert im Browser auf diesem Gerät (IndexedDB): ${saveLabel}`;
+      const jsonInfo = !hasJsonSnapshot ? 'JSON-Sicherung: noch nicht erstellt oder geladen' : (unsavedChangesCount > 0 ? `JSON-Sicherung veraltet: ${unsavedChangesCount} Änderung(en) seit dem letzten Laden/Export` : `JSON-Sicherung aktuell seit ${new Date(lastExportTimestamp).toLocaleString('de-DE')}`);
+      badge.title = `Offline-Paket: ${offlineAssetsLabel} · ${localStoreInfo} · ${jsonInfo}`;
     }
     async function checkStorageCapacity(force = false) {
       if (!navigator.storage?.estimate) return;
@@ -1104,7 +1106,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.54', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.56', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1200,6 +1202,7 @@ const DEFAULT_CHECKLIST = [
       const stored = readLocalSetting(LAST_EXPORT_KEY);
       lastExportTimestamp = stored ? parseInt(stored, 10) : Date.now();
       if (!stored) writeLocalSetting(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      hasJsonSnapshot = readLocalSetting(HAS_JSON_SNAPSHOT_KEY) === 'true';
       unsavedChangesCount = parseInt(readLocalSetting(CHANGES_COUNT_KEY, '0'), 10) || 0;
     }
 
@@ -1207,25 +1210,27 @@ const DEFAULT_CHECKLIST = [
       unsavedChangesCount++;
       writeLocalSetting(CHANGES_COUNT_KEY, String(unsavedChangesCount));
       checkBackupReminder();
+      updateCombinedStatus();
     }
 
-    function resetBackupReminder() {
+    function resetBackupReminder(markSnapshot = true) {
       unsavedChangesCount = 0; lastExportTimestamp = Date.now();
       writeLocalSetting(CHANGES_COUNT_KEY, '0');
       writeLocalSetting(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      if (markSnapshot) { hasJsonSnapshot = true; writeLocalSetting(HAS_JSON_SNAPSHOT_KEY, 'true'); }
+      else { hasJsonSnapshot = false; writeLocalSetting(HAS_JSON_SNAPSHOT_KEY, 'false'); }
+      updateCombinedStatus();
       dismissBackupReminder();
     }
 
     function checkBackupReminder() {
       const b = document.getElementById('backupReminderBanner'), c = document.getElementById('backupReminderCounter');
       if (!b) return;
-      const overWeek = (Date.now() - lastExportTimestamp) > 7 * 86400000, overTen = unsavedChangesCount >= 10;
-      if (overTen || (overWeek && unsavedChangesCount > 0)) {
-        if (c) c.innerText = overTen ? `${unsavedChangesCount} Änderungen` : `Seit 7 Tagen kein Export`;
+      if (unsavedChangesCount > 0) {
+        if (c) c.innerText = hasJsonSnapshot ? `${unsavedChangesCount} Änderungen` : 'JSON noch nicht gesichert';
         b.classList.remove('hidden');
       }
     }
-
     const dismissBackupReminder = () => document.getElementById('backupReminderBanner')?.classList.add('hidden');
 
     function parseISOParts(iso) {
@@ -2074,6 +2079,10 @@ const DEFAULT_CHECKLIST = [
       const a = Object.assign(document.createElement('a'), { href: url, download: name });
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(() => URL.revokeObjectURL(url), 15000);
+    }
+
+    function saveBackupReminder() {
+      return saveToFile(Boolean(activeFileName && !activeFileHandle));
     }
 
     function showExportConfirmation(name, location) {
@@ -2969,7 +2978,7 @@ const DEFAULT_CHECKLIST = [
       if (tripData.days?.length > 0 && !await showAppConfirm("Neue Reise anlegen?", { title: "Neue Reise", variant: "amber" })) return;
       await createRollingBackup();
       tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })), lodgings: [], days: [] };
-      activeFileHandle = null; activeFileName = null; resetBackupReminder(); saveToStorage(); updateFileStatus(null);
+      activeFileHandle = null; activeFileName = null; resetBackupReminder(false); saveToStorage(); updateFileStatus(null);
       ['tripTitle', 'startDate', 'endDate', 'generalNotes', 'emergencyNotesInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
       switchTab('plan'); document.getElementById('tripConfigSection')?.classList.remove('hidden');
       updateHeadline(); renderDays(); renderLodgingsTab(); renderChecklist(); renderAllAttachmentsOverview(); updateStats();
