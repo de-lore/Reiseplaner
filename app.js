@@ -1114,7 +1114,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.58', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.59', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1844,7 +1844,7 @@ const DEFAULT_CHECKLIST = [
 
     // --- FILTER & AUSWERTUNGEN ---
     const isStatusFixed = s => ['gebucht', 'bezahlt', 'reserviert'].includes((s || '').toLowerCase());
-    const isFlight = t => String(t?.category || '').toLowerCase() === 'flugzeug' || ['flug', 'flight', 'airline', 'airport'].some(k => String(t?.title || '').toLowerCase().includes(k));
+    const isFlight = t => t?.category === 'flugzeug';
 
     function getFlightsForOverview() {
       const flights = [];
@@ -1855,6 +1855,21 @@ const DEFAULT_CHECKLIST = [
         flights.push({ day, dayIndex, item, itemIndex, status: rawStatus === 'bezahlt' ? 'gebucht' : rawStatus });
       }));
       return flights;
+    }
+
+    function openFlightDay(dayIndex) {
+      if (!tripData.days?.[dayIndex]) return;
+      if (currentFilter !== 'all') setFilter('all');
+      if (searchQuery) clearSearch();
+      switchTab('plan');
+      openOnlyDay(dayIndex);
+      setTimeout(() => {
+        const card = document.getElementById('day-card-' + dayIndex);
+        if (!card) return;
+        scrollDayCardIntoView(dayIndex);
+        card.classList.add('ring-4', 'ring-indigo-400');
+        setTimeout(() => card.classList.remove('ring-4', 'ring-indigo-400'), 2000);
+      }, 100);
     }
 
     function renderFlightsView() {
@@ -1870,16 +1885,14 @@ const DEFAULT_CHECKLIST = [
         const amount = parseFlexibleNumber(item.cost);
         return `<article class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0"><h3 class="font-bold text-sm text-slate-900 dark:text-white truncate">✈️ ${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3>
-              <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}${day.location ? ` · ${escapeHtml(day.location)}` : ''}</p></div>
-            <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${statusMeta[2]}">${statusMeta[1]}${item.costStatus?.toLowerCase() === 'bezahlt' ? ' · bezahlt' : ''}</span>
+            <div class="min-w-0 flex-1"><p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}</p><h3 class="font-black text-base sm:text-lg leading-snug text-slate-900 dark:text-white whitespace-normal break-words">${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3></div>
+            <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${statusMeta[2]}">${statusMeta[1]}${String(item.costStatus || '').toLowerCase() === 'bezahlt' ? ' · bezahlt' : ''}</span>
           </div>
           ${item.hint ? `<p class="mt-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line">${escapeHtml(item.hint)}</p>` : ''}
-          <div class="mt-3 flex items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div>
+          <div class="mt-3 flex items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}<div class="flex items-center gap-3"><a href="#day-card-${dayIndex}" onclick="openFlightDay(${dayIndex}); return false;" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Zum Tag im Reiseplan</a>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div></div>
         </article>`;
       }).join('');
     }
-
     function updateFlightsTabAvailability() {
       const visible = getFlightsForOverview().length > 0;
       document.getElementById('deskTabBtn-flights')?.classList.toggle('hidden', !visible);
