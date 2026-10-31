@@ -1101,7 +1101,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.49', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.50', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2089,48 +2089,66 @@ const DEFAULT_CHECKLIST = [
     }
 
     function getImportValidationError(parsed) {
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'Die Datei enthält kein gültiges Reiseobjekt.';
+      const isRecord = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+      const isOptionalString = (obj, key) => obj[key] === undefined || obj[key] === null || typeof obj[key] === 'string';
+      const validAmount = (obj, key) => obj[key] === undefined || obj[key] === null || obj[key] === '' || isValidAmountInput(obj[key]);
+      if (!isRecord(parsed)) return 'Die Datei enthält kein gültiges Reiseobjekt.';
       if (!Array.isArray(parsed.days)) return 'Die Reisedaten enthalten keine gültige Tagesliste.';
-      if (parsed.startDate && !isValidISODate(parsed.startDate)) return 'Das Startdatum der Reise ist ungültig.';
-      if (parsed.endDate && !isValidISODate(parsed.endDate)) return 'Das Enddatum der Reise ist ungültig.';
-      if (parsed.startDate && parsed.endDate && parsed.startDate > parsed.endDate) return 'Das Startdatum liegt nach dem Enddatum.';
+      for (const key of ['title', 'generalNotes', 'emergencyNotes']) {
+        if (!isOptionalString(parsed, key)) return 'Das Feld „' + key + '“ hat ein ungültiges Format.';
+      }
       for (const key of ['lodgings', 'checklist']) {
         if (parsed[key] !== undefined && !Array.isArray(parsed[key])) return 'Die Liste „' + key + '“ hat ein ungültiges Format.';
+      }
+      for (const key of ['startDate', 'endDate']) {
+        if (parsed[key] && !isValidISODate(parsed[key])) return 'Das ' + (key === 'startDate' ? 'Startdatum' : 'Enddatum') + ' der Reise ist ungültig.';
+      }
+      if (parsed.startDate && parsed.endDate && parsed.startDate > parsed.endDate) return 'Das Startdatum liegt nach dem Enddatum.';
+      for (let i = 0; i < (parsed.checklist || []).length; i++) {
+        const item = parsed.checklist[i];
+        if (!isRecord(item) || !isOptionalString(item, 'text') || (item.done !== undefined && typeof item.done !== 'boolean')) return 'Ein Eintrag in der Packliste hat ein ungültiges Format.';
       }
       const seenDates = new Set();
       for (let i = 0; i < parsed.days.length; i++) {
         const day = parsed.days[i];
-        if (!day || typeof day !== 'object' || Array.isArray(day)) return 'Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+        if (!isRecord(day)) return 'Tag ' + (i + 1) + ' hat ein ungültiges Format.';
         if (!isValidISODate(day.date)) return 'Tag ' + (i + 1) + ' hat kein gültiges Datum.';
         if (seenDates.has(day.date)) return 'Das Datum ' + day.date + ' ist in der Tagesliste doppelt vorhanden.';
         seenDates.add(day.date);
+        for (const key of ['location', 'notes']) {
+          if (!isOptionalString(day, key)) return 'Tag ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
+        }
+        if (day.lodging !== undefined && day.lodging !== null && !isRecord(day.lodging)) return 'Die Unterkunft in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
         for (const key of ['images', 'transports', 'activities']) {
           if (day[key] !== undefined && !Array.isArray(day[key])) return 'Die Liste „' + key + '“ in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
-          if (Array.isArray(day[key])) {
-            const invalidItem = day[key].some(item => {
-              if (key === 'images') return !item || (typeof item !== 'string' && (typeof item !== 'object' || Array.isArray(item)));
-              return !item || typeof item !== 'object' || Array.isArray(item);
-            });
-            if (invalidItem) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
-            if (key !== 'images') {
-              const invalidCost = day[key].some(item => item.cost !== undefined && !isValidAmountInput(item.cost));
-              if (invalidCost) return 'Tag ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
+          for (const item of day[key] || []) {
+            if (key === 'images') {
+              if (typeof item === 'string') continue;
+              if (!isRecord(item) || !isOptionalString(item, 'id') || !isOptionalString(item, 'name') || !isOptionalString(item, 'type') || !isOptionalString(item, 'data')) return 'Ein Beleg in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+            } else {
+              if (!isRecord(item)) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+              for (const field of ['title', 'category', 'hint', 'link', 'costStatus']) {
+                if (!isOptionalString(item, field)) return 'Tag ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
+              }
+              if (!validAmount(item, 'cost')) return 'Tag ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
             }
           }
         }
       }
       for (let i = 0; i < (parsed.lodgings || []).length; i++) {
         const lodging = parsed.lodgings[i];
-        if (!lodging || typeof lodging !== 'object' || Array.isArray(lodging) || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
-        if (lodging.totalPrice !== undefined && !isValidAmountInput(lodging.totalPrice)) return 'Unterkunft ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
+        if (!isRecord(lodging) || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
+        for (const key of ['id', 'name', 'status', 'address', 'link', 'notes', 'freeCancellationUntil']) {
+          if (!isOptionalString(lodging, key)) return 'Unterkunft ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
+        }
+        if (!validAmount(lodging, 'totalPrice')) return 'Unterkunft ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
         for (let j = 0; j < i; j++) {
           const other = parsed.lodgings[j];
-          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut) return 'Die Zeiträume der Unterkünfte „' + (other.name || (j + 1)) + '“ und „' + (lodging.name || (i + 1)) + '“ überschneiden sich.';
+          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut) return 'Die Zeiträume der Unterkünfte überschneiden sich.';
         }
       }
       return '';
     }
-
     async function applyImportedTrip(parsed, name, handle = null) {
       const validationError = getImportValidationError(parsed);
       if (validationError) return showAppAlert(validationError, 'Datei kann nicht geladen werden', 'danger');
