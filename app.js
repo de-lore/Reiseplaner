@@ -755,7 +755,7 @@ const DEFAULT_CHECKLIST = [
       return clone;
     }
 
-    async function migrateImagesToMediaStore(days) {
+    async function migrateImagesToMediaStore(days, strict = false) {
       if (!Array.isArray(days)) return days;
       for (const day of days) {
         if (!Array.isArray(day.images)) continue;
@@ -768,9 +768,12 @@ const DEFAULT_CHECKLIST = [
             try {
               const blob = dataURLtoBlob(rawData), id = item.id || generateUUID();
               revokeMediaBlobUrl(id);
-              await mediaStorePut(id, blob, name, type, blob.size);
+              const stored = await mediaStorePut(id, blob, name, type, blob.size);
+              if (!stored && strict) throw new Error('Ein Beleg konnte nicht lokal gespeichert werden.');
               sanitized.push({ id, name, type, size: blob.size });
-            } catch (e) {}
+            } catch (e) {
+              if (strict) throw new Error('Ein Beleg konnte nicht gelesen oder gespeichert werden.');
+            }
           } else if (item.id) {
             sanitized.push({ id: item.id, name, type, size: item.size || 0 });
           }
@@ -1101,7 +1104,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.50', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.51', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2152,8 +2155,13 @@ const DEFAULT_CHECKLIST = [
     async function applyImportedTrip(parsed, name, handle = null) {
       const validationError = getImportValidationError(parsed);
       if (validationError) return showAppAlert(validationError, 'Datei kann nicht geladen werden', 'danger');
+
+      let candidate;
+      try { candidate = JSON.parse(JSON.stringify(parsed)); }
+      catch { return showAppAlert('Die Datei konnte nicht sicher vorbereitet werden.', 'Import fehlgeschlagen', 'danger'); }
+
       let preservedCancellationNotes = 0;
-      for (const lodging of parsed.lodgings || []) {
+      for (const lodging of candidate.lodgings || []) {
         const raw = lodging.freeCancellationUntil;
         const normalized = normalizeImportedOptionalDate(raw);
         if (normalized === null) {
@@ -2163,16 +2171,40 @@ const DEFAULT_CHECKLIST = [
           preservedCancellationNotes++;
         } else lodging.freeCancellationUntil = normalized;
       }
+
+      // Neue IDs verhindern, dass ein Import bestehende Belegdateien überschreibt.
+      for (const day of candidate.days || []) {
+        for (const item of day.images || []) {
+          if (item && typeof item === 'object' && item.data?.startsWith('data:')) item.id = generateUUID();
+        }
+      }
+
+      await flushPendingSave();
       await createRollingBackup();
-      activeFileHandle = handle; tripData = parsed;
-      await migrateImagesToMediaStore(tripData.days);
-      normalizeDataModel(); await createRollingBackup(); resetBackupReminder(); saveToStorage();
+      const previousTrip = tripData;
+      try {
+        await migrateImagesToMediaStore(candidate.days, true);
+        tripData = candidate;
+        normalizeDataModel();
+        const saved = await tripsSet('trip_data', tripData);
+        if (!saved) throw new Error('Lokales Speichern fehlgeschlagen.');
+      } catch (error) {
+        tripData = previousTrip;
+        return showAppAlert('Der Import wurde abgebrochen. Deine bisherige Reise bleibt geöffnet. ' + (error?.message || ''), 'Import fehlgeschlagen', 'danger');
+      }
+
+      activeFileHandle = handle;
+      clearTimeout(saveDebounceTimer);
+      saveDebounceTimer = null;
+      saveFailureNotified = false;
+      updateSaveStatus('saved');
+      await createRollingBackup();
+      resetBackupReminder();
       syncUI(); updateHeadline(); updateFileStatus(name);
       showToast(preservedCancellationNotes
         ? `Datei geladen; ${preservedCancellationNotes} alte Stornierungsangabe(n) in Unterkunftsnotizen gesichert.`
         : (handle ? 'Datei geöffnet' : 'Datei geladen'));
     }
-
     async function openFile() {
       if ('showOpenFilePicker' in window) {
         try {

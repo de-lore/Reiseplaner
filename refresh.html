@@ -22,7 +22,7 @@
   <script>
     (async () => {
       const status = document.getElementById('updateStatus');
-      const scriptUrl = './sw.js?v=2.50';
+      const scriptUrl = './sw.js?v=2.51';
       const targetScript = new URL(scriptUrl, location.href).href;
       const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
       try {
@@ -41,7 +41,7 @@
             .find(candidate => candidate?.scriptURL === targetScript) || null;
           if (!worker) await delay(200);
         }
-        if (!worker) throw new Error('Version 2.50 wurde vom Server noch nicht bereitgestellt.');
+        if (!worker) throw new Error('Version 2.51 wurde vom Server noch nicht bereitgestellt.');
 
         while (worker.state !== 'activated' && Date.now() < deadline) {
           await new Promise(resolve => {
