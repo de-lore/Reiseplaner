@@ -522,9 +522,9 @@ const DEFAULT_CHECKLIST = [
       applyBookingParse(text, geo, lastBookingPdf && lastBookingPdf.text === text ? 'PDF' : 'Buchungstext');
     }
 
-    // --- PDF.js (lazy von cdnjs geladen, vom Service Worker gecacht) ---
+    // --- PDF.js (lokal geladen und vom Service Worker gecacht) ---
     const PDFJS_VERSION = '3.11.174';
-    const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/`;
+    const PDFJS_BASE = './vendor/pdfjs/';
     let pdfJsLoadPromise = null, lastBookingPdf = null;
 
     function loadPdfJs() {
