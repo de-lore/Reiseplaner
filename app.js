@@ -24,7 +24,9 @@ const DEFAULT_CHECKLIST = [
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
     let saveStatusState = 'ready', saveFailureNotified = false, storageQuotaWarning = false, storageQuotaWarned = false, lastStorageEstimateAt = 0;
-    let offlineAssetsLabel = 'Offline-Paket wird eingerichtet', offlineAssetsReady = false;
+    const OFFLINE_READY_KEY = 'reiseplaner_pro_offline_ready_v1';
+    let offlineAssetsReady = (() => { try { return localStorage.getItem(OFFLINE_READY_KEY) === 'true'; } catch { return false; } })();
+    let offlineAssetsLabel = offlineAssetsReady ? 'Offline bereit' : 'Offline-Paket wird eingerichtet';
     let activeDialogResolver = null, activeDialogType = 'confirm';
 
     const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
@@ -1150,8 +1152,19 @@ const DEFAULT_CHECKLIST = [
     }
 
     function updateOfflineAssetsStatus(label, ready) {
-      offlineAssetsLabel = label;
-      offlineAssetsReady = ready;
+      const transient = label.includes('unbekannt') || label.includes('wird eingerichtet') || (label.includes('nicht verfügbar') && !navigator.onLine);
+      if (ready) {
+        offlineAssetsReady = true;
+        offlineAssetsLabel = 'Offline bereit';
+        writeLocalSetting(OFFLINE_READY_KEY, 'true');
+      } else if (offlineAssetsReady && transient) {
+        // Ein voriger erfolgreicher Cache-Check bleibt gültig, wenn der Worker offline nicht antwortet.
+        offlineAssetsLabel = 'Offline bereit';
+      } else {
+        offlineAssetsReady = false;
+        offlineAssetsLabel = label;
+        writeLocalSetting(OFFLINE_READY_KEY, 'false');
+      }
       updateCombinedStatus();
     }
     async function checkOfflineReadiness() {
