@@ -1104,7 +1104,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.52', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.53', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2042,13 +2042,13 @@ const DEFAULT_CHECKLIST = [
           await wr.write(json); await wr.close();
           updateFileStatus(activeFileHandle.name); resetBackupReminder();
           if (locallySaved) updateSaveStatus('fileSaved');
-          return showToast('Gespeichert in: ' + activeFileHandle.name);
+          return showExportConfirmation(activeFileHandle.name, 'Ausgewählter Speicherort (der Browser gibt den Gerätepfad nicht frei).');
         } catch (err) { if (err.name === 'AbortError') return; }
       }
 
       downloadJsonFile(json, name); resetBackupReminder();
       if (locallySaved) updateSaveStatus('fileSaved');
-      showToast("Download abgeschlossen");
+      showExportConfirmation(name, 'Downloads-Ordner des Browsers (der genaue Gerätepfad wird vom Browser verwaltet).');
     }
 
     // Download als Datei (URL erst verzögert freigeben – sonst bricht der Download auf Android teils ab)
@@ -2059,6 +2059,9 @@ const DEFAULT_CHECKLIST = [
       setTimeout(() => URL.revokeObjectURL(url), 15000);
     }
 
+    function showExportConfirmation(name, location) {
+      return showAppAlert(`Datei: ${name}\nSpeicherort: ${location}`, 'JSON-Sicherung erstellt', 'indigo', 'fa-file-circle-check');
+    }
     // Datei über das System-Teilen-Menü senden (z. B. Android -> OneDrive / an den PC); Fallback: Download
     async function shareTripFile() {
       await flushPendingSave(); await createRollingBackup();
@@ -2075,22 +2078,22 @@ const DEFAULT_CHECKLIST = [
       const file = (navigator.share && navigator.canShare) ? candidates.find(f => { try { return navigator.canShare({ files: [f] }); } catch { return false; } }) : null;
       if (!file) {
         downloadJsonFile(json, name); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved');
-        return showToast("Teilen nicht verfügbar – Datei wurde heruntergeladen");
+        return showExportConfirmation(name, 'Downloads-Ordner des Browsers (der genaue Gerätepfad wird vom Browser verwaltet).');
       }
 
       const doShare = () => navigator.share({ files: [file], title: name });
       try {
-        await doShare(); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved'); showToast("Datei geteilt");
+        await doShare(); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved'); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.');
       } catch (err) {
         if (err?.name === 'AbortError') return;
         if (err?.name === 'NotAllowedError') {
           // Die Berührung ist beim Erstellen der Datei "abgelaufen" -> erneut per Tipp bestätigen lassen
           if (!await showAppConfirm(`Die Datei „${name}“ ist bereit. Jetzt teilen?`, { title: 'Teilen', confirmText: 'Teilen', icon: 'fa-share-nodes' })) return;
-          try { await doShare(); resetBackupReminder(); showToast("Datei geteilt"); return; }
+          try { await doShare(); resetBackupReminder(); showExportConfirmation(name, 'Im Teilen-Menü ausgewähltes Ziel.'); return; }
           catch (e2) { if (e2?.name === 'AbortError') return; }
         }
         downloadJsonFile(json, name); resetBackupReminder();
-        showToast("Teilen fehlgeschlagen – Datei wurde heruntergeladen", true);
+        showExportConfirmation(name, 'Downloads-Ordner des Browsers (der genaue Gerätepfad wird vom Browser verwaltet).');
       }
     }
 
