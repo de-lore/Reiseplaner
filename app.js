@@ -1,0 +1,2867 @@
+const DEFAULT_CHECKLIST = [
+      "Reisepass (Gültigkeit prüfen, min. 6 Monate)",
+      "E-Visum beantragt & ausgedruckt",
+      "Auslandskrankenversicherung & Notfallnummer",
+      "Kreditkarten für gebührenfreie Abhebungen (2x)",
+      "eSIM oder lokale SIM-Karte vorbereitet",
+      "Reiseadapter (Typ C/G für SE-Asien)",
+      "Reiseapotheke & Mückenschutz (DEET)"
+    ];
+
+    const createEmptyDay = (date, isCollapsed = true) => ({
+      date, location: '', isCollapsed, noLodgingNeeded: false, transports: [], activities: [], images: [], notes: ''
+    });
+
+    let tripData = {
+      title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "",
+      checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })),
+      lodgings: [],
+      days: []
+    };
+
+    let activeFileHandle = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
+    let saveDebounceTimer = null, pendingModalAction = null, pendingMoveItem = null, prePrintCollapsedStates = null;
+    let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
+    let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
+    let saveStatusState = 'ready', saveFailureNotified = false, storageQuotaWarning = false, storageQuotaWarned = false, lastStorageEstimateAt = 0;
+    let activeDialogResolver = null, activeDialogType = 'confirm';
+
+    const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
+    const DB_NAME = 'ReiseplanerPro_DB_v2', DB_VERSION = 1, TRIPS_STORE = 'trips_store', MEDIA_STORE = 'media_store';
+    const activeMediaObjectUrls = new Map();
+    let dbInstancePromise = null;
+
+    function readLocalSetting(key, fallback = null) {
+      try { return localStorage.getItem(key) ?? fallback; }
+      catch (e) { console.warn('Lokaler Einstellungsspeicher nicht verfügbar:', e); return fallback; }
+    }
+
+    function writeLocalSetting(key, value) {
+      try { localStorage.setItem(key, value); return true; }
+      catch (e) { console.warn('Lokaler Einstellungsspeicher nicht verfügbar:', e); return false; }
+    }
+
+    function updateSaveStatus(state) {
+      saveStatusState = state;
+      const badge = document.getElementById('saveStatusBadge'), icon = document.getElementById('saveStatusIcon'), text = document.getElementById('saveStatusText');
+      if (!badge || !icon || !text) return;
+      if (state !== 'error' && storageQuotaWarning) state = 'quota';
+      const styles = {
+        ready: ['Bereit', 'fa-circle-check', 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700'],
+        saving: ['Speichert…', 'fa-spinner fa-spin', 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70'],
+        saved: ['Gespeichert', 'fa-circle-check', 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70'],
+        fileSaved: ['Datei gesichert', 'fa-file-circle-check', 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70'],
+        error: ['Speichern fehlgeschlagen', 'fa-triangle-exclamation', 'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70'],
+        quota: ['Speicher fast voll', 'fa-hard-drive', 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70']
+      };
+      const [label, iconClass, classes] = styles[state] || styles.ready;
+      text.innerText = label;
+      icon.className = 'fa-solid ' + iconClass;
+      badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + classes;
+      badge.title = state === 'error' ? 'Lokales Speichern fehlgeschlagen. Erstelle sofort ein JSON-Backup.' : state === 'quota' ? 'Der verfügbare Gerätespeicher ist fast voll. Erstelle ein JSON-Backup und entferne nicht benötigte Belege.' : label;
+    }
+
+    async function checkStorageCapacity(force = false) {
+      if (!navigator.storage?.estimate) return;
+      const now = Date.now();
+      if (!force && now - lastStorageEstimateAt < 60000) return;
+      lastStorageEstimateAt = now;
+      try {
+        const { usage = 0, quota = 0 } = await navigator.storage.estimate();
+        const ratio = quota > 0 ? usage / quota : 0;
+        const wasWarning = storageQuotaWarning;
+        storageQuotaWarning = ratio >= 0.85;
+        if (ratio < 0.80) storageQuotaWarned = false;
+        if (storageQuotaWarning && !storageQuotaWarned) {
+          storageQuotaWarned = true;
+          showToast(`Gerätespeicher zu ${Math.round(ratio * 100)} % belegt. Bitte Reise-Backup sichern.`, true);
+        }
+        if (wasWarning !== storageQuotaWarning || storageQuotaWarning) updateSaveStatus(saveStatusState);
+      } catch (e) { console.warn('Speicherbelegung konnte nicht geprüft werden:', e); }
+    }
+
+    const toggleModal = (id, show) => {
+      const m = document.getElementById(id);
+      if (m) { m.classList.toggle('hidden', !show); m.classList.toggle('flex', show); }
+    };
+
+    // --- PDF-IMPORT & BOOKING-PARSER (v1.96) ---
+    const BK_MONTHS = { jan: 1, feb: 2, 'mär': 3, mar: 3, apr: 4, mai: 5, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, okt: 10, oct: 10, nov: 11, dez: 12, dec: 12 };
+    const bkMonth = (s) => s ? (BK_MONTHS[String(s).toLowerCase().substring(0, 3)] || null) : null;
+    const bkPad = (n) => String(n).padStart(2, '0');
+
+    // Preis-String (z. B. "1.231,20", "33", "1,234.50") -> "1231,20" im deutschen Format mit 2 Nachkommastellen
+    function bkFormatPrice(raw) {
+      let s = String(raw || '').replace(/[^0-9.,]/g, '');
+      if (!s) return '';
+      const m = s.match(/[.,](\d{1,2})$/);
+      let intPart = s, dec = '00';
+      if (m) { intPart = s.slice(0, s.length - m[0].length); dec = m[1].padEnd(2, '0'); }
+      intPart = intPart.replace(/[.,]/g, '');
+      return intPart ? `${intPart},${dec}` : '';
+    }
+
+    // Jahr für Datumsangaben ohne Jahr ableiten (Stornodatum > Reisebeginn > heutiges Datum)
+    function bkInferYear(day, month, ctx = {}) {
+      const mk = (y) => Date.UTC(y, month - 1, day);
+      if (ctx.anchorISO) {
+        const a = ctx.anchorISO.split('-').map(Number), aT = Date.UTC(a[0], a[1] - 1, a[2]);
+        let y = a[0]; if (mk(y) < aT) y++;
+        return y;
+      }
+      if (ctx.tripStart) {
+        const p = ctx.tripStart.split('-').map(Number), sT = Date.UTC(p[0], p[1] - 1, p[2]);
+        let best = p[0], bestDiff = Infinity;
+        for (let y = p[0] - 1; y <= p[0] + 1; y++) { const d = Math.abs(mk(y) - sT); if (d < bestDiff) { bestDiff = d; best = y; } }
+        return best;
+      }
+      const now = new Date(); let y = now.getFullYear();
+      if (mk(y) < now.getTime() - 30 * 86400000) y++;
+      return y;
+    }
+
+    // Text-Items (mit Koordinaten) -> Zeilen; große Lücken werden mit Tab getrennt
+    function bkBuildLines(items) {
+      const sorted = items.filter(i => i.str && i.str.trim()).slice().sort((a, b) => (b.y - a.y) || (a.x - b.x));
+      const rows = [];
+      for (const it of sorted) {
+        const row = rows.find(r => Math.abs(r.y - it.y) <= 2.5);
+        if (row) row.items.push(it); else rows.push({ y: it.y, items: [it] });
+      }
+      rows.sort((a, b) => b.y - a.y);
+      return rows.map(r => {
+        r.items.sort((a, b) => a.x - b.x);
+        let out = '', prevEnd = null;
+        for (const it of r.items) {
+          const gap = prevEnd === null ? 0 : it.x - prevEnd;
+          if (prevEnd !== null) out += gap > 14 ? '\t' : ' ';
+          out += it.str.trim();
+          prevEnd = it.x + (it.w || 0);
+        }
+        return out;
+      });
+    }
+
+    // Booking.com-Layout: Spalten ANREISE/ABREISE und linker Kopfblock anhand der Koordinaten
+    function bkParseGeometry(items, ctx = {}) {
+      const find = (re) => items.find(i => re.test(i.str.trim()));
+      const a = find(/^(ANREISE|CHECK-?IN|ARRIVAL)$/i), b = find(/^(ABREISE|CHECK-?OUT|DEPARTURE)$/i);
+      if (!a || !b) return null;
+      const cx = (i) => i.x + (i.w || 0) / 2;
+      const D = Math.abs(cx(b) - cx(a)) || 80;
+      const column = (lab) => bkBuildLines(items.filter(i => i !== lab && i.y < lab.y - 1 && i.y > lab.y - D * 1.4 && Math.abs(cx(i) - cx(lab)) < D * 0.42));
+      const parseCell = (lines) => {
+        const day = (lines[0] || '').match(/^\d{1,2}$/);
+        const text = lines.join(' ');
+        const month = (text.match(/[A-Za-zäöüÄÖÜ]{3,}/g) || []).map(bkMonth).find(Boolean);
+        const times = text.match(/\d{1,2}:\d{2}/g) || [];
+        return day && month ? { day: +day[0], month, times, until: /\bbis\b|\buntil\b/i.test(text) } : null;
+      };
+      const cIn = parseCell(column(a)), cOut = parseCell(column(b));
+      const out = { in: cIn, out: cOut };
+
+      const pLabel = find(/^PREIS$/i);
+      const leftItems = items.filter(i => (i.x + (i.w || 0)) <= Math.min(a.x, b.x) - 5 && i.y <= a.y + 12 && (!pLabel || i.y > pLabel.y + 2));
+      const left = bkBuildLines(leftItems).map(l => l.replace(/\t/g, ' '));
+      const addrIdx = left.findIndex(l => /^(Adresse|Address)\s*:/i.test(l));
+      if (addrIdx > 0) {
+        out.name = left.slice(0, addrIdx).join(' ').replace(/\s+/g, ' ').trim();
+        const endIdx = left.findIndex((l, i) => i > addrIdx && /^(Telefon|Phone|GPS)/i.test(l));
+        const addrLines = left.slice(addrIdx, endIdx === -1 ? left.length : endIdx);
+        out.addressRaw = addrLines.join(' ').replace(/^(Adresse|Address)\s*:\s*/i, '').replace(/\s+,/g, ',').replace(/\s+/g, ' ').trim();
+        const ph = left.find(l => /^(Telefon|Phone)\s*:/i.test(l));
+        if (ph) out.phone = ph.replace(/^(Telefon|Phone)\s*:\s*/i, '').trim();
+      }
+      return out;
+    }
+
+
+    // Uhrzeiten aus der Anreise-/Abreisespalte lesbar formatieren
+    function bkFormatTimes(c) {
+      const tm = c.times || [];
+      if (!tm.length) return '';
+      if (c.until) return `bis ${tm[0]}`;
+      if (tm.length === 1) return tm[0];
+      if (tm[0] === tm[1]) return tm[0] === '00:00' ? 'ganztägig' : tm[0];
+      return `${tm[0]}–${tm[1]}`;
+    }
+
+    // Fallback ohne Koordinaten: Spalten ANREISE/ABREISE aus tab-getrennten Textzeilen lesen
+    function bkParseDatesFromLines(lines) {
+      const segs = (l) => l.split('\t').map(s => s.trim()).filter(Boolean);
+      const hi = lines.findIndex(l => { const s = segs(l); return s.length >= 2 && /^(ANREISE|CHECK-?IN|ARRIVAL)$/i.test(s[0]) && /^(ABREISE|CHECK-?OUT|DEPARTURE)$/i.test(s[1]); });
+      if (hi === -1) return null;
+      const win = lines.slice(hi + 1, hi + 12).map(segs);
+      const dayRow = win.find(s => s.length >= 2 && /^\d{1,2}$/.test(s[0]) && /^\d{1,2}$/.test(s[1]));
+      const monRow = win.find(s => s.length >= 2 && bkMonth(s[0]) && bkMonth(s[1]));
+      const timeRow = win.find(s => s.length >= 2 && /\d{1,2}:\d{2}/.test(s[0]) && /\d{1,2}:\d{2}/.test(s[1]));
+      if (!dayRow || !monRow) return null;
+      const t = (x) => x ? (x.match(/\d{1,2}:\d{2}/g) || []) : [];
+      const tr = timeRow;
+      return { in: { day: +dayRow[0], month: bkMonth(monRow[0]), times: t(tr?.[0]), until: /\bbis\b/i.test(tr?.[0] || '') }, out: { day: +dayRow[1], month: bkMonth(monRow[1]), times: t(tr?.[1]), until: /\bbis\b/i.test(tr?.[1] || '') } };
+    }
+
+    // Adresse bereinigen (doppelte Teile entfernen) und Ort ableiten
+    function bkCleanAddress(raw) {
+      const parts = String(raw || '').split(',').map(s => s.trim()).filter(Boolean);
+      if (!parts.length) return { address: '', city: '' };
+      const seen = new Set(), uniq = [];
+      for (const p of parts) { const k = p.toLowerCase(); if (!seen.has(k)) { seen.add(k); uniq.push(p); } }
+      const norm = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().replace(/[^a-z]/g, '');
+      const country = norm(parts[parts.length - 1]);
+      // Kandidaten: Teile ohne Land und ohne reine Zahlen; führende Postleitzahl abschneiden
+      const cands = [];
+      for (const p of parts) {
+        if (norm(p) === country) continue;
+        const stripped = p.replace(/^\d[\d\s-]*\s+(?=\D)/, '').trim();
+        if (!stripped || /\d/.test(stripped)) continue;
+        cands.push({ text: stripped, key: norm(stripped), hadZip: stripped !== p });
+      }
+      let city = '', best = 1;
+      for (const c of cands) {
+        if (!c.key) continue;
+        const score = cands.filter(o => o.key.includes(c.key)).length;
+        if (score > best || (score === best && city && score > 1 && c.key.length < norm(city).length)) { best = score; city = c.text; }
+      }
+      if (!city) { const z = cands.find(c => c.hadZip); if (z) city = z.text; }
+      return { address: uniq.join(', '), city };
+    }
+
+    // Zentrale Parse-Funktion: Text (Zeilen) + optionale Geometrie -> { res, notes }
+    function bkParseBooking(text, geo, ctx = {}) {
+      const res = {}, notes = [];
+      const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+      const segs = (l) => l.split('\t').map(s => s.trim()).filter(Boolean);
+      const fullDateRx = /(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})(?:\D{1,3}(\d{1,2}):(\d{2}))?/;
+
+      // Stornofrist: erste Zeile "bis <Datum> <Uhrzeit>: <Währung> 0"
+      let cancelAnchor = null;
+      const zeroFee = text.match(/bis\s+(\d{1,2})\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\.?\s+(20\d{2})\s+(\d{1,2}):(\d{2})\s*:\s*(?:[A-Z]{3}|[A-Z]{0,2}\$|€)?\s*0(?:[.,]0+)?(?!\d)/i);
+      if (zeroFee && bkMonth(zeroFee[2])) {
+        cancelAnchor = `${zeroFee[3]}-${bkPad(bkMonth(zeroFee[2]))}-${bkPad(zeroFee[1])}`;
+        res.freeCancel = `${cancelAnchor}T${bkPad(zeroFee[4])}:${zeroFee[5]}`;
+      } else {
+        const gen = text.match(/(?:kostenlos(?:e|en)?\s+stornier(?:ung|bar)|stornieren\s+bis|free\s+cancellation\s+until)[:\s]*([^\n]+)/i);
+        const gm = gen && gen[1].match(fullDateRx);
+        if (gm && bkMonth(gm[2])) {
+          cancelAnchor = `${gm[3]}-${bkPad(bkMonth(gm[2]))}-${bkPad(gm[1])}`;
+          res.freeCancel = `${cancelAnchor}T${gm[4] ? bkPad(gm[4]) + ':' + gm[5] : '23:59'}`;
+        } else if (/Stornierungsgeb(?:ü|u)hren|Nicht erstattungsf(?:ä|a)hig|non-?refundable/i.test(text)) {
+          notes.push('Nicht kostenlos stornierbar');
+        }
+      }
+      const ictx = Object.assign({}, ctx, { anchorISO: cancelAnchor });
+
+      // Datum: zuerst Geometrie (Booking-Spalten), sonst Textzeilen mit vollem Datum
+      const dates = (geo && geo.in && geo.out) ? geo : bkParseDatesFromLines(lines);
+      if (dates && dates.in && dates.out) {
+        const yIn = bkInferYear(dates.in.day, dates.in.month, ictx);
+        res.checkIn = `${yIn}-${bkPad(dates.in.month)}-${bkPad(dates.in.day)}`;
+        let yOut = yIn; if (Date.UTC(yOut, dates.out.month - 1, dates.out.day) < Date.UTC(yIn, dates.in.month - 1, dates.in.day)) yOut++;
+        res.checkOut = `${yOut}-${bkPad(dates.out.month)}-${bkPad(dates.out.day)}`;
+        if (bkFormatTimes(dates.in)) notes.push(`Check-in ${bkFormatTimes(dates.in)}`);
+        if (bkFormatTimes(dates.out)) notes.push(`Check-out ${bkFormatTimes(dates.out)}`);
+      }
+
+      // Name & Adresse aus Geometrie
+      if (geo?.name) res.name = geo.name;
+      if (geo?.addressRaw) {
+        const ca = bkCleanAddress(geo.addressRaw);
+        if (ca.address) res.address = ca.address;
+        if (ca.city) res.location = ca.city;
+      }
+      if (!res.address) {
+        const al = lines.map(l => segs(l)[0] || '').find(l => /^(Adresse|Address)\s*:/i.test(l));
+        if (al) { const ca = bkCleanAddress(al.replace(/^(Adresse|Address)\s*:\s*/i, '')); if (ca.address) res.address = ca.address; if (ca.city && !res.location) res.location = ca.city; }
+      }
+
+      // Buchungsnummer & PIN
+      const nr = text.match(/(?:BUCHUNGSNUMMER|Buchungsnummer|Confirmation\s*number|Booking\s*(?:number|id))\s*:?\s*(\d{3,}(?:[.\s-]\d{3,}){1,3}|[A-Z0-9]{6,})/i);
+      const pin = text.match(/PIN(?:[- ]?CODE)?\s*:?\s*(\d{3,8})/i);
+      if (nr) notes.unshift(`Buchungs-Nr.: ${nr[1].trim()}${pin ? ` (PIN ${pin[1]})` : ''}`);
+
+      // Zimmer & Gäste
+      const gi = lines.findIndex(l => /^Name des Gastes\s*:|^Guest name\s*:/i.test(segs(l)[0] || ''));
+      let roomLine = '';
+      for (let k = 1; k <= 3 && gi - k >= 0 && !roomLine; k++) {
+        const cand = segs(lines[gi - k])[0] || '';
+        if (cand && !/:\s*$/.test(cand) && cand.length < 70) roomLine = cand;
+      }
+      const guests = text.match(/Anzahl der G(?:ä|a)ste\s*:\s*([^\t\n]+)/i);
+      const roomBits = [];
+      if (roomLine && roomLine.length < 70) roomBits.push(roomLine);
+      if (guests) roomBits.push(guests[1].trim());
+      if (roomBits.length) notes.push(`Zimmer: ${roomBits.join(', ')}`);
+
+      // Verpflegung
+      if (/Fr(?:ü|u)hst(?:ü|u)ck\s+(?:ist\s+)?(?:im\s+Endpreis\s+)?(?:inbegriffen|inklusive|enthalten)|breakfast\s+(?:is\s+)?included/i.test(text)) notes.push('Frühstück inklusive');
+
+      // Preis: Zeile "Preis ... ca. € 33" (EUR) + Originalwährung in der Folgezeile
+      let priceFound = false;
+      const pi = lines.findIndex(l => /^(?:Preis|Price)(?:\s|\t)/.test(l) && /(?:€|EUR)\s*[\d]|[\d]\s*(?:€|EUR)/.test(l));
+      if (pi !== -1) {
+        const cur = [lines[pi], lines[pi + 1] || '', lines[pi + 2] || ''];
+        const eur = cur[0].match(/(?:€|EUR)\s*(\d+(?:[.,]\d+)*)|(\d+(?:[.,]\d+)*)\s*(?:€|EUR)/);
+        if (eur) { res.price = bkFormatPrice(eur[1] || eur[2]); priceFound = true; if (/\bca\.?(?=\s)/i.test(cur[0])) notes.push('Preis in € ist ein ca.-Wert (Umrechnung)'); }
+        const foreign = (cur[0] + ' ' + cur[1]).match(/(?:\b(THB|USD|GBP|CHF|JPY|VND|IDR|MYR|SGD|LAK|KHR)|(US\$|A\$|C\$))\s*(\d+(?:[.,]\d+)*)/);
+        if (foreign) notes.push(`Originalpreis: ${foreign[1] || (foreign[2] === 'US$' ? 'USD' : foreign[2])} ${foreign[3]}`);
+      }
+      if (!priceFound) {
+        const priceText = lines.filter(l => !/storn|geb(?:ü|u)hr|kaution|deposit|fee|cancel|steuer|tax|mehrwert/i.test(l) && !/(?:^|\t)(?:ab|bis|from|until)\s+\d/i.test(l)).join('\n');
+        const pm = priceText.match(/(?:gesamtpreis|total|betrag|summe|preis)[:\s\t]*(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i) || priceText.match(/(?:ca\.?\s*)?(?:€|EUR)\s*(\d+(?:[.,]\d+)*)/i);
+        if (pm) res.price = bkFormatPrice(pm[1]);
+      }
+
+      // Zahlung: Vorauszahlung / Zahlung vor Ort in Fremdwährung
+      if (/Sie entrichten als Vorauszahlung/i.test(text)) notes.push('Vorauszahlung 24 h vor Anreise (Gesamtpreis)');
+      const payCur = text.match(/Sie bezahlen die Unterkunft[^\n]*? in ([A-Z]{3}) gem(?:ä|a)(?:ß|ss)/i);
+      if (payCur) notes.push(`Zahlung vor Ort in ${payCur[1]}`);
+
+      // Kaution
+      const dep = text.match(/(?:Schadenskaution|Kaution|damage deposit)[^.\n]*?([A-Z]{3}|€)\s*(\d+(?:[.,]\d+)*)/i);
+      if (dep) {
+        const approx = text.match(/ungef(?:ä|a)hr\s+(EUR|€)\s*(\d+(?:[.,]\d+)*)/i);
+        notes.push(`Kaution bei Ankunft: ${dep[1]} ${dep[2]}${approx ? ` (ca. € ${approx[2]})` : ''}, bar`);
+      }
+
+      if (geo?.phone) notes.push(`Tel.: ${geo.phone}`);
+      return { res, notes };
+    }
+
+    // Ursprünglicher generischer Textparser (v1.95), jetzt als reine Funktion
+    function bkLegacyParse(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      const res = {};
+
+      // 1. Check-In & Check-Out Datums-Erkennung (z. B. 24.01.2027, 2027-01-24 oder 24. Jan 2027)
+      const months = {
+        jan: '01', feb: '02', mär: '03', mar: '03', apr: '04', mai: '05', may: '05', jun: '06',
+        jul: '07', aug: '08', sep: '09', okt: '10', oct: '10', nov: '11', dez: '12', dec: '12'
+      };
+
+      const parseDateString = (str) => {
+        if (!str) return null;
+        const isoMatch = str.match(/\b(20\d{2})[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b/);
+        if (isoMatch) return `${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}`;
+        const deMatch = str.match(/\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b/);
+        if (deMatch) return `${deMatch[3]}-${deMatch[2].padStart(2, '0')}-${deMatch[1].padStart(2, '0')}`;
+        const wordMatch = str.match(/\b(0?[1-9]|[12]\d|3[01])\.?\s+([A-Za-zäöüÄÖÜ]{3,9})\s+(20\d{2})\b/);
+        if (wordMatch) {
+          const mKey = wordMatch[2].toLowerCase().substring(0, 3);
+          if (months[mKey]) return `${wordMatch[3]}-${months[mKey]}-${wordMatch[1].padStart(2, '0')}`;
+        }
+        return null;
+      };
+
+      // Suche nach expliziten Check-in/Check-out Zeilen
+      for (const line of lines) {
+        if (!res.checkIn && /check[- ]?in|anreise|ankunft|arrival/i.test(line)) {
+          const d = parseDateString(line);
+          if (d) res.checkIn = d;
+        }
+        if (!res.checkOut && /check[- ]?out|abreise|abfahrt|departure/i.test(line)) {
+          const d = parseDateString(line);
+          if (d) res.checkOut = d;
+        }
+      }
+
+      // Fallback: Erste zwei gefundene Datumsangaben im Gesamttext
+      if (!res.checkIn || !res.checkOut) {
+        const allDateMatches = [];
+        const dateText = lines.filter(l => !/storn|cancel|geb(?:ü|u)hr|fee|kaution|deposit|gedruckt|printed/i.test(l)).join('\n');
+        const rx = /\b(0?[1-9]|[12]\d|3[01])\.(0?[1-9]|1[0-2])\.(20\d{2})\b|\b(20\d{2})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])\b/g;
+        let m;
+        while ((m = rx.exec(dateText)) !== null) {
+          const parsed = parseDateString(m[0]);
+          if (parsed && !allDateMatches.includes(parsed)) allDateMatches.push(parsed);
+        }
+        if (!res.checkIn && allDateMatches[0]) res.checkIn = allDateMatches[0];
+        if (!res.checkOut && allDateMatches[1]) res.checkOut = allDateMatches[1];
+      }
+
+      // 2. Preis-Erkennung (z. B. 125,50 €, EUR 140, 89.00 EUR)
+      const priceMatch = text.match(/(?:preis|gesamtpreis|total|betrag|summe)?[:\s]*([0-9]+[0-9.,]*)\s*(?:€|eur|euro)\b/i) ||
+                         text.match(/(?:€|eur|euro)\s*([0-9]+[0-9.,]*)/i);
+      if (priceMatch) {
+        res.price = priceMatch[1].trim();
+      }
+
+      // 3. Stornofrist-Erkennung (Kostenlos stornierbar bis ...)
+      const cancelMatch = text.match(/(?:kostenlos(?:e|en)?\s+stornier(?:ung|bar)|stornieren\s+bis|free\s+cancellation\s+until)[:\s]*([^\n.]+)/i);
+      if (cancelMatch) {
+        const cDate = parseDateString(cancelMatch[1]);
+        if (cDate) {
+          const timeMatch = cancelMatch[1].match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+          const timeStr = timeMatch ? `${timeMatch[1].padStart(2, '0')}:${timeMatch[2]}` : '23:59';
+          res.freeCancel = `${cDate}T${timeStr}`;
+        }
+      }
+
+      // 4. Hotelname & Ort
+      for (const line of lines) {
+        if (!res.name && /^(hotel|resort|villa|hostel|guesthouse|bungalows?|palace|boutique)\b/i.test(line)) {
+          res.name = line;
+        } else if (!res.name && /(hotel|resort|villa|hostel|guesthouse|bungalows?|palace|boutique)\b/i.test(line) && line.length < 60) {
+          res.name = line.replace(/^(unterkunft|ihre unterkunft|hotelname)[:\s-]*/i, '').trim();
+        }
+        if (!res.location && /\b(?:ort|region|stadt|location|city)\s*:\s*([^\n,]+)/i.test(line)) {
+          const locMatch = line.match(/\b(?:ort|region|stadt|location|city)\s*:\s*([^\n,]+)/i);
+          if (locMatch) res.location = locMatch[1].trim();
+        }
+      }
+
+      // Fallback: Zeile 1 als Name, falls typische Bestätigungs-Kopfzeile
+      if (!res.name && lines[0] && lines[0].length < 60 && !/buchung|bestätigung|vielen dank/i.test(lines[0])) {
+        res.name = lines[0];
+      }
+
+      // 5. Buchungsnummer & Notizen
+      const bookingNrMatch = text.match(/(?:buchungsnummer|booking\s*(?:id|number|nr)|pin)[:\s]*([A-Z0-9.-]+)/i);
+      const notesArr = [];
+      if (bookingNrMatch) notesArr.push(`Buchungs-Nr.: ${bookingNrMatch[1]}`);
+      if (/frühstück\s+(?:inbegriffen|inklusive|enthalten)|breakfast\s+included/i.test(text)) {
+        notesArr.push('Frühstück inklusive');
+      }
+      return { res, notes: notesArr };
+    }
+
+    // Erkannte Daten zunächst prüfen lassen, bevor sie Unterkunftsfelder ändern.
+    let pendingBookingImport = null;
+    const bookingPreviewFields = [
+      ['name', 'Unterkunft'], ['location', 'Ort'], ['checkIn', 'Anreise'], ['checkOut', 'Abreise'],
+      ['price', 'Gesamtpreis'], ['freeCancel', 'Kostenlose Stornierung bis'], ['address', 'Adresse']
+    ];
+
+    function showBookingImportPreview(res, notes, sourceLabel) {
+      const preview = document.getElementById('bookingImportPreview');
+      const list = document.getElementById('bookingImportPreviewList');
+      if (!preview || !list) return;
+      pendingBookingImport = { res, notes };
+      list.replaceChildren();
+      const detected = bookingPreviewFields.filter(([key]) => String(res[key] || '').trim());
+      for (const [key, label] of bookingPreviewFields) {
+        const li = document.createElement('li');
+        li.className = 'flex gap-2';
+        const value = String(res[key] || '').trim();
+        const shown = key === 'freeCancel' && value ? toDateTimeLocalValue(value).replace('T', ' ') : value;
+        li.textContent = `${value ? '✓' : '–'} ${label}: ${shown || 'nicht erkannt'}`;
+        list.appendChild(li);
+      }
+      if (notes.length) {
+        const li = document.createElement('li');
+        li.textContent = `Hinweise: ${notes.join(' · ')}`;
+        list.appendChild(li);
+      }
+      preview.classList.remove('hidden');
+      preview.dataset.source = sourceLabel || 'Buchungstext';
+      const source = document.getElementById('bookingImportSource');
+      if (source) source.textContent = `Quelle: ${sourceLabel || 'Buchungstext'}`;
+      if (!detected.length) showToast('Es wurden keine passenden Buchungsfelder erkannt', true);
+      preview.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function cancelBookingImportPreview() {
+      pendingBookingImport = null;
+      document.getElementById('bookingImportPreview')?.classList.add('hidden');
+    }
+
+    function applyBookingValues(res, notes) {
+      const setVal = (id, v) => { const el = document.getElementById(id); if (el && v) { el.value = v; return 1; } return 0; };
+      let applied = 0;
+      applied += setVal('modalLodgingName', res.name);
+      applied += setVal('modalLodgingLocation', res.location);
+      applied += setVal('modalLodgingCheckIn', res.checkIn);
+      applied += setVal('modalLodgingCheckOut', res.checkOut);
+      applied += setVal('modalLodgingPrice', res.price);
+      applied += setVal('modalLodgingFreeCancel', toDateTimeLocalValue(res.freeCancel));
+      applied += setVal('modalLodgingAddress', res.address);
+      updateCancelBar();
+
+      const notesEl = document.getElementById('modalLodgingNotes');
+      if (notesEl && notes.length) {
+        const cur = notesEl.value.trim();
+        const fresh = notes.filter(n => !cur.includes(n));
+        if (fresh.length) {
+          notesEl.value = cur ? `${cur} | ${fresh.join(' | ')}` : fresh.join(' | ');
+          applied++;
+        }
+      }
+      updateModalNightsCalc();
+      return applied;
+    }
+
+    function confirmBookingImportPreview() {
+      if (!pendingBookingImport) return;
+      const { res, notes } = pendingBookingImport;
+      const applied = applyBookingValues(res, notes);
+      cancelBookingImportPreview();
+      if (applied > 0) showToast(`${applied} erkannte Felder übernommen – bitte vor dem Speichern prüfen`);
+      else showToast('Es wurden keine passenden Felder erkannt', true);
+    }
+
+    function applyBookingParse(text, geo, sourceLabel = 'Buchungstext') {
+      const legacy = bkLegacyParse(text);
+      const bk = bkParseBooking(text, geo, { tripStart: (typeof tripData !== 'undefined' && tripData?.startDate) || '' });
+      const res = Object.assign({}, legacy.res, bk.res);
+      const notes = bk.notes.slice();
+      for (const n of legacy.notes) {
+        const key = n.startsWith('Buchungs-Nr') ? 'Buchungs-Nr' : (n.startsWith('Frühstück') ? 'Frühstück' : null);
+        if (!key || !notes.some(x => x.startsWith(key))) notes.push(n);
+      }
+      showBookingImportPreview(res, notes, sourceLabel);
+      return Object.values(res).some(v => String(v || '').trim()) ? 1 : 0;
+    }
+
+    // Manueller Button: Text aus dem Textfeld analysieren (nutzt Koordinaten, falls Text unverändert aus dem PDF stammt)
+    function parseBookingTextFromInput() {
+      const text = document.getElementById('autoFillBookingInput')?.value || '';
+      if (!text.trim()) {
+        return showAppAlert("Bitte importiere zuerst ein PDF oder füge den Text deiner Buchung in das Textfeld ein.", "Keine Daten vorhanden");
+      }
+      const geo = (lastBookingPdf && lastBookingPdf.text === text) ? lastBookingPdf.geo : null;
+      applyBookingParse(text, geo, lastBookingPdf && lastBookingPdf.text === text ? 'PDF' : 'Buchungstext');
+    }
+
+    // --- PDF.js (lazy von cdnjs geladen, vom Service Worker gecacht) ---
+    const PDFJS_VERSION = '3.11.174';
+    const PDFJS_BASE = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/`;
+    let pdfJsLoadPromise = null, lastBookingPdf = null;
+
+    function loadPdfJs() {
+      if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+      if (pdfJsLoadPromise) return pdfJsLoadPromise;
+      pdfJsLoadPromise = new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = PDFJS_BASE + 'pdf.min.js';
+        s.onload = () => {
+          if (!window.pdfjsLib) return reject(new Error('PDF.js nicht verfügbar'));
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js';
+          resolve(window.pdfjsLib);
+        };
+        s.onerror = () => reject(new Error('PDF.js konnte nicht geladen werden'));
+        document.head.appendChild(s);
+      }).catch(err => { pdfJsLoadPromise = null; throw err; });
+      return pdfJsLoadPromise;
+    }
+
+    async function importBookingPdf(file) {
+      if (!file) return;
+      if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+        return showAppAlert("Bitte eine PDF-Datei auswählen.", "Falsches Dateiformat");
+      }
+      const btn = document.getElementById('bookingPdfBtn');
+      const btnHtml = btn ? btn.innerHTML : '';
+      if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-[11px]"></i> Lese PDF…'; }
+      try {
+        const pdfjs = await loadPdfJs();
+        const pdf = await pdfjs.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+        const allLines = []; let firstItems = null;
+        for (let p = 1; p <= Math.min(pdf.numPages, 5); p++) {
+          const tc = await (await pdf.getPage(p)).getTextContent();
+          const items = tc.items.filter(i => typeof i.str === 'string').map(i => ({ str: i.str, x: i.transform[4], y: i.transform[5], w: i.width, h: i.height }));
+          if (p === 1) firstItems = items;
+          allLines.push(...bkBuildLines(items));
+        }
+        const text = allLines.join('\n');
+        if (text.trim().length < 20) {
+          return showAppAlert("In diesem PDF wurde kein lesbarer Text gefunden (evtl. ein Scan oder Bild). Bitte das PDF direkt aus Booking.com speichern oder den Text manuell einfügen.", "Kein Text erkannt");
+        }
+        const geo = bkParseGeometry(firstItems || [], {});
+        document.getElementById('autoFillBookingInput').value = text;
+        lastBookingPdf = { text, geo };
+        applyBookingParse(text, geo, `PDF: ${file.name}`);
+      } catch (err) {
+        console.error('[PDF-Import]', err);
+        showAppAlert(`Das PDF konnte nicht gelesen werden: ${err.message || err}. Für den ersten Import wird eine Internetverbindung benötigt, damit PDF.js geladen werden kann.`, "PDF-Import fehlgeschlagen");
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = btnHtml; }
+      }
+    }
+
+    function handleBookingPdfSelect(ev) {
+      const f = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      importBookingPdf(f);
+    }
+
+    function handleBookingPdfDrop(ev) {
+      ev.preventDefault();
+      document.getElementById('autoFillBox')?.classList.remove('drop-active');
+      const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      if (f) importBookingPdf(f);
+    }
+
+    // --- APP-DIALOGE ---
+    function openAppDialog({
+      type = 'confirm', title = 'Hinweis', message = '', defaultValue = '',
+      placeholder = '', confirmText = 'OK', cancelText = 'Abbrechen', variant = 'indigo', icon = 'fa-circle-question'
+    }) {
+      return new Promise((resolve) => {
+        activeDialogResolver = resolve;
+        activeDialogType = type;
+        const modal = document.getElementById('appDialogModal');
+        if (!modal) return resolve(type === 'prompt' ? null : false);
+
+        document.getElementById('appDialogTitle').innerText = title;
+        document.getElementById('appDialogMessage').innerText = message;
+        document.getElementById('appDialogIcon').className = `fa-solid ${icon}`;
+
+        const iconBox = document.getElementById('appDialogIconBox');
+        const confirmBtn = document.getElementById('appDialogConfirmBtn');
+        const cancelBtn = document.getElementById('appDialogCancelBtn');
+        const inputWrap = document.getElementById('appDialogInputWrap');
+        const inputEl = document.getElementById('appDialogInput');
+
+        const styles = {
+          danger: ['bg-rose-500/15 text-rose-600 dark:text-rose-400', 'bg-rose-600 hover:bg-rose-500'],
+          amber: ['bg-amber-500/15 text-amber-600 dark:text-amber-400', 'bg-amber-600 hover:bg-amber-500'],
+          indigo: ['bg-indigo-500/15 text-indigo-600 dark:text-indigo-400', 'bg-indigo-600 hover:bg-indigo-500']
+        }[variant] || ['bg-indigo-500/15 text-indigo-600 dark:text-indigo-400', 'bg-indigo-600 hover:bg-indigo-500'];
+
+        iconBox.className = `w-8 h-8 rounded-xl flex items-center justify-center shrink-0 text-sm ${styles[0]}`;
+        confirmBtn.className = `px-4 py-2 rounded-xl text-white text-xs font-semibold transition shadow flex items-center gap-1.5 ${styles[1]}`;
+        confirmBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        cancelBtn.classList.toggle('hidden', type === 'alert');
+
+        inputWrap.classList.toggle('hidden', type !== 'prompt');
+        if (type === 'prompt') {
+          inputEl.value = defaultValue || '';
+          inputEl.placeholder = placeholder || '';
+        }
+
+        toggleModal('appDialogModal', true);
+        setTimeout(() => {
+          if (type === 'prompt') { inputEl.focus(); inputEl.select(); }
+          else confirmBtn.focus();
+        }, 40);
+      });
+    }
+
+    function resolveAppDialog(confirmed) {
+      toggleModal('appDialogModal', false);
+      if (!activeDialogResolver) return;
+      const res = activeDialogResolver, t = activeDialogType;
+      activeDialogResolver = null;
+      res(t === 'prompt' ? (confirmed ? document.getElementById('appDialogInput').value : null) : Boolean(confirmed));
+    }
+
+    const showAppAlert = (m, t = 'Hinweis', v = 'amber', i = 'fa-circle-exclamation') => openAppDialog({ type: 'alert', title: t, message: m, confirmText: 'Verstanden', variant: v, icon: i });
+    const showAppConfirm = (m, o = {}) => openAppDialog({ type: 'confirm', title: o.title || 'Bitte bestätigen', message: m, confirmText: o.confirmText || 'Bestätigen', cancelText: o.cancelText || 'Abbrechen', variant: o.variant || 'indigo', icon: o.icon || 'fa-circle-question' });
+    const showAppPrompt = (m, d = '', o = {}) => openAppDialog({ type: 'prompt', title: o.title || 'Eingabe', message: m, defaultValue: d, placeholder: o.placeholder || '', confirmText: o.confirmText || 'Speichern', cancelText: o.cancelText || 'Abbrechen', variant: o.variant || 'indigo', icon: o.icon || 'fa-pen' });
+
+    // --- INDEXEDDB ---
+    function openDB() {
+      if (dbInstancePromise) return dbInstancePromise;
+      return dbInstancePromise = new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(TRIPS_STORE)) db.createObjectStore(TRIPS_STORE);
+          if (!db.objectStoreNames.contains(MEDIA_STORE)) db.createObjectStore(MEDIA_STORE, { keyPath: 'id' });
+        };
+        req.onsuccess = () => {
+          req.result.onversionchange = () => { req.result.close(); dbInstancePromise = null; };
+          resolve(req.result);
+        };
+        req.onerror = () => { dbInstancePromise = null; reject(req.error); };
+      });
+    }
+
+    async function dbOp(store, mode, cb, fallback = null) {
+      try {
+        const db = await openDB();
+        return await new Promise((res, rej) => {
+          const tx = db.transaction(store, mode), req = cb(tx.objectStore(store));
+          if (mode === 'readonly') { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); }
+          else { tx.oncomplete = () => res(true); tx.onerror = () => rej(tx.error); }
+        });
+      } catch (e) { console.warn(`DB Error (${store}/${mode}):`, e); return fallback; }
+    }
+
+    const tripsGet = k => dbOp(TRIPS_STORE, 'readonly', s => s.get(k), null);
+    const tripsSet = (k, v) => dbOp(TRIPS_STORE, 'readwrite', s => s.put(v, k), false);
+    const mediaStorePut = async (id, blob, name, type, size) => {
+      const saved = await dbOp(MEDIA_STORE, 'readwrite', s => s.put({ id, blob, name, type, size, createdAt: Date.now() }), false);
+      if (saved) checkStorageCapacity(true);
+      return saved;
+    };
+    const mediaStoreGet = id => dbOp(MEDIA_STORE, 'readonly', s => s.get(id), null);
+    const mediaStoreDelete = id => dbOp(MEDIA_STORE, 'readwrite', s => s.delete(id), false);
+
+    async function safeDeleteMedia(id) {
+      if (!id) return;
+      revokeMediaBlobUrl(id);
+      const isUsed = days => Array.isArray(days) && days.some(d => d?.images?.some(img => img?.id === id));
+      if (isUsed(tripData.days)) return;
+      const backups = (await tripsGet('backups')) || [];
+      if (!backups.some(b => isUsed(b?.data?.days))) await mediaStoreDelete(id);
+    }
+
+    async function getMediaBlobUrl(id) {
+      if (!id) return null;
+      if (activeMediaObjectUrls.has(id)) return activeMediaObjectUrls.get(id);
+      const rec = await mediaStoreGet(id);
+      if (rec?.blob) {
+        const url = URL.createObjectURL(rec.blob);
+        activeMediaObjectUrls.set(id, url);
+        return url;
+      }
+      return null;
+    }
+
+    function revokeMediaBlobUrl(id) {
+      if (activeMediaObjectUrls.has(id)) {
+        URL.revokeObjectURL(activeMediaObjectUrls.get(id));
+        activeMediaObjectUrls.delete(id);
+      }
+    }
+
+    const generateUUID = () => window.crypto?.randomUUID ? window.crypto.randomUUID() : 'id_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+    function dataURLtoBlob(url) {
+      const [hdr, b64] = url.split(','), mime = hdr.match(/:(.*?);/)?.[1] || 'application/octet-stream', str = atob(b64);
+      const u8 = new Uint8Array(str.length);
+      for (let i = 0; i < str.length; i++) u8[i] = str.charCodeAt(i);
+      return new Blob([u8], { type: mime });
+    }
+
+    const blobToDataURL = blob => new Promise((res, rej) => {
+      const r = new FileReader(); r.onloadend = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob);
+    });
+
+    async function buildExportPayload() {
+      const clone = JSON.parse(JSON.stringify(tripData));
+      for (const d of (clone.days || [])) {
+        for (const item of (d.images || [])) {
+          if (item?.id && !item.data) {
+            const rec = await mediaStoreGet(item.id);
+            if (rec?.blob) { try { item.data = await blobToDataURL(rec.blob); } catch (e) {} }
+          }
+        }
+      }
+      return clone;
+    }
+
+    async function migrateImagesToMediaStore(days) {
+      if (!Array.isArray(days)) return days;
+      for (const day of days) {
+        if (!Array.isArray(day.images)) continue;
+        const sanitized = [];
+        for (const item of day.images) {
+          if (!item) continue;
+          const rawData = typeof item === 'string' ? item : item.data;
+          const name = item.name || 'Dokument', type = item.type || (rawData?.startsWith('data:application/pdf') ? 'pdf' : 'image');
+          if (rawData?.startsWith('data:')) {
+            try {
+              const blob = dataURLtoBlob(rawData), id = item.id || generateUUID();
+              revokeMediaBlobUrl(id);
+              await mediaStorePut(id, blob, name, type, blob.size);
+              sanitized.push({ id, name, type, size: blob.size });
+            } catch (e) {}
+          } else if (item.id) {
+            sanitized.push({ id: item.id, name, type, size: item.size || 0 });
+          }
+        }
+        day.images = sanitized;
+      }
+      return days;
+    }
+
+    // --- LOGIK UNTERKÜNFTE & STATI ---
+    const getLodgingForDay = d => d && tripData.lodgings ? tripData.lodgings.find(l => l.checkIn <= d && d < l.checkOut) || null : null;
+    const hasFixedLodging = day => (tripData.lodgings || []).some(l => l.checkIn <= day?.date && day?.date < l.checkOut && ['gebucht', 'bezahlt', 'reserviert'].includes((l.status || '').toLowerCase()));
+    const isDayNoLodging = d => Boolean(d?.noLodgingNeeded);
+    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+    const isNightDay = (d, i, arr) => Boolean(d) && !isDayNoLodging(d) && (i < arr.length - 1 || Boolean(getLodgingForDay(d.date)));
+    const isDayLodgingSettled = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+
+    function getLodgingStatusInfo(day) {
+      if (isDayNoLodging(day)) return { btnLabel: 'Ohne Unterkunft', shortLabel: 'Keine' };
+      const l = getLodgingForDay(day.date), st = (l?.status || 'geplant').toLowerCase();
+      if (!l) return { btnLabel: 'Offen', shortLabel: 'Offen' };
+      if (st === 'reserviert') return { btnLabel: 'Reserviert', shortLabel: 'Reserviert' };
+      if (['gebucht', 'bezahlt'].includes(st)) return { btnLabel: 'Gebucht', shortLabel: 'Gebucht' };
+      return { btnLabel: 'Geplant', shortLabel: 'Geplant' };
+    }
+
+    // Zustand der kostenlosen Stornierung: none | green (> 3 Tage) | amber (<= 3 Tage) | red (abgelaufen)
+    function getCancellationState(iso) {
+      if (!iso) return { state: 'none', text: '' };
+      const dl = new Date(iso);
+      if (isNaN(dl.getTime())) return { state: 'none', text: '' };
+      const diffH = (dl.getTime() - Date.now()) / 3600000;
+      const dF = dl.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      const tF = dl.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+      const full = `${dF} um ${tF} Uhr`;
+      const days = Math.ceil(diffH / 24);
+      const left = diffH < 24 ? `noch ${Math.max(1, Math.ceil(diffH))} Std.` : `noch ${days} ${days === 1 ? 'Tag' : 'Tage'}`;
+      if (diffH < 0) return { state: 'red', full, left: '', text: 'Nicht mehr kostenlos stornierbar (abgelaufen)' };
+      if (diffH <= 72) return { state: 'amber', full, left, text: `Achtung: ${left} kostenlos stornierbar` };
+      return { state: 'green', full, left, text: `Noch ${days} Tage kostenlos stornierbar` };
+    }
+
+    const CANCEL_BAR_CLASSES = {
+      none: 'bg-slate-50 dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white',
+      green: 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-400 dark:border-emerald-700 text-emerald-900 dark:text-emerald-200',
+      amber: 'bg-amber-50 dark:bg-amber-950/40 border-amber-400 dark:border-amber-600 text-amber-900 dark:text-amber-200',
+      red: 'bg-rose-50 dark:bg-rose-950/40 border-rose-400 dark:border-rose-700 text-rose-900 dark:text-rose-200'
+    };
+    const CANCEL_LABEL_CLASSES = { none: 'text-slate-700 dark:text-slate-300', green: 'text-emerald-700 dark:text-emerald-400', amber: 'text-amber-700 dark:text-amber-400', red: 'text-rose-700 dark:text-rose-400' };
+
+    // Eingabefeld "Kostenlose Stornierung bis" im Dialog farbig markieren
+    function updateCancelBar() {
+      const inp = document.getElementById('modalLodgingFreeCancel');
+      if (!inp) return;
+      const st = getCancellationState(inp.value);
+      inp.className = `w-full rounded-xl px-3 py-2 border-2 font-semibold transition-colors focus:outline-none ${CANCEL_BAR_CLASSES[st.state]}`;
+      const lab = document.getElementById('modalCancelLabel');
+      if (lab) lab.className = `block font-bold mb-1 ${CANCEL_LABEL_CLASSES[st.state]}`;
+      const info = document.getElementById('modalCancelStatus');
+      if (info) {
+        info.className = `text-[11px] mt-1 font-semibold ${st.state === 'none' ? 'hidden' : CANCEL_LABEL_CLASSES[st.state]}`;
+        info.innerText = st.text;
+      }
+    }
+
+    function renderCancellationBadge(iso) {
+      if (!iso) return `<div class="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">Keine Stornofrist erfasst</div>`;
+      const st = getCancellationState(iso);
+      if (st.state === 'none') return `<div class="w-full text-[11px] px-2.5 py-1.5 rounded-lg bg-slate-100 text-slate-500 border border-slate-200">${escapeHtml(iso)}</div>`;
+      if (st.state === 'red') return `<div class="w-full text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-rose-100 text-rose-800 border border-rose-300 dark:bg-rose-950/80 dark:text-rose-300 dark:border-rose-800 flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation text-rose-600"></i> Stornofrist abgelaufen (${st.full})</div>`;
+      if (st.state === 'amber') return `<div class="w-full text-[11px] font-bold px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-800 border border-amber-300 animate-pulse dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800 flex items-center gap-1.5"><i class="fa-solid fa-clock text-amber-600"></i> Kostenlos stornierbar bis: ${st.full} (${st.left})</div>`;
+      return `<div class="w-full text-[11px] font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800 flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-emerald-600"></i> Kostenlos stornierbar bis: ${st.full} (${st.left})</div>`;
+    }
+
+    function renderLodgingsTab() {
+      const container = document.getElementById('lodgingsListContainer');
+      if (!container) return;
+      const sortMode = document.getElementById('lodgingSortSelect')?.value || 'timeline';
+      const byTimeline = (a, b) => (a.checkIn || '').localeCompare(b.checkIn || '') || (a.checkOut || '').localeCompare(b.checkOut || '');
+      const lodgings = [...(tripData.lodgings || [])].sort((a, b) => {
+        if (sortMode === 'cancellation') {
+          if (!a.freeCancellationUntil && !b.freeCancellationUntil) return byTimeline(a, b);
+          if (!a.freeCancellationUntil) return 1;
+          if (!b.freeCancellationUntil) return -1;
+          return (new Date(a.freeCancellationUntil).getTime() - new Date(b.freeCancellationUntil).getTime()) || byTimeline(a, b);
+        }
+        return byTimeline(a, b);
+      });
+
+      if (!lodgings.length) {
+        container.innerHTML = `
+          <div class="bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 rounded-2xl p-8 sm:p-12 text-center text-slate-500 dark:text-slate-400">
+            <svg class="ico-house text-3xl sm:text-4xl mb-3 text-slate-400" aria-hidden="true"><use href="#icon-house"></use></svg>
+            <p class="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200">Noch keine Unterkünfte eingetragen</p>
+            <button onclick="openLodgingModal(null)" class="mt-4 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow transition">+ Erste Unterkunft eintragen</button>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = `<div class="grid grid-cols-1 gap-3.5">${lodgings.map(renderLodgingCardHTML).join('')}</div>`;
+    }
+
+    function renderLodgingCardHTML(l) {
+      const pS = parseISOParts(l.checkIn), pE = parseISOParts(l.checkOut);
+      const nights = (pS && pE) ? Math.max(0, Math.floor((Date.UTC(pE.y, pE.m - 1, pE.d) - Date.UTC(pS.y, pS.m - 1, pS.d)) / 86400000)) : 0;
+      const safeLink = formatSafeUrl(l.link), st = (l.status || 'geplant').toLowerCase();
+      const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
+
+      return `
+        <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-sm space-y-3 flex flex-col justify-between hover:border-indigo-400 transition">
+          <div class="space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><svg class="ico-house text-indigo-500" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name || 'Unbenannt')}</h4>
+                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                  📅 ${formatISODate(l.checkIn).dayFormatted} bis ${formatISODate(l.checkOut).dayFormatted} <span class="font-bold text-indigo-600 dark:text-indigo-400">(${nights} ${nights === 1 ? 'Nacht' : 'Nächte'})</span>
+                </div>
+              </div>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${st}</span>
+            </div>
+            <div>${renderCancellationBadge(l.freeCancellationUntil)}</div>
+            <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
+              ${l.address ? `<div class="flex items-start gap-1.5"><i class="fa-solid fa-map-pin text-slate-400 mt-0.5 shrink-0 text-[11px]"></i><span class="truncate">${escapeHtml(l.address)}</span></div>` : ''}
+              ${l.notes ? `<div class="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 italic text-[11px]"><i class="fa-regular fa-comment-dots text-slate-400 mt-0.5 shrink-0"></i><span>${escapeHtml(l.notes)}</span></div>` : ''}
+            </div>
+          </div>
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
+            <div class="text-xs font-mono font-black text-slate-900 dark:text-white">${formatEuro(parseFlexibleNumber(l.totalPrice))} <span class="text-[10px] font-normal text-slate-400">Gesamt</span></div>
+            <div class="flex items-center gap-1.5">
+              ${safeLink ? `<a href="${escapeHtml(safeLink)}" target="_blank" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+              <button onclick="openLodgingModal('${l.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1">
+                <i class="fa-solid fa-pen text-[10px]"></i> Bearbeiten
+              </button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function openLodgingModal(id) {
+      const isEdit = Boolean(id), l = isEdit ? tripData.lodgings.find(it => it.id === id) : null;
+      document.getElementById('lodgingModalTitle').innerHTML = `<svg class="ico-house text-indigo-500" aria-hidden="true"><use href="#icon-house"></use></svg> ${isEdit ? 'Unterkunft bearbeiten' : 'Neue Unterkunft anlegen'}`;
+      document.getElementById('modalLodgingDeleteBtn').classList.toggle('hidden', !isEdit);
+      document.getElementById('autoFillBookingInput').value = '';
+      lastBookingPdf = null;
+      document.getElementById('modalLodgingId').value = isEdit ? l.id : '';
+      document.getElementById('modalLodgingName').value = l?.name || '';
+      document.getElementById('modalLodgingLocation').value = l?.location || '';
+      document.getElementById('modalLodgingStatus').value = l?.status || 'gebucht';
+      document.getElementById('modalLodgingCheckIn').value = l?.checkIn || tripData.startDate || '';
+      document.getElementById('modalLodgingCheckOut').value = l?.checkOut || (tripData.startDate ? addDaysISO(tripData.startDate, 1) : '');
+      document.getElementById('modalLodgingPrice').value = l?.totalPrice || '';
+      document.getElementById('modalLodgingFreeCancel').value = toDateTimeLocalValue(l?.freeCancellationUntil || '');
+      updateCancelBar();
+      document.getElementById('modalLodgingAddress').value = l?.address || '';
+      document.getElementById('modalLodgingLink').value = l?.link || '';
+      document.getElementById('modalLodgingNotes').value = l?.notes || '';
+      updateModalNightsCalc();
+      toggleModal('lodgingModal', true);
+      setTimeout(() => document.getElementById('modalLodgingName')?.focus(), 50);
+    }
+
+    const closeLodgingModal = () => toggleModal('lodgingModal', false);
+
+    function updateModalNightsCalc() {
+      const inVal = document.getElementById('modalLodgingCheckIn')?.value, outVal = document.getElementById('modalLodgingCheckOut')?.value;
+      const infoEl = document.getElementById('modalNightsInfo'), pIn = parseISOParts(inVal), pOut = parseISOParts(outVal);
+      if (pIn && pOut) {
+        const nights = Math.floor((Date.UTC(pOut.y, pOut.m - 1, pOut.d) - Date.UTC(pIn.y, pIn.m - 1, pIn.d)) / 86400000);
+        if (nights > 0) return infoEl.innerText = `Dauer: ${nights} ${nights === 1 ? 'Nacht' : 'Nächte'} (Zugewiesen an ${nights} Reisetage)`;
+      }
+      infoEl.innerText = "Dauer: Bitte gültigen Zeitraum wählen";
+    }
+
+    function saveLodgingFromModal() {
+      const id = document.getElementById('modalLodgingId').value, name = document.getElementById('modalLodgingName').value.trim();
+      const location = document.getElementById('modalLodgingLocation').value.trim(), checkIn = document.getElementById('modalLodgingCheckIn').value, checkOut = document.getElementById('modalLodgingCheckOut').value;
+      if (!name || !location) return showAppAlert("Name und Ort sind erforderlich.", "Eingabe unvollständig");
+      if (!checkIn || !checkOut || checkIn >= checkOut) return showAppAlert("Check-out muss nach Check-in liegen.", "Ungültiger Zeitraum");
+      if (!isValidISODate(checkIn) || !isValidISODate(checkOut)) return showAppAlert("Bitte gültige Check-in- und Check-out-Daten wählen.", "Ungültiges Datum", "danger");
+      const totalPriceInput = document.getElementById('modalLodgingPrice').value.trim();
+      if (!isValidAmountInput(totalPriceInput)) return showAppAlert("Bitte einen gültigen nicht-negativen Betrag eingeben (z. B. 123,45).", "Ungültiger Betrag", "danger");
+      const cancellationDate = document.getElementById('modalLodgingFreeCancel').value;
+      if (cancellationDate && !isValidISODateTimeLocal(cancellationDate)) return showAppAlert("Bitte ein gültiges Datum und eine gültige Uhrzeit für die kostenlose Stornierung wählen.", "Ungültiges Datum", "danger");
+
+      const overlapping = (tripData.lodgings || []).find(l => (!id || l.id !== id) && typeof l.checkIn === 'string' && typeof l.checkOut === 'string' && checkIn < l.checkOut && l.checkIn < checkOut);
+      if (overlapping) return showAppAlert(
+        'Der Zeitraum überschneidet sich mit „' + (overlapping.name || 'einer anderen Unterkunft') + '“ (' + overlapping.checkIn + ' bis ' + overlapping.checkOut + '). Bitte prüfe die Daten.',
+        'Unterkunftszeiträume überschneiden sich', 'danger'
+      );
+
+      const obj = {
+        id: id || generateUUID(), name, location,
+        status: document.getElementById('modalLodgingStatus').value, checkIn, checkOut,
+        totalPrice: totalPriceInput,
+        freeCancellationUntil: cancellationDate,
+        address: document.getElementById('modalLodgingAddress').value.trim(),
+        link: document.getElementById('modalLodgingLink').value.trim(),
+        notes: document.getElementById('modalLodgingNotes').value.trim()
+      };
+
+      if (!Array.isArray(tripData.lodgings)) tripData.lodgings = [];
+      const idx = tripData.lodgings.findIndex(it => it.id === id);
+      if (idx !== -1) tripData.lodgings[idx] = obj; else tripData.lodgings.push(obj);
+
+      closeLodgingModal(); recordChangeForReminder(); saveToStorage();
+      renderLodgingsTab(); renderDays(); updateStats();
+      showToast("Unterkunft gespeichert");
+    }
+
+    async function deleteModalLodging() {
+      const id = document.getElementById('modalLodgingId').value;
+      if (!id || !await showAppConfirm("Unterkunft wirklich löschen?", { title: "Löschen", variant: "danger", icon: "fa-trash-can" })) return;
+      tripData.lodgings = (tripData.lodgings || []).filter(it => it.id !== id);
+      closeLodgingModal(); recordChangeForReminder(); saveToStorage();
+      renderLodgingsTab(); renderDays(); updateStats();
+      showToast("Unterkunft entfernt");
+    }
+
+    function openLodgingForDay(dateStr) {
+      const ex = getLodgingForDay(dateStr);
+      if (ex) { switchTab('lodgings'); openLodgingModal(ex.id); }
+      else {
+        openLodgingModal(null);
+        document.getElementById('modalLodgingCheckIn').value = dateStr;
+        document.getElementById('modalLodgingCheckOut').value = addDaysISO(dateStr, 1);
+        const day = tripData.days.find(d => d.date === dateStr);
+        if (day?.location) document.getElementById('modalLodgingLocation').value = day.location;
+        updateModalNightsCalc();
+      }
+    }
+
+    // --- NAVIGATION & VIEWS ---
+    function switchTab(t) {
+      currentTab = t;
+      ['plan', 'lodgings', 'budget', 'notes'].forEach(tab => {
+        const act = tab === t;
+        document.getElementById('tabContent-' + tab)?.classList.toggle('hidden', !act);
+        const dBtn = document.getElementById('deskTabBtn-' + tab), mBtn = document.getElementById('mobTabBtn-' + tab);
+        if (dBtn) dBtn.className = act ? "px-4 py-1.5 rounded-xl font-bold bg-indigo-600 text-white shadow-sm transition flex items-center gap-2 shrink-0" : "px-4 py-1.5 rounded-xl font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition flex items-center gap-2 shrink-0";
+        if (dBtn) dBtn.setAttribute('aria-current', act ? 'page' : 'false');
+        if (mBtn) {
+          mBtn.className = act ? "mobile-tab-button w-full min-w-0 flex flex-col items-center justify-center py-1 px-0 text-indigo-600 dark:text-indigo-400 font-bold transition" : "mobile-tab-button w-full min-w-0 flex flex-col items-center justify-center py-1 px-0 text-slate-500 dark:text-slate-400 font-medium transition";
+          mBtn.setAttribute('aria-current', act ? 'page' : 'false');
+        }
+      });
+      document.getElementById('headerFilterBar')?.classList.toggle('hidden', t !== 'plan');
+      if (t === 'lodgings') renderLodgingsTab();
+      if (t === 'budget') updateStats();
+      if (t === 'notes') renderAllAttachmentsOverview();
+      if (['plan', 'notes'].includes(t)) autoResizeAllTextareas();
+    }
+
+    const toggleMoreMenu = () => document.getElementById('moreMenuDropdown')?.classList.toggle('hidden');
+
+    document.addEventListener('click', e => {
+      const menu = document.getElementById('moreMenuDropdown'), btn = document.getElementById('moreMenuBtn');
+      if (menu && !menu.classList.contains('hidden') && !menu.contains(e.target) && !btn?.contains(e.target)) menu.classList.add('hidden');
+      if (!e.target.closest('.activity-action-dropdown') && !e.target.closest('[data-action="toggle-activity-menu"]')) {
+        document.querySelectorAll('.activity-action-dropdown').forEach(el => el.classList.add('hidden'));
+        document.querySelectorAll('[data-action="toggle-activity-menu"]').forEach(el => el.setAttribute('aria-expanded', 'false'));
+      }
+    });
+
+    function toggleConfigPanel() {
+      const p = document.getElementById('tripConfigSection');
+      if (!p) return;
+      if (p.classList.contains('hidden')) {
+        if (currentTab !== 'plan') switchTab('plan');
+        p.classList.remove('hidden'); p.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        document.getElementById('startDate').value = tripData.startDate || '';
+        document.getElementById('endDate').value = tripData.endDate || '';
+        updateHeadline(); updateTripCountdown(); p.classList.add('hidden');
+      }
+    }
+
+    function updateHeadline() {
+      const titleEl = document.getElementById('headerTripTitle'), datesEl = document.getElementById('headerTripDates'), countEl = document.getElementById('headerTripDaysCount');
+      if (titleEl) titleEl.innerText = (tripData.title || '').trim() || 'Reiseplaner';
+      const days = tripData.days || [], nights = days.filter(isNightDay).length;
+      if (datesEl) {
+        const s = document.getElementById('startDate')?.value || tripData.startDate, e = document.getElementById('endDate')?.value || tripData.endDate;
+        datesEl.innerText = (s && e) ? `${formatISODate(s).dayFormatted} – ${formatISODate(e).dayFormatted}` : 'Kein Reisezeitraum festgelegt';
+      }
+      if (countEl) {
+        countEl.classList.toggle('hidden', !days.length);
+        if (days.length) countEl.innerText = nights !== days.length ? `${days.length} Tage · ${nights} Nächte` : `${nights} Nächte`;
+      }
+    }
+
+    function getDayVisualClasses(day, isToday) {
+      const isSettled = isDayLodgingSettled(day), hasLoc = Boolean((day.location || '').trim());
+      const btnClass = isSettled ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : (hasLoc ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-rose-600 hover:bg-rose-500 text-white');
+      if (isToday) return { cardClass: 'bg-white dark:bg-slate-800/90 border-indigo-500 ring-2 ring-indigo-500/80 today-highlight', headerClass: 'border-indigo-200 bg-indigo-50/80 dark:border-indigo-500/40 dark:bg-indigo-950/40', btnClass };
+      if (isSettled) return { cardClass: 'bg-emerald-100/80 border-emerald-500 dark:bg-emerald-950/50 dark:border-emerald-500/70', headerClass: 'border-emerald-300 bg-emerald-200/90 dark:border-emerald-500/50 dark:bg-emerald-900/70', btnClass };
+      if (hasLoc) return { cardClass: 'bg-amber-100/80 border-amber-500 dark:bg-amber-950/50 dark:border-amber-500/70', headerClass: 'border-amber-300 bg-amber-200/90 dark:border-amber-500/50 dark:bg-amber-900/70', btnClass };
+      return { cardClass: 'bg-rose-50/90 border-rose-300 dark:bg-rose-950/30 dark:border-rose-900/50', headerClass: 'border-rose-200 bg-rose-100/80 dark:border-rose-900/40 dark:bg-rose-950/50', btnClass };
+    }
+
+    function getLocationBoxClasses(day) {
+      const base = 'relative flex items-center rounded-xl px-3 py-1.5 sm:py-2 border-2 transition ';
+      if (isDayLodgingSettled(day)) return base + 'bg-emerald-50/90 border-emerald-500 ring-2 ring-emerald-500/20 dark:bg-emerald-950/50 dark:border-emerald-500';
+      if ((day?.location || '').trim()) return base + 'bg-amber-50/90 border-amber-500 ring-2 ring-amber-500/20 dark:bg-amber-950/50 dark:border-amber-500';
+      return base + 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-400/20 dark:bg-rose-950/40 dark:border-rose-500/80';
+    }
+
+    function getLocationMapsIconClasses(day) {
+      const base = 'mr-2 shrink-0 transition no-print ';
+      if (!(day?.location || '').trim()) return base + 'text-rose-400 dark:text-rose-500 cursor-not-allowed';
+      return base + (isDayLodgingSettled(day) ? 'text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 cursor-pointer' : 'text-amber-600 dark:text-amber-400 hover:text-amber-800 cursor-pointer');
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        initTheme(); updateNetworkBadge();
+        window.addEventListener('online', () => { updateNetworkBadge(); checkOfflineReadiness(); });
+        window.addEventListener('offline', () => { updateNetworkBadge(); checkOfflineReadiness(); });
+        initBackupReminderState();
+        await loadFromStorage();
+        await checkStorageCapacity(true);
+        if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+          navigator.serviceWorker.addEventListener('controllerchange', checkOfflineReadiness);
+          navigator.serviceWorker.register('sw.js').then(r => r.update()).then(() => navigator.serviceWorker.ready).then(checkOfflineReadiness).catch(() => updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false));
+        } else updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false);
+        initPersistentStorage();
+        setupKeyboardShortcuts(); setupLightboxSwipeGestures(); setupLifecycleSaveFlush(); setupEventDelegation();
+        checkBackupReminder();
+      } catch (e) { console.error("Init Error:", e); }
+    });
+
+    window.addEventListener('resize', autoResizeAllTextareas);
+
+    function setupKeyboardShortcuts() {
+      window.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); return saveToFile(false); }
+        const appDlg = document.getElementById('appDialogModal');
+        if (appDlg && !appDlg.classList.contains('hidden')) { if (e.key === 'Escape') { e.preventDefault(); resolveAppDialog(false); } return; }
+        const lb = document.getElementById('lightboxModal');
+        if (lb && !lb.classList.contains('hidden')) {
+          if (e.key === 'Escape') { e.preventDefault(); closeLightbox(); }
+          else if (e.key === 'ArrowLeft') { e.preventDefault(); navigateLightbox(-1); }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); navigateLightbox(1); }
+        }
+      });
+    }
+
+    function setupLightboxSwipeGestures() {
+      const area = document.getElementById('lightboxTouchArea');
+      if (!area) return;
+      area.addEventListener('touchstart', e => { if (e.changedTouches?.[0]) { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; } }, { passive: true });
+      area.addEventListener('touchend', e => {
+        if (!e.changedTouches?.[0]) return;
+        const dx = e.changedTouches[0].screenX - touchStartX, dy = e.changedTouches[0].screenY - touchStartY;
+        if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) navigateLightbox(dx < 0 ? 1 : -1);
+      }, { passive: true });
+    }
+
+    function flushPendingSave() {
+      if (saveDebounceTimer) { clearTimeout(saveDebounceTimer); saveDebounceTimer = null; return persistTripData(); }
+      return Promise.resolve(true);
+    }
+
+    function setupLifecycleSaveFlush() {
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushPendingSave(); });
+      window.addEventListener('pagehide', flushPendingSave);
+    }
+
+    function updateNetworkBadge() {
+      const dot = document.getElementById('networkDot'), text = document.getElementById('networkText'), badge = document.getElementById('networkBadge');
+      if (!dot || !text || !badge) return;
+      const on = navigator.onLine;
+      badge.className = `hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full items-center gap-1 ${on ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`;
+      dot.className = `w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`;
+      text.innerText = on ? "Online" : "Offline bereit";
+    }
+
+    function updateOfflineAssetsStatus(label, ready) {
+      const badge = document.getElementById('offlineAssetsBadge');
+      if (!badge) return;
+      badge.className = `hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ${ready ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70' : 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70'}`;
+      badge.innerHTML = `<i class="fa-solid ${ready ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i><span>${escapeHtml(label)}</span>`;
+      badge.title = ready ? 'App-Oberfläche und benötigte Bibliotheken sind offline zwischengespeichert.' : 'Die App-Oberfläche oder benötigte Bibliotheken sind nicht vollständig offline zwischengespeichert.';
+    }
+
+    async function checkOfflineReadiness() {
+      if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
+        updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false); return;
+      }
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const worker = navigator.serviceWorker.controller || registration.active;
+        if (!worker) { updateOfflineAssetsStatus('Offline-Paket wird eingerichtet', false); return; }
+        const channel = new MessageChannel();
+        const timeout = setTimeout(() => updateOfflineAssetsStatus('Offline-Status unbekannt', false), 5000);
+        channel.port1.onmessage = event => {
+          clearTimeout(timeout);
+          const missing = Number(event.data?.missing || 0);
+          updateOfflineAssetsStatus(missing ? `Offline unvollständig (${missing})` : 'Offline bereit', missing === 0);
+          channel.port1.close();
+        };
+        worker.postMessage({ type: 'CHECK_OFFLINE_ASSETS' }, [channel.port2]);
+      } catch (e) { updateOfflineAssetsStatus('Offline-Status unbekannt', false); }
+    }
+
+    function initBackupReminderState() {
+      const stored = readLocalSetting(LAST_EXPORT_KEY);
+      lastExportTimestamp = stored ? parseInt(stored, 10) : Date.now();
+      if (!stored) writeLocalSetting(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      unsavedChangesCount = parseInt(readLocalSetting(CHANGES_COUNT_KEY, '0'), 10) || 0;
+    }
+
+    function recordChangeForReminder() {
+      unsavedChangesCount++;
+      writeLocalSetting(CHANGES_COUNT_KEY, String(unsavedChangesCount));
+      checkBackupReminder();
+    }
+
+    function resetBackupReminder() {
+      unsavedChangesCount = 0; lastExportTimestamp = Date.now();
+      writeLocalSetting(CHANGES_COUNT_KEY, '0');
+      writeLocalSetting(LAST_EXPORT_KEY, String(lastExportTimestamp));
+      dismissBackupReminder();
+    }
+
+    function checkBackupReminder() {
+      const b = document.getElementById('backupReminderBanner'), c = document.getElementById('backupReminderCounter');
+      if (!b) return;
+      const overWeek = (Date.now() - lastExportTimestamp) > 7 * 86400000, overTen = unsavedChangesCount >= 10;
+      if (overTen || (overWeek && unsavedChangesCount > 0)) {
+        if (c) c.innerText = overTen ? `${unsavedChangesCount} Änderungen` : `Seit 7 Tagen kein Export`;
+        b.classList.remove('hidden');
+      }
+    }
+
+    const dismissBackupReminder = () => document.getElementById('backupReminderBanner')?.classList.add('hidden');
+
+    function parseISOParts(iso) {
+      if (!iso || typeof iso !== 'string') return null;
+      const [y, m, d] = iso.split('-').map(Number);
+      return (!y || !m || !d) ? null : { y, m, d };
+    }
+
+    function isValidISODate(iso) {
+      if (typeof iso !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+      const p = parseISOParts(iso);
+      if (!p) return false;
+      const date = new Date(0);
+      date.setUTCHours(12, 0, 0, 0);
+      date.setUTCFullYear(p.y, p.m - 1, p.d);
+      return date.toISOString().slice(0, 10) === iso;
+    }
+
+    function isValidISODateTimeLocal(value) {
+      if (isValidISODate(value)) return true;
+      if (typeof value !== 'string') return false;
+      const match = value.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?$/);
+      return Boolean(match && isValidISODate(match[1]) && Number(match[2]) < 24 && Number(match[3]) < 60 && Number(match[4] || 0) < 60);
+    }
+
+    function toDateTimeLocalValue(value) {
+      if (typeof value !== 'string' || !value.trim()) return '';
+      const text = value.trim();
+      if (isValidISODate(text)) return `${text}T23:59`;
+      const match = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})/);
+      return match && isValidISODateTimeLocal(match[1]) ? match[1] : '';
+    }
+
+    function normalizeImportedOptionalDate(value) {
+      if (value === null || value === undefined || value === '') return '';
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        const date = new Date(value);
+        if (!Number.isNaN(date.getTime())) {
+          const iso = date.toISOString().slice(0, 10);
+          if (isValidISODate(iso)) return iso;
+        }
+        return null;
+      }
+      const text = String(value).trim();
+      // datetime-local-Stornofristen aus JSON mit Uhrzeit vollständig erhalten.
+      const localDateTime = text.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?)$/);
+      if (localDateTime && isValidISODateTimeLocal(localDateTime[1])) return toDateTimeLocalValue(localDateTime[1]);
+      // Zeitstempel mit Zeitzone in lokale Eingabezeit umwandeln.
+      if (/^\d{4}-\d{2}-\d{2}T.*(?:Z|[+-]\d{2}:?\d{2})$/i.test(text)) {
+        const instant = new Date(text);
+        if (!Number.isNaN(instant.getTime())) {
+          const local = `${instant.getFullYear()}-${String(instant.getMonth() + 1).padStart(2, '0')}-${String(instant.getDate()).padStart(2, '0')}T${String(instant.getHours()).padStart(2, '0')}:${String(instant.getMinutes()).padStart(2, '0')}`;
+          if (isValidISODateTimeLocal(local)) return local;
+        }
+      }
+      const isoPrefix = text.match(/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/);
+      if (isoPrefix && isValidISODate(isoPrefix[1])) return isoPrefix[1];
+      const dmy = text.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+      if (dmy) {
+        const [, first, second, year] = dmy;
+        const day = Number(first), month = Number(second);
+        const de = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        if (isValidISODate(de)) return de;
+        const us = `${year}-${String(day).padStart(2, '0')}-${String(month).padStart(2, '0')}`;
+        if (day <= 12 && isValidISODate(us)) return us;
+      }
+      return null;
+    }
+
+    function addDaysISO(iso, num) {
+      const p = parseISOParts(iso);
+      return p ? new Date(Date.UTC(p.y, p.m - 1, p.d + num, 12, 0, 0)).toISOString().split('T')[0] : '';
+    }
+
+    function formatISODate(iso) {
+      const p = parseISOParts(iso);
+      if (!p) return { dayName: '', dayFormatted: '' };
+      const d = new Date(Date.UTC(p.y, p.m - 1, p.d, 12, 0, 0));
+      return {
+        dayName: d.toLocaleDateString('de-DE', { weekday: 'short', timeZone: 'UTC' }),
+        dayFormatted: d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' })
+      };
+    }
+
+    function getTodayIso() {
+      const n = new Date();
+      return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`;
+    }
+
+    const initTheme = () => setTheme(readLocalSetting(THEME_KEY) === 'light' ? 'light' : 'dark');
+
+    function setTheme(t) {
+      const isL = t === 'light';
+      document.documentElement.classList.toggle('dark', !isL);
+      writeLocalSetting(THEME_KEY, isL ? 'light' : 'dark');
+      const icon = document.getElementById('themeToggleIcon');
+      if (icon) icon.className = isL ? 'fa-solid fa-moon text-indigo-600' : 'fa-solid fa-sun text-amber-300';
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', isL ? '#f8fafc' : '#0f172a');
+    }
+
+    const toggleTheme = () => setTheme(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
+
+    async function initPersistentStorage() {
+      const badge = document.getElementById('storageBadge');
+      if (navigator.storage?.persist) {
+        try { renderStorageBadge(await navigator.storage.persisted() || await navigator.storage.persist()); }
+        catch (e) { renderStorageBadge(false); }
+      } else if (badge) {
+        badge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span> Standard-Speicher';
+      }
+    }
+
+    function renderStorageBadge(prot) {
+      const b = document.getElementById('storageBadge');
+      if (!b) return;
+      b.className = `text-[10px] font-normal px-2 py-0.5 rounded-full flex items-center gap-1.5 ${prot ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/80 dark:text-amber-300 dark:border-amber-800'}`;
+      b.innerHTML = prot ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Dauerhaft geschützt' : '<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Temporärer Speicher';
+    }
+
+    function updateFileStatus(name) {
+      const el = document.getElementById('fileStatusText');
+      if (!el) return;
+      el.className = name ? "hidden md:inline-flex text-[10px] text-emerald-600 dark:text-emerald-400 items-center gap-1 truncate" : "hidden md:inline-flex text-[10px] text-slate-400 dark:text-slate-500 truncate";
+      el.innerHTML = name ? `• <i class="fa-solid fa-file-circle-check"></i> <b>${escapeHtml(name)}</b>` : "• IndexedDB aktiv";
+    }
+
+    function showToast(msg, isErr) {
+      const t = document.getElementById('toast'), tm = document.getElementById('toastMsg'), ti = document.getElementById('toastIcon');
+      if (!t || !tm) return;
+      tm.innerText = msg;
+      ti.className = isErr ? "fa-solid fa-triangle-exclamation text-rose-500 text-sm" : "fa-solid fa-check text-emerald-500 text-sm";
+      t.classList.remove('opacity-0', 'pointer-events-none');
+      setTimeout(() => t.classList.add('opacity-0', 'pointer-events-none'), 2500);
+    }
+
+    // --- BELEGE & DATEIEN ---
+    function handleDayPaste(e, dayIndex) {
+      for (const item of (e.clipboardData?.items || [])) {
+        if (item.type.includes('image') || item.type === 'application/pdf') {
+          e.preventDefault(); const file = item.getAsFile();
+          if (file) processAndAddAttachment(file, dayIndex); return;
+        }
+      }
+    }
+
+    const handleDayDragOver = (e, idx) => { e.preventDefault(); e.stopPropagation(); document.getElementById('notes-dropzone-' + idx)?.classList.add('drop-active'); };
+    const handleDayDragLeave = (e, idx) => { e.preventDefault(); e.stopPropagation(); document.getElementById('notes-dropzone-' + idx)?.classList.remove('drop-active'); };
+    function handleDayDrop(e, idx) {
+      e.preventDefault(); e.stopPropagation();
+      document.getElementById('notes-dropzone-' + idx)?.classList.remove('drop-active');
+      if (e.dataTransfer?.files?.length) Array.from(e.dataTransfer.files).forEach(f => processAndAddAttachment(f, idx));
+    }
+
+    function handleDocFileSelect(event, idx) {
+      if (event.target.files?.length) Array.from(event.target.files).forEach(f => processAndAddAttachment(f, idx));
+      event.target.value = '';
+    }
+
+    async function processAndAddAttachment(file, dayIdx) {
+      const day = tripData.days[dayIdx];
+      if (!day) return;
+      if (!Array.isArray(day.images)) day.images = [];
+
+      const save = async (blob, defName, type, okMsg) => {
+        const id = generateUUID(), name = file.name || defName;
+        if (await mediaStorePut(id, blob, name, type, blob.size)) {
+          day.images.push({ id, name, type, size: blob.size });
+          recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+          showToast(okMsg);
+        } else showToast("Fehler beim Speichern", true);
+      };
+
+      if (file.type === 'application/pdf') {
+        await save(file, 'Dokument.pdf', 'pdf', "PDF gespeichert");
+      } else if (file.type.startsWith('image/')) {
+        const r = new FileReader();
+        r.onload = e => {
+          const img = new Image();
+          img.onload = () => {
+            let { width: w, height: h } = img, max = 1200;
+            if (w > max || h > max) { if (w > h) { h = Math.round((h * max) / w); w = max; } else { w = Math.round((w * max) / h); h = max; } }
+            const cvs = Object.assign(document.createElement('canvas'), { width: w, height: h });
+            cvs.getContext('2d').drawImage(img, 0, 0, w, h);
+            cvs.toBlob(b => b ? save(b, 'Screenshot.jpg', 'image', "Screenshot gespeichert") : showToast("Komprimierungsfehler", true), 'image/jpeg', 0.82);
+          };
+          img.src = e.target.result;
+        };
+        r.readAsDataURL(file);
+      } else showToast("Nur Bilder & PDFs erlaubt", true);
+    }
+
+    async function renameDayAttachment(dayIdx, itemIdx) {
+      const item = tripData.days[dayIdx]?.images?.[itemIdx];
+      if (!item) return;
+      const old = item.name || (item.type === 'pdf' ? 'Dokument.pdf' : 'Screenshot.jpg');
+      const input = await showAppPrompt(`Beleg an Tag ${dayIdx + 1} umbenennen:`, old, { title: "Beleg umbenennen", confirmText: "Umbenennen" });
+      if (input === null) return;
+      const newName = input.trim();
+      if (!newName || newName === old) return;
+
+      item.name = newName;
+      if (item.id) {
+        const rec = await mediaStoreGet(item.id);
+        if (rec?.blob) await mediaStorePut(item.id, rec.blob, newName, item.type, item.size || rec.size);
+      }
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+      const lb = currentLightboxList[currentLightboxIndex];
+      if (lb && lb.id === item.id) { lb.name = newName; document.getElementById('lightboxCaption').innerText = newName; }
+      showToast("Beleg umbenannt");
+    }
+
+    async function renameCurrentLightboxImage() {
+      const lb = currentLightboxList[currentLightboxIndex];
+      if (!lb?.id) return;
+      for (let d = 0; d < (tripData.days || []).length; d++) {
+        const i = (tripData.days[d]?.images || []).findIndex(img => img?.id === lb.id);
+        if (i !== -1) return renameDayAttachment(d, i);
+      }
+    }
+
+    async function deleteDayAttachment(dayIdx, itemIdx) {
+      const images = tripData.days[dayIdx]?.images;
+      if (!images?.[itemIdx]) return;
+      const target = images[itemIdx];
+      if (!await showAppConfirm(`Beleg „${target.name || 'Dokument'}“ wirklich löschen?`, { title: "Beleg löschen", confirmText: "Löschen", variant: "danger", icon: "fa-trash-can" })) return;
+
+      await createRollingBackup();
+      images.splice(itemIdx, 1);
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+      showToast("Beleg entfernt");
+    }
+
+    async function openPdfAttachment(id, name) {
+      const url = await getMediaBlobUrl(id);
+      if (!url) return showToast("PDF konnte nicht geladen werden", true);
+      if (!window.open(url, '_blank')) Object.assign(document.createElement('a'), { href: url, download: name || 'Dokument.pdf' }).click();
+    }
+
+    function buildAttachmentCardHTML(item, dayIdx, itemIdx, prefix) {
+      const isPdf = item.type === 'pdf', name = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg')), isOv = prefix === 'overview-thumb-';
+      const btns = isOv ? `
+        <button onclick="event.stopPropagation(); renameDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px]"><i class="fa-solid fa-pen"></i></button>
+        <button onclick="event.stopPropagation(); deleteDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px]">&times;</button>` : `
+        <button data-action="rename-attachment" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px]"><i class="fa-solid fa-pen pointer-events-none"></i></button>
+        <button data-action="delete-attachment" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px]">&times;</button>`;
+
+      if (isPdf) {
+        const oAttr = isOv ? `onclick="openPdfAttachment('${item.id}', '${name}')"` : `data-action="open-pdf" data-media-id="${item.id}" data-file-name="${name}"`;
+        return `
+          <div ${isOv ? oAttr : ''} class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[235px] shadow-sm cursor-pointer">
+            <i class="fa-solid fa-file-pdf text-xl text-rose-600 shrink-0"></i>
+            <div class="overflow-hidden flex-1" ${!isOv ? oAttr : ''}>
+              <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${name}</span>
+              <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
+            </div>${btns}
+          </div>`;
+      }
+
+      const imgAttr = isOv ? `onclick="openLightbox('${item.id}', ${dayIdx})"` : `data-action="open-lightbox" data-day-index="${dayIdx}" data-media-id="${item.id}"`;
+      return `
+        <div ${isOv ? imgAttr : ''} class="relative group cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center">
+          <img id="${prefix}${item.id}" ${!isOv ? imgAttr : ''} class="w-full h-full object-cover group-hover:scale-105 transition duration-200" src="" alt="${name}">
+          <span class="pointer-events-none absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${name}</span>
+          ${btns}
+        </div>`;
+    }
+
+    async function loadThumbnailsForItems(items, prefix) {
+      await Promise.all((items || []).map(async it => {
+        if (it?.type !== 'pdf' && it?.id) {
+          const el = document.getElementById(prefix + it.id);
+          const u = el && await getMediaBlobUrl(it.id);
+          if (u) el.src = u;
+        }
+      }));
+    }
+
+    async function updateImagesDOM(dayIdx) {
+      const c = document.getElementById('images-container-' + dayIdx);
+      if (!c) return;
+      const items = tripData.days[dayIdx]?.images || [];
+      c.classList.toggle('hidden', !items.length);
+      if (!items.length) { c.innerHTML = ''; return; }
+      c.innerHTML = items.map((it, idx) => buildAttachmentCardHTML(it, dayIdx, idx, 'thumb-')).join('');
+      await loadThumbnailsForItems(items, 'thumb-');
+    }
+
+    async function renderAllAttachmentsOverview() {
+      const container = document.getElementById('allAttachmentsOverview'), badge = document.getElementById('allAttachmentsCountBadge');
+      if (!container) return;
+      let total = 0; const list = [];
+      (tripData.days || []).forEach((d, idx) => { if (d?.images?.length) { total += d.images.length; list.push({ day: d, idx }); } });
+      if (badge) badge.innerText = `${total} ${total === 1 ? 'Beleg' : 'Belege'}`;
+      if (!list.length) {
+        container.innerHTML = `<div class="p-6 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-dashed border-slate-300 dark:border-slate-700 text-center text-xs text-slate-500"><i class="fa-regular fa-folder-open text-2xl mb-1.5 block"></i>Noch keine Belege hinterlegt.</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(({ day, idx }) => {
+        const { dayName, dayFormatted } = formatISODate(day.date), l = getLodgingForDay(day.date);
+        return `
+          <div class="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2 flex-wrap">
+                <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-black">Tag ${idx + 1}</span>
+                <span class="font-mono text-slate-500">${dayFormatted} (${dayName})</span>
+                <span>• 📍 ${escapeHtml(day.location || 'Ohne Ort')}</span>
+                ${l ? `<span class="text-slate-500">• <svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}</span>` : ''}
+              </div>
+              <button onclick="jumpToSpecificDay(${idx})" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-[11px] font-semibold text-indigo-600 no-print">Zum Tag <i class="fa-solid fa-arrow-right text-[10px]"></i></button>
+            </div>
+            <div class="flex flex-wrap gap-2.5">${day.images.map((it, i) => buildAttachmentCardHTML(it, idx, i, 'overview-thumb-')).join('')}</div>
+          </div>`;
+      }).join('');
+
+      for (const { day } of list) await loadThumbnailsForItems(day.images, 'overview-thumb-');
+    }
+
+    function jumpToSpecificDay(dayIdx) {
+      switchTab('plan');
+      if (currentFilter !== 'all' || searchQuery !== '') { setFilter('all'); clearSearch(); }
+      openOnlyDay(dayIdx);
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + dayIdx);
+        if (el) {
+          scrollDayCardIntoView(dayIdx);
+          el.classList.add('ring-4', 'ring-indigo-400');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 1800);
+        }
+      }, 100);
+    }
+
+    // --- LIGHTBOX ---
+    async function renderLightboxCurrentSlide() {
+      const item = currentLightboxList[currentLightboxIndex];
+      if (!item) return;
+      const url = await getMediaBlobUrl(item.id);
+      if (!url) return showToast("Bild nicht ladbar", true);
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightboxCaption').innerText = item.name || 'Screenshot.jpg';
+      document.getElementById('lightboxCounter').innerText = `${currentLightboxIndex + 1} / ${currentLightboxList.length}`;
+      const mult = currentLightboxList.length > 1;
+      ['lightboxPrevBtn', 'lightboxNextBtn'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) { btn.classList.toggle('hidden', !mult); btn.classList.toggle('flex', mult); }
+      });
+    }
+
+    async function openLightbox(id, dayIdx) {
+      if (!id) return;
+      let imgs = (dayIdx !== undefined && tripData.days[dayIdx]?.images || []).filter(it => it && it.type !== 'pdf' && it.id);
+      if (!imgs.length) (tripData.days || []).forEach(d => (d?.images || []).forEach(it => { if (it && it.type !== 'pdf' && it.id) imgs.push(it); }));
+      currentLightboxList = imgs.length ? imgs : [{ id, name: 'Screenshot.jpg' }];
+      const idx = currentLightboxList.findIndex(it => it.id === id);
+      currentLightboxIndex = idx !== -1 ? idx : 0;
+      await renderLightboxCurrentSlide();
+      toggleModal('lightboxModal', true);
+    }
+
+    async function navigateLightbox(step) {
+      if (currentLightboxList.length > 1) {
+        currentLightboxIndex = (currentLightboxIndex + step + currentLightboxList.length) % currentLightboxList.length;
+        await renderLightboxCurrentSlide();
+      }
+    }
+
+    function closeLightbox() {
+      toggleModal('lightboxModal', false);
+      document.getElementById('lightboxImg').src = '';
+      currentLightboxList = []; currentLightboxIndex = 0;
+    }
+
+    const formatSafeUrl = u => { const t = (u || '').trim(); return !t ? '' : /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//i.test(t) ? t : 'https://' + t; };
+
+    function escapeCsvCell(value) {
+      let text = String(value ?? '');
+      if (/^[\u0000-\u0020\uFEFF]*[=+\-@]/.test(text)) text = "'" + text;
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    function exportToCSV() {
+      const rows = [["Tag / Zeitraum", "Datum", "Ort", "Kategorie", "Bezeichnung / Titel", "Kosten (EUR)", "Status", "Hinweis / Link"]];
+      (tripData.lodgings || []).forEach(l => rows.push([
+        `Aufenthalt (${l.checkIn} bis ${l.checkOut})`, l.checkIn, l.location || '', "Unterkunft", l.name || 'Hotel',
+        parseFlexibleNumber(l.totalPrice).toFixed(2).replace('.', ','), l.status || 'gebucht',
+        (l.address ? 'Adresse: ' + l.address : '') + (l.freeCancellationUntil ? ' | Storno bis: ' + l.freeCancellationUntil : '')
+      ]));
+      (tripData.days || []).forEach((d, idx) => {
+        const pushR = (cat, t, c, st, h, l) => rows.push([`Tag ${idx + 1}`, d.date || '', d.location || '', cat, t || '', parseFlexibleNumber(c).toFixed(2).replace('.', ','), st || 'geplant', (h || '') + (l ? ' | ' + l : '')]);
+        (d.transports || []).forEach(tr => pushR("Transport", tr.title, tr.cost, tr.costStatus, tr.hint, tr.link));
+        (d.activities || []).forEach(a => pushR("Aktivitaet", a.title, a.cost, a.costStatus, a.hint, a.link));
+      });
+      const csv = "\uFEFF" + rows.map(r => r.map(escapeCsvCell).join(";")).join("\r\n");
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+      const st = (tripData.title || 'Reise').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_');
+      Object.assign(document.createElement('a'), { href: url, download: `Ausgaben_${st}.csv` }).click();
+      URL.revokeObjectURL(url);
+      showToast("CSV heruntergeladen");
+    }
+
+    function openOnlyDay(dayIdx) {
+      if (!Array.isArray(tripData.days)) return;
+      const willOpen = tripData.days[dayIdx].isCollapsed;
+      tripData.days.forEach((d, i) => { d.isCollapsed = i === dayIdx ? !willOpen : true; });
+      saveToStorage(); renderDays();
+      if (willOpen) scrollDayCardIntoView(dayIdx);
+    }
+
+    // Geöffnete Tageskarte so ausrichten, dass ihr Anfang (inkl. Datum) direkt unter dem fixierten Header steht
+    function scrollDayCardIntoView(dayIdx, behavior = 'smooth') {
+      requestAnimationFrame(() => {
+        const card = document.getElementById('day-card-' + dayIdx);
+        if (!card) return;
+        const hdr = document.querySelector('header');
+        const offset = (hdr ? hdr.getBoundingClientRect().bottom : 0) + 8;
+        const top = card.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top: Math.max(0, top), behavior });
+      });
+    }
+
+    const toggleDayCollapse = (dayIdx) => openOnlyDay(dayIdx);
+
+    function toggleAllDaysSmart() {
+      if (!tripData.days?.length) return showToast("Keine Reisetage vorhanden", true);
+      const anyCol = tripData.days.some(d => d?.isCollapsed);
+      tripData.days.forEach(d => { if (d) d.isCollapsed = !anyCol; });
+      saveToStorage(); renderDays();
+      showToast(anyCol ? "Alle geöffnet" : "Alle geschlossen");
+    }
+
+    function updateToggleAllBtnState() {
+      const icon = document.getElementById('toggleAllDaysIcon'), txt = document.getElementById('toggleAllDaysText');
+      if (!icon || !txt) return;
+      const anyCol = !tripData.days?.length || tripData.days.some(d => d?.isCollapsed);
+      icon.className = `fa-solid ${anyCol ? 'fa-angles-down' : 'fa-angles-up'} text-[10px] sm:text-xs`;
+      txt.innerText = anyCol ? "Alle öffnen" : "Alle schließen";
+    }
+
+    function launchMap(q, isOff, err) {
+      const query = (q || '').trim();
+      if (!query) return showToast(err, true);
+      if (isOff) window.location.href = `geo:0,0?q=${encodeURIComponent(query)}`;
+      else window.open("https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(query), '_blank');
+    }
+
+    const openGoogleMaps = loc => launchMap(loc, false, "Tagesort erforderlich");
+    const openOfflineMaps = loc => launchMap(loc, true, "Tagesort erforderlich");
+
+    function openHotelMaps(idx) {
+      const d = tripData.days[idx], l = getLodgingForDay(d?.date);
+      launchMap([l?.name, l?.address, d?.location].filter(Boolean).join(', '), false, "Hoteldaten fehlen");
+    }
+
+    async function copyHotelInfo(idx) {
+      const l = getLodgingForDay(tripData.days[idx]?.date);
+      const text = [l?.name, l?.address].filter(Boolean).join(', ');
+      if (!text) return showToast("Keine Hoteldaten vorhanden", true);
+      try {
+        await (navigator.clipboard?.writeText ? navigator.clipboard.writeText(text) : Promise.reject());
+        showToast("In Zwischenablage kopiert");
+      } catch {
+        const ta = Object.assign(document.createElement('textarea'), { value: text });
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+        showToast("In Zwischenablage kopiert");
+      }
+    }
+
+    function saveEmergencyNotes(v) { tripData.emergencyNotes = v; recordChangeForReminder(); saveToStorage(); }
+
+    function parseFlexibleNumber(v) {
+      if (v === null || v === undefined || v === '') return 0;
+      if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+      let raw = String(v).trim().replace(/[^0-9.,-]/g, '');
+      const negative = raw.startsWith('-');
+      raw = raw.replace(/-/g, '');
+      if (!raw) return 0;
+
+      const hasDot = raw.includes('.'), hasComma = raw.includes(',');
+      if (hasDot && hasComma) {
+        const decimal = raw.lastIndexOf('.') > raw.lastIndexOf(',') ? '.' : ',';
+        const decimalAt = raw.lastIndexOf(decimal);
+        const whole = raw.slice(0, decimalAt).replace(/[.,]/g, '');
+        const fraction = raw.slice(decimalAt + 1).replace(/[.,]/g, '');
+        raw = (whole || '0') + (fraction ? '.' + fraction : '');
+      } else if (hasDot) {
+        if (/^\d{1,3}(?:\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, '');
+        else if ((raw.match(/\./g) || []).length > 1) {
+          const at = raw.lastIndexOf('.');
+          raw = raw.slice(0, at).replace(/\./g, '') + '.' + raw.slice(at + 1);
+        }
+      } else if (hasComma) {
+        if (/^\d{1,3}(?:,\d{3})+$/.test(raw)) raw = raw.replace(/,/g, '');
+        else if ((raw.match(/,/g) || []).length > 1) {
+          const at = raw.lastIndexOf(',');
+          raw = raw.slice(0, at).replace(/,/g, '') + '.' + raw.slice(at + 1);
+        } else raw = raw.replace(',', '.');
+      }
+
+      const n = Number(raw);
+      return Number.isFinite(n) ? (negative ? -n : n) : 0;
+    }
+
+    function isValidAmountInput(value) {
+      if (value === null || value === undefined || String(value).trim() === '') return true;
+      const raw = String(value).trim().replace(/[\s€]/g, '');
+      if (!/^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/.test(raw) &&
+          !/^(?:\d+|\d{1,3}(?:,\d{3})+)(?:\.\d{1,2})?$/.test(raw) &&
+          !/^\d+[,.]\d{1,2}$/.test(raw)) return false;
+      const amount = parseFlexibleNumber(raw);
+      return Number.isFinite(amount) && amount >= 0;
+    }
+    // --- PACKLISTE ---
+    const sortChecklist = () => tripData.checklist?.sort((a, b) => Number(Boolean(a?.done)) - Number(Boolean(b?.done)));
+
+    function renderChecklist() {
+      const c = document.getElementById('checklistContainer');
+      if (!c) return;
+      sortChecklist();
+      const list = tripData.checklist || [], done = list.filter(i => i.done).length;
+      document.getElementById('checklistProgress').innerText = `${done}/${list.length} erledigt`;
+      document.getElementById('resetChecklistBtn')?.classList.toggle('hidden', done === 0);
+
+      c.innerHTML = list.map((item, idx) => `
+        <div class="flex items-center justify-between gap-2 p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-900/60 text-xs transition">
+          <label class="flex items-center gap-2 cursor-pointer flex-1 overflow-hidden">
+            <input type="checkbox" ${item.done ? 'checked' : ''} data-action="toggle-checklist-item" data-idx="${idx}" class="rounded border-slate-300 dark:border-slate-700 text-indigo-600 focus:ring-0 shrink-0">
+            <span class="truncate ${item.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}">${escapeHtml(item.text)}</span>
+          </label>
+          <button data-action="remove-checklist-item" data-idx="${idx}" class="text-rose-400 hover:text-rose-600 px-1 text-xs shrink-0 no-print">&times;</button>
+        </div>`).join('');
+    }
+
+    function toggleChecklistItem(idx) {
+      if (tripData.checklist?.[idx]) {
+        tripData.checklist[idx].done = !tripData.checklist[idx].done;
+        recordChangeForReminder(); saveToStorage(); renderChecklist();
+      }
+    }
+
+    function resetChecklistDone() {
+      (tripData.checklist || []).forEach(i => { if (i) i.done = false; });
+      recordChangeForReminder(); saveToStorage(); renderChecklist();
+      showToast("Packliste zurückgesetzt");
+    }
+
+    function addChecklistItem() {
+      const input = document.getElementById('newChecklistItemInput');
+      if (!input?.value.trim()) return;
+      (tripData.checklist = tripData.checklist || []).push({ text: input.value.trim(), done: false });
+      input.value = ''; recordChangeForReminder(); saveToStorage(); renderChecklist();
+    }
+
+    function removeChecklistItem(idx) {
+      if (tripData.checklist) { tripData.checklist.splice(idx, 1); recordChangeForReminder(); saveToStorage(); renderChecklist(); }
+    }
+
+    function updateTripCountdown() {
+      const badge = document.getElementById('tripCountdownBadge');
+      if (!badge) return;
+      const s = document.getElementById('startDate')?.value || tripData.startDate, e = document.getElementById('endDate')?.value || tripData.endDate;
+      const pN = parseISOParts(getTodayIso()), pS = parseISOParts(s), pE = parseISOParts(e);
+      if (!pN || !pS || !pE) return badge.classList.add('hidden');
+
+      const tN = Date.UTC(pN.y, pN.m - 1, pN.d), tS = Date.UTC(pS.y, pS.m - 1, pS.d), tE = Date.UTC(pE.y, pE.m - 1, pE.d);
+      if (tN < tS) {
+        badge.innerHTML = `<i class="fa-solid fa-plane-departure text-indigo-500"></i> Noch ${Math.ceil((tS - tN) / 86400000)} Tage bis zum Start`;
+        badge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/80 dark:text-indigo-300 dark:border-indigo-700/80";
+      } else if (tN <= tE) {
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Reisetag ${Math.floor((tN - tS) / 86400000) + 1} von ${Math.floor((tE - tS) / 86400000) + 1} (Heute)`;
+        badge.className = "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300 dark:border-emerald-700/80";
+      } else {
+        badge.innerHTML = '<i class="fa-solid fa-flag-checkered text-slate-400"></i> Reise beendet';
+        badge.className = "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-300 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700";
+      }
+      badge.classList.remove('hidden');
+    }
+
+    function jumpToToday() {
+      if (currentTab !== 'plan') switchTab('plan');
+      const today = getTodayIso(), idx = (tripData.days || []).findIndex(d => d.date === today);
+      if (idx === -1) return showToast(`Heute (${today}) liegt nicht im Reisezeitraum`, true);
+      if (currentFilter !== 'all' || searchQuery !== '') { setFilter('all'); clearSearch(); }
+      openOnlyDay(idx);
+      setTimeout(() => {
+        const el = document.getElementById('day-card-' + idx);
+        if (el) {
+          scrollDayCardIntoView(idx);
+          el.classList.add('ring-4', 'ring-indigo-400');
+          setTimeout(() => el.classList.remove('ring-4', 'ring-indigo-400'), 2000);
+          showToast(`Zu Tag ${idx + 1} gesprungen`);
+        }
+      }, 100);
+    }
+
+    // --- FILTER & AUSWERTUNGEN ---
+    const isStatusFixed = s => ['gebucht', 'bezahlt', 'reserviert'].includes((s || '').toLowerCase());
+    const isFlight = t => t?.category === 'flugzeug' || ['flug', 'flight', 'airline', 'airport'].some(k => (t?.title || '').toLowerCase().includes(k));
+
+    function setFilter(f) {
+      currentFilter = f;
+      const sel = document.getElementById('filterSelect');
+      if (sel) {
+        sel.value = f;
+        sel.className = f !== 'all'
+          ? "bg-indigo-600 text-white border border-indigo-600 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-bold focus:outline-none cursor-pointer shadow-sm transition"
+          : "bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-[11px] sm:text-xs rounded-xl px-2 py-1 sm:px-2.5 sm:py-1.5 font-semibold focus:border-indigo-500 focus:outline-none cursor-pointer shadow-sm transition";
+      }
+      renderDays();
+    }
+
+    function handleSearch(v) {
+      searchQuery = (v || '').trim().toLowerCase();
+      document.getElementById('clearSearchBtn')?.classList.toggle('hidden', !searchQuery.length);
+      renderDays();
+    }
+
+    function clearSearch() {
+      const i = document.getElementById('searchInput'); if (i) i.value = '';
+      searchQuery = ''; document.getElementById('clearSearchBtn')?.classList.add('hidden'); renderDays();
+    }
+
+    function getTransportEmoji(tr) {
+      const map = { flugzeug: '✈️', zug: '🚆', bus: '🚌', boot: '🚤', mietwagen: '🚗', roller: '🛵', taxi: '🚕' };
+      if (map[tr.category]) return map[tr.category];
+      const t = (tr.title || '').toLowerCase();
+      if (t.includes('flug')) return '✈️'; if (t.includes('roller') || t.includes('scooter')) return '🛵';
+      if (t.includes('zug') || t.includes('bahn')) return '🚆'; if (t.includes('boot') || t.includes('fähre')) return '🚤';
+      if (t.includes('bus')) return '🚌';
+      return '🚗';
+    }
+
+    function getLodgingDailyShare(lodging, date) {
+      if (!lodging || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || !isValidISODate(date)) return 0;
+      const inParts = parseISOParts(lodging.checkIn), outParts = parseISOParts(lodging.checkOut), dayParts = parseISOParts(date);
+      const start = Date.UTC(inParts.y, inParts.m - 1, inParts.d), end = Date.UTC(outParts.y, outParts.m - 1, outParts.d), day = Date.UTC(dayParts.y, dayParts.m - 1, dayParts.d);
+      const nights = Math.round((end - start) / 86400000), offset = Math.round((day - start) / 86400000);
+      if (nights <= 0 || offset < 0 || offset >= nights) return 0;
+      const totalCents = Math.round(parseFlexibleNumber(lodging.totalPrice) * 100);
+      if (totalCents <= 0) return 0;
+      const baseCents = Math.floor(totalCents / nights), remainder = totalCents % nights;
+      return (baseCents + (offset < remainder ? 1 : 0)) / 100;
+    }
+
+    function getDayCostBreakdown(d) {
+      let transport = 0, transportPaid = 0, activity = 0, activityPaid = 0;
+      const isPaid = s => ['bezahlt', 'gebucht'].includes((s || '').toLowerCase());
+      (d?.transports || []).forEach(t => { const c = parseFlexibleNumber(t.cost); transport += c; if (isPaid(t.costStatus)) transportPaid += c; });
+      (d?.activities || []).forEach(a => { const c = parseFlexibleNumber(a.cost); activity += c; if (isPaid(a.costStatus)) activityPaid += c; });
+      const lodging = getLodgingForDay(d?.date), lodgingShare = getLodgingDailyShare(lodging, d?.date);
+      const lodgingPaid = lodging && ['bezahlt', 'gebucht'].includes((lodging.status || '').toLowerCase()) ? lodgingShare : 0;
+      return { total: lodgingShare + transport + activity, paid: lodgingPaid + transportPaid + activityPaid, lodging: lodgingShare, lodgingPaid, transport, transportPaid, activity, activityPaid };
+    }
+
+    const formatEuro = n => (Number(n) || 0).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+
+    function getStatusBadgeClass(s) {
+      const st = (s || '').toLowerCase();
+      if (['bezahlt', 'gebucht'].includes(st)) return 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-400 dark:border-emerald-700/80';
+      if (st === 'reserviert') return 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-400 dark:border-sky-700/80';
+      return 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-400 dark:border-amber-700/80';
+    }
+
+    function autoResizeTextarea(el) { if (el) { el.style.height = 'auto'; el.style.height = Math.max(el.scrollHeight, 32) + 'px'; } }
+    function autoResizeAllTextareas() {
+      requestAnimationFrame(() => document.querySelectorAll('textarea.auto-hint').forEach(ta => { if (ta.offsetParent !== null) autoResizeTextarea(ta); }));
+    }
+
+    function collectMediaIdsFromTrips(trips = []) {
+      const ids = new Set();
+      for (const trip of trips) for (const day of (trip?.days || [])) {
+        for (const item of (day?.images || [])) if (item?.id) ids.add(item.id);
+      }
+      return ids;
+    }
+
+    // --- ROLLIERENDE BACKUPS ---
+    async function createRollingBackup() {
+      try {
+        let backups = (await tripsGet('backups')) || [];
+        const snap = JSON.stringify(tripData);
+        if (backups[0] && JSON.stringify(backups[0].data) === snap) return;
+        const now = new Date();
+        backups.unshift({
+          timestamp: `${now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })} um ${now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`,
+          title: tripData.title || 'Unbenannt', daysCount: (tripData.days || []).length, data: JSON.parse(snap)
+        });
+        const dropped = backups.splice(3);
+        await tripsSet('backups', backups);
+        const retainedMediaIds = collectMediaIdsFromTrips([tripData, ...backups.map(b => b?.data)]);
+        const droppedMediaIds = collectMediaIdsFromTrips(dropped.map(b => b?.data));
+        for (const id of droppedMediaIds) if (!retainedMediaIds.has(id)) await safeDeleteMedia(id);
+      } catch {}
+    }
+
+    async function showRestoreModal() {
+      const list = document.getElementById('backupList');
+      if (!list) return;
+      const backups = (await tripsGet('backups')) || [];
+      list.innerHTML = !backups.length ? '<p class="text-xs text-slate-500 italic p-3 text-center">Keine Sicherungsstände vorhanden.</p>' : backups.map((b, idx) => `
+        <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 flex items-center justify-between gap-3 text-xs">
+          <div>
+            <div class="font-bold text-slate-800 dark:text-white flex items-center gap-1.5"><i class="fa-solid fa-clock-rotate-left text-indigo-500"></i> Stand ${idx + 1}: ${escapeHtml(b.timestamp)}</div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">${escapeHtml(b.title)} (${b.daysCount} Tage)</div>
+          </div>
+          <button onclick="restoreBackup(${idx})" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition shrink-0 shadow">Laden</button>
+        </div>`).join('');
+      toggleModal('restoreModal', true);
+    }
+
+    const closeRestoreModal = () => toggleModal('restoreModal', false);
+
+    async function restoreBackup(idx) {
+      const backups = (await tripsGet('backups')) || [];
+      if (!backups[idx]?.data || !await showAppConfirm(`Sicherungsstand vom ${backups[idx].timestamp} laden?`, { title: "Laden", variant: "amber", icon: "fa-rotate-left" })) return;
+      tripData = JSON.parse(JSON.stringify(backups[idx].data));
+      await migrateImagesToMediaStore(tripData.days);
+      normalizeDataModel(); recordChangeForReminder(); saveToStorage(); syncUI(); closeRestoreModal();
+      showToast("Stand geladen");
+    }
+
+    function normalizeDataModel() {
+      tripData = tripData || {};
+      tripData.checklist = tripData.checklist || DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
+      tripData.lodgings = tripData.lodgings || [];
+      tripData.days = tripData.days || [];
+
+      if (tripData.lodgings.length === 0 && tripData.days.some(d => d.lodging && (d.lodging.name || d.lodging.price))) {
+        let currentGroup = null;
+        tripData.days.forEach(day => {
+          const l = day.lodging;
+          if (l && l.costStatus !== 'keine' && (l.name || l.price)) {
+            if (currentGroup && currentGroup.name === l.name && currentGroup.location === (day.location || '')) {
+              currentGroup.checkOut = addDaysISO(day.date, 1);
+              if (parseFlexibleNumber(l.price) > 0 && !currentGroup.totalPrice) currentGroup.totalPrice = l.price;
+            } else {
+              if (currentGroup) tripData.lodgings.push(currentGroup);
+              currentGroup = {
+                id: generateUUID(), name: l.name || 'Hotel', location: day.location || '',
+                checkIn: day.date, checkOut: addDaysISO(day.date, 1), status: l.costStatus || 'gebucht',
+                totalPrice: l.price || '', freeCancellationUntil: '', address: l.notes || '', link: l.link || '', notes: l.hint || ''
+              };
+            }
+          } else if (currentGroup) { tripData.lodgings.push(currentGroup); currentGroup = null; }
+        });
+        if (currentGroup) tripData.lodgings.push(currentGroup);
+      }
+
+      tripData.days.forEach(d => {
+        d.noLodgingNeeded = Boolean(d.noLodgingNeeded || (d.lodging?.costStatus === 'keine'));
+        d.images = d.images || [];
+        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '' }));
+        d.activities = (d.activities || []).map(a => ({ title: a.title || '', cost: a.cost || '', costStatus: a.costStatus || 'geplant', hint: a.hint || '', link: a.link || '', done: Boolean(a.done) }));
+      });
+    }
+
+    async function persistTripData() {
+      updateSaveStatus('saving');
+      const saved = await tripsSet('trip_data', tripData);
+      if (!saved) {
+        updateSaveStatus('error');
+        if (!saveFailureNotified) {
+          saveFailureNotified = true;
+          showToast('Lokales Speichern fehlgeschlagen – bitte sofort JSON-Backup erstellen.', true);
+        }
+        return false;
+      }
+      saveFailureNotified = false;
+      updateSaveStatus('saved');
+      updateStats(); updateHeadline();
+      checkStorageCapacity();
+      return true;
+    }
+
+    function saveToStorage() {
+      clearTimeout(saveDebounceTimer);
+      updateSaveStatus('saving');
+      saveDebounceTimer = setTimeout(async () => {
+        saveDebounceTimer = null;
+        await persistTripData();
+      }, 250);
+    }
+
+    async function loadFromStorage() {
+      let saved = await tripsGet('trip_data');
+      if (!saved) { try { saved = JSON.parse(localStorage.getItem('reiseplaner_pro_pwa_data')); } catch {} }
+      if (saved) { tripData = saved; await migrateImagesToMediaStore(tripData.days); }
+      normalizeDataModel();
+      const persisted = saved ? await tripsSet('trip_data', tripData) : true;
+      syncUI(); updateFileStatus(null); updateSaveStatus(saved ? (persisted ? 'saved' : 'error') : 'ready');
+    }
+
+    async function saveToFile(forceSaveAs) {
+      await flushPendingSave(); await createRollingBackup();
+      const locallySaved = await tripsSet('trip_data', tripData);
+      if (!locallySaved) updateSaveStatus('error');
+      const json = JSON.stringify(await buildExportPayload(), null, 2);
+      const name = `Reiseplan_${(tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer'}.json`;
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          if (!activeFileHandle || forceSaveAs) activeFileHandle = await window.showSaveFilePicker({ suggestedName: name, types: [{ accept: { 'application/json': ['.json'] } }] });
+          const wr = await activeFileHandle.createWritable();
+          await wr.write(json); await wr.close();
+          updateFileStatus(activeFileHandle.name); resetBackupReminder();
+          if (locallySaved) updateSaveStatus('fileSaved');
+          return showToast('Gespeichert in: ' + activeFileHandle.name);
+        } catch (err) { if (err.name === 'AbortError') return; }
+      }
+
+      downloadJsonFile(json, name); resetBackupReminder();
+      if (locallySaved) updateSaveStatus('fileSaved');
+      showToast("Download abgeschlossen");
+    }
+
+    // Download als Datei (URL erst verzögert freigeben – sonst bricht der Download auf Android teils ab)
+    function downloadJsonFile(json, name) {
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const a = Object.assign(document.createElement('a'), { href: url, download: name });
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 15000);
+    }
+
+    // Datei über das System-Teilen-Menü senden (z. B. Android -> OneDrive / an den PC); Fallback: Download
+    async function shareTripFile() {
+      await flushPendingSave(); await createRollingBackup();
+      const locallySaved = await tripsSet('trip_data', tripData);
+      if (!locallySaved) updateSaveStatus('error');
+      const json = JSON.stringify(await buildExportPayload(), null, 2);
+      const base = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
+      const d = new Date(), p = (n) => String(n).padStart(2, '0');
+      const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+      const name = `Reiseplan_${base}_Handy_${stamp}.json`;
+
+      // Manche Browser erlauben "application/json" nicht beim Teilen -> zusätzlich als text/plain versuchen
+      const candidates = [new File([json], name, { type: 'application/json' }), new File([json], name, { type: 'text/plain' })];
+      const file = (navigator.share && navigator.canShare) ? candidates.find(f => { try { return navigator.canShare({ files: [f] }); } catch { return false; } }) : null;
+      if (!file) {
+        downloadJsonFile(json, name); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved');
+        return showToast("Teilen nicht verfügbar – Datei wurde heruntergeladen");
+      }
+
+      const doShare = () => navigator.share({ files: [file], title: name });
+      try {
+        await doShare(); resetBackupReminder(); if (locallySaved) updateSaveStatus('fileSaved'); showToast("Datei geteilt");
+      } catch (err) {
+        if (err?.name === 'AbortError') return;
+        if (err?.name === 'NotAllowedError') {
+          // Die Berührung ist beim Erstellen der Datei "abgelaufen" -> erneut per Tipp bestätigen lassen
+          if (!await showAppConfirm(`Die Datei „${name}“ ist bereit. Jetzt teilen?`, { title: 'Teilen', confirmText: 'Teilen', icon: 'fa-share-nodes' })) return;
+          try { await doShare(); resetBackupReminder(); showToast("Datei geteilt"); return; }
+          catch (e2) { if (e2?.name === 'AbortError') return; }
+        }
+        downloadJsonFile(json, name); resetBackupReminder();
+        showToast("Teilen fehlgeschlagen – Datei wurde heruntergeladen", true);
+      }
+    }
+
+    function getImportValidationError(parsed) {
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return 'Die Datei enthält kein gültiges Reiseobjekt.';
+      if (!Array.isArray(parsed.days)) return 'Die Reisedaten enthalten keine gültige Tagesliste.';
+      if (parsed.startDate && !isValidISODate(parsed.startDate)) return 'Das Startdatum der Reise ist ungültig.';
+      if (parsed.endDate && !isValidISODate(parsed.endDate)) return 'Das Enddatum der Reise ist ungültig.';
+      if (parsed.startDate && parsed.endDate && parsed.startDate > parsed.endDate) return 'Das Startdatum liegt nach dem Enddatum.';
+      for (const key of ['lodgings', 'checklist']) {
+        if (parsed[key] !== undefined && !Array.isArray(parsed[key])) return 'Die Liste „' + key + '“ hat ein ungültiges Format.';
+      }
+      const seenDates = new Set();
+      for (let i = 0; i < parsed.days.length; i++) {
+        const day = parsed.days[i];
+        if (!day || typeof day !== 'object' || Array.isArray(day)) return 'Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+        if (!isValidISODate(day.date)) return 'Tag ' + (i + 1) + ' hat kein gültiges Datum.';
+        if (seenDates.has(day.date)) return 'Das Datum ' + day.date + ' ist in der Tagesliste doppelt vorhanden.';
+        seenDates.add(day.date);
+        for (const key of ['images', 'transports', 'activities']) {
+          if (day[key] !== undefined && !Array.isArray(day[key])) return 'Die Liste „' + key + '“ in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+          if (Array.isArray(day[key])) {
+            const invalidItem = day[key].some(item => {
+              if (key === 'images') return !item || (typeof item !== 'string' && (typeof item !== 'object' || Array.isArray(item)));
+              return !item || typeof item !== 'object' || Array.isArray(item);
+            });
+            if (invalidItem) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+            if (key !== 'images') {
+              const invalidCost = day[key].some(item => item.cost !== undefined && !isValidAmountInput(item.cost));
+              if (invalidCost) return 'Tag ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
+            }
+          }
+        }
+      }
+      for (let i = 0; i < (parsed.lodgings || []).length; i++) {
+        const lodging = parsed.lodgings[i];
+        if (!lodging || typeof lodging !== 'object' || Array.isArray(lodging) || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
+        if (lodging.totalPrice !== undefined && !isValidAmountInput(lodging.totalPrice)) return 'Unterkunft ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
+        for (let j = 0; j < i; j++) {
+          const other = parsed.lodgings[j];
+          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut) return 'Die Zeiträume der Unterkünfte „' + (other.name || (j + 1)) + '“ und „' + (lodging.name || (i + 1)) + '“ überschneiden sich.';
+        }
+      }
+      return '';
+    }
+
+    async function applyImportedTrip(parsed, name, handle = null) {
+      const validationError = getImportValidationError(parsed);
+      if (validationError) return showAppAlert(validationError, 'Datei kann nicht geladen werden', 'danger');
+      let preservedCancellationNotes = 0;
+      for (const lodging of parsed.lodgings || []) {
+        const raw = lodging.freeCancellationUntil;
+        const normalized = normalizeImportedOptionalDate(raw);
+        if (normalized === null) {
+          const rawText = typeof raw === 'string' ? raw : JSON.stringify(raw);
+          lodging.notes = [lodging.notes, `Alte Stornierungsangabe (nicht als Datum erkannt): ${rawText}`].filter(Boolean).join('\n');
+          lodging.freeCancellationUntil = '';
+          preservedCancellationNotes++;
+        } else lodging.freeCancellationUntil = normalized;
+      }
+      await createRollingBackup();
+      activeFileHandle = handle; tripData = parsed;
+      await migrateImagesToMediaStore(tripData.days);
+      normalizeDataModel(); await createRollingBackup(); resetBackupReminder(); saveToStorage();
+      syncUI(); updateHeadline(); updateFileStatus(name);
+      showToast(preservedCancellationNotes
+        ? `Datei geladen; ${preservedCancellationNotes} alte Stornierungsangabe(n) in Unterkunftsnotizen gesichert.`
+        : (handle ? 'Datei geöffnet' : 'Datei geladen'));
+    }
+
+    async function openFile() {
+      if ('showOpenFilePicker' in window) {
+        try {
+          const [h] = await window.showOpenFilePicker({ types: [{ accept: { 'application/json': ['.json'] } }], multiple: false });
+          const f = await h.getFile();
+          await applyImportedTrip(JSON.parse(await f.text()), h.name, h);
+          return;
+        } catch (err) { if (err.name === 'AbortError') return; }
+      }
+      document.getElementById('importInput').click();
+    }
+
+    function importJSONFallback(e) {
+      const f = e.target.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onload = async ev => { try { await applyImportedTrip(JSON.parse(ev.target.result), f.name); } catch { showToast("Lesefehler", true); } };
+      r.readAsText(f); e.target.value = '';
+    }
+
+    function syncUI() {
+      document.getElementById('tripTitle').value = tripData.title || '';
+      document.getElementById('startDate').value = tripData.startDate || '';
+      document.getElementById('endDate').value = tripData.endDate || '';
+      document.getElementById('generalNotes').value = tripData.generalNotes || '';
+      const em = document.getElementById('emergencyNotesInput'); if (em) em.value = tripData.emergencyNotes || '';
+      document.getElementById('tripConfigSection')?.classList.toggle('hidden', Boolean(tripData.days?.length));
+      updateHeadline(); renderChecklist(); renderAllAttachmentsOverview(); renderLodgingsTab(); renderDays();
+    }
+
+    function saveMetaData() { tripData.title = document.getElementById('tripTitle').value; recordChangeForReminder(); saveToStorage(); updateHeadline(); }
+    function saveGeneralNotes(v) { tripData.generalNotes = v; recordChangeForReminder(); saveToStorage(); }
+
+    async function generateOrUpdateDays() {
+      const s = document.getElementById('startDate').value, e = document.getElementById('endDate').value;
+      if (!s || !e) return showAppAlert("Start- und Enddatum erforderlich.", "Zeitraum unvollständig");
+      if (!isValidISODate(s) || !isValidISODate(e)) return showAppAlert("Bitte gültige Start- und Enddaten wählen.", "Ungültiges Datum", "danger");
+      const pS = parseISOParts(s), pE = parseISOParts(e);
+      if (!pS || !pE || Date.UTC(pS.y, pS.m - 1, pS.d) > Date.UTC(pE.y, pE.m - 1, pE.d)) return showAppAlert("Startdatum muss vor Enddatum liegen.", "Ungültiger Zeitraum", "danger");
+
+      normalizeDataModel();
+      const count = Math.floor((Date.UTC(pE.y, pE.m - 1, pE.d) - Date.UTC(pS.y, pS.m - 1, pS.d)) / 86400000) + 1;
+      const hasDays = tripData.days.length > 0, oldS = tripData.days[0]?.date || tripData.startDate;
+      await createRollingBackup();
+
+      let shift = false;
+      if (hasDays && oldS && oldS !== s) {
+        shift = await showAppConfirm(`Startdatum geändert (${formatISODate(oldS).dayFormatted} → ${formatISODate(s).dayFormatted}). Route mitverschieben?`, { title: "Startdatum geändert", confirmText: "Route verschieben", cancelText: "Kalender behalten" });
+      }
+
+      if (shift && tripData.days.some(hasFixedLodging)) {
+        return showAppAlert('Die Route kann nicht verschoben werden, weil mindestens ein Tag eine gebuchte, bezahlte oder reservierte Unterkunft hat. Wähle „Kalender behalten“ oder breche ab.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      const newDays = [];
+
+      if (hasDays && shift) {
+        for (let i = 0; i < count; i++) {
+          const iso = addDaysISO(s, i);
+          newDays.push(i < tripData.days.length ? Object.assign(tripData.days[i], { date: iso }) : createEmptyDay(iso, true));
+        }
+      } else {
+        const map = new Map(tripData.days.filter(d => d?.date).map(d => [d.date, d]));
+        for (let i = 0; i < count; i++) { const iso = addDaysISO(s, i); newDays.push(map.get(iso) || createEmptyDay(iso, true)); }
+      }
+
+      const retainedDays = new Set(newDays);
+      if (tripData.days.some(d => hasFixedLodging(d) && !retainedDays.has(d))) {
+        return showAppAlert('Der neue Zeitraum würde einen Tag mit gebuchter oder reservierter Unterkunft entfernen. Passe den Zeitraum so an, dass dieser Tag erhalten bleibt.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      tripData.title = document.getElementById('tripTitle').value;
+      tripData.startDate = s; tripData.endDate = e; tripData.days = newDays;
+      normalizeDataModel();
+
+      recordChangeForReminder(); saveToStorage();
+      document.getElementById('tripConfigSection')?.classList.add('hidden');
+      updateHeadline(); renderDays(); renderLodgingsTab(); renderAllAttachmentsOverview();
+      showToast("Tage generiert");
+    }
+
+    // --- TAGESKARTEN RENDERN ---
+    function renderDays() {
+      const container = document.getElementById('daysContainer');
+      if (!container) return;
+      container.innerHTML = ''; updateToggleAllBtnState();
+
+      if (!tripData.days?.length) {
+        container.innerHTML = `<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-8 sm:p-12 text-center text-slate-500 no-print"><i class="fa-solid fa-map text-3xl sm:text-4xl mb-3 text-slate-400"></i><p class="text-xs sm:text-sm">Noch keine Tage vorhanden.</p></div>`;
+        return updateStats();
+      }
+
+      const today = getTodayIso(); let matches = 0;
+      tripData.days.forEach((day, idx) => {
+        const l = getLodgingForDay(day.date);
+        const fMap = {
+          all: true, booked_lodging: isDayBooked(day), open_lodging: !isDayBooked(day) && !isDayNoLodging(day),
+          booked_flights: day.transports?.some(t => isFlight(t) && isStatusFixed(t.costStatus)),
+          open_flights: day.transports?.some(t => isFlight(t) && !isStatusFixed(t.costStatus)),
+          open_transports: day.transports?.some(t => !isStatusFixed(t.costStatus)),
+          with_attachments: day.images?.length > 0
+        };
+        if (!fMap[currentFilter]) return;
+
+        if (searchQuery) {
+          const hay = [day.location, l?.name, l?.address, day.notes, ...(day.transports || []).map(t => `${t.title} ${t.hint}`), ...(day.activities || []).map(a => `${a.title} ${a.hint}`), ...(day.images || []).map(i => i.name)].join(' ').toLowerCase();
+          if (!hay.includes(searchQuery)) return;
+        }
+
+        matches++;
+        container.appendChild(createDayElement(day, idx, day.date === today));
+        if (!day.isCollapsed) updateImagesDOM(idx);
+      });
+
+      if (!matches) {
+        container.innerHTML = `<div class="bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-2xl p-6 text-center text-slate-600 no-print"><p class="text-xs sm:text-sm font-semibold">Keine Treffer</p><button onclick="setFilter('all'); clearSearch();" class="mt-3 px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-xs font-semibold">Filter zurücksetzen</button></div>`;
+      }
+      updateStats(); autoResizeAllTextareas();
+    }
+
+    function renderDayLodgingSummaryHTML(day, index) {
+      const noL = isDayNoLodging(day), l = getLodgingForDay(day.date);
+      if (noL) {
+        return `
+          <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
+            <div class="flex items-center gap-2.5"><span class="text-base text-slate-400">✈️</span><div><span class="text-xs font-bold text-slate-600 dark:text-slate-300">Keine Übernachtung nötig</span></div></div>
+            <button onclick="toggleDayNoLodging(${index})" class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold text-slate-700 dark:text-slate-300 no-print">Aktivieren</button>
+          </div>`;
+      }
+      if (!l) {
+        return `
+          <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-dashed border-amber-300 dark:border-amber-800/80 flex items-center justify-between gap-3 shadow-sm">
+            <div class="flex items-center gap-2.5"><span class="text-base text-amber-500"><svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg></span><div><span class="text-xs font-bold text-amber-800 dark:text-amber-300">Noch keine Unterkunft</span></div></div>
+            <div class="flex items-center gap-1.5 no-print">
+              <button onclick="toggleDayNoLodging(${index})" class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-400">Keine</button>
+              <button onclick="openLodgingForDay('${day.date}')" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-sm">+ Zuweisen</button>
+            </div>
+          </div>`;
+      }
+      const st = (l.status || 'geplant').toLowerCase();
+      const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
+
+      return `
+        <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <span class="text-base text-slate-700 dark:text-slate-200"><svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg></span>
+            <div class="truncate">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(l.name)}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${st}</span>
+              </div>
+              <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5"><i class="fa-solid fa-map-pin text-[10px]"></i> ${escapeHtml(l.address || 'Keine Adresse')}</div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0 no-print">
+            <button onclick="copyHotelInfo(${index})" title="Kopieren" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs"><i class="fa-regular fa-copy"></i></button>
+            <button onclick="openHotelMaps(${index})" title="Maps" class="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button>
+            <button onclick="openLodgingForDay('${day.date}')" title="Details" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
+          </div>
+        </div>`;
+    }
+
+    function toggleDayNoLodging(idx) {
+      const d = tripData.days[idx]; if (!d) return;
+      d.noLodgingNeeded = !d.noLodgingNeeded;
+      recordChangeForReminder(); saveToStorage(); renderDays(); updateStats();
+      showToast(d.noLodgingNeeded ? "Keine Übernachtung markiert" : "Übernachtung aktiviert");
+    }
+
+    // Verkehrsmittel: Icon-Auswahl -> Text wird zunächst übernommen, bleibt aber frei änderbar
+    const TRANSPORT_CATS = [
+      ['', 'Auto-Icon', ''], ['flugzeug', 'Flugzeug', '✈️'], ['zug', 'Zug / Bahn', '🚆'], ['bus', 'Bus', '🚌'],
+      ['boot', 'Boot / Fähre', '🚤'], ['mietwagen', 'Mietwagen', '🚗'], ['roller', 'Roller', '🛵'], ['taxi', 'Taxi / Grab', '🚕']
+    ];
+    const TRANSPORT_LABELS = Object.fromEntries(TRANSPORT_CATS.filter(c => c[0]).map(c => [c[0], c[1]]));
+
+    // Zeile 1: Icon + Status (+ Sortieren/Verschieben/Löschen) | Zeile 2: Art | Zeile 3: Hinweise | Zeile 4: Preis + URL
+    function renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) {
+      const attr = (field) => `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="${field}"`;
+      const base = `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}"`;
+      const arrow = (dir, disabled, icon) => `<button data-action="move-item-${dir}" ${base} class="w-6 h-6 rounded flex items-center justify-center text-[10px] ${disabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon} pointer-events-none"></i></button>`;
+      return `
+                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
+                    <div class="flex items-center gap-2">
+                      <div class="relative w-11 h-8 shrink-0">
+                        <span id="tr-emoji-${dayIdx}-${itemIdx}" class="absolute inset-0 flex items-center justify-center text-lg rounded-lg bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 pointer-events-none">${getTransportEmoji(it)}</span>
+                        <i class="fa-solid fa-caret-down absolute right-0.5 bottom-0.5 text-[8px] text-slate-400 pointer-events-none no-print"></i>
+                        <select ${attr('category')} aria-label="Verkehrsmittel" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                          ${TRANSPORT_CATS.map(([val, label, emo]) => `<option value="${val}" ${(it.category || '') === val ? 'selected' : ''}>${emo ? emo + ' ' : ''}${label}</option>`).join('')}
+                        </select>
+                      </div>
+                      <select ${attr('costStatus')} class="text-[11px] font-bold rounded px-2 py-1.5 border transition ${getStatusBadgeClass(st)}">
+                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
+                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
+                        <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
+                      </select>
+                      <div class="ml-auto flex items-center gap-0.5 no-print">
+                        ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
+                        <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                        <button data-action="remove-item" ${base} class="text-rose-500 hover:text-rose-700 px-1.5 text-base leading-none" title="Löschen">&times;</button>
+                      </div>
+                    </div>
+                    <textarea rows="1" placeholder="Art (z. B. Flug Bangkok – Luang Prabang)" ${attr('title')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 font-semibold text-slate-900 dark:text-white">${escapeHtml(it.title || '')}</textarea>
+                    <textarea rows="1" placeholder="Hinweise..." ${attr('hint')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(it.hint || '')}</textarea>
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex items-center w-28 shrink-0">
+                        <input type="text" inputmode="decimal" placeholder="Preis" value="${escapeHtml(it.cost || '')}" ${attr('cost')} class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
+                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
+                      </div>
+                      <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
+                      <a id="transports-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
+                  </div>`;
+    }
+
+    // Wird bei Änderung von Kategorie/Titel aufgerufen: Text übernehmen (nur wenn leer/Standardtext) + Icon aktualisieren
+    function syncTransportIconAndTitle(day, dayIdx, idx, changedField) {
+      const it = day.transports?.[idx]; if (!it) return;
+      if (changedField === 'category') {
+        const label = TRANSPORT_LABELS[it.category];
+        const cur = (it.title || '').trim();
+        if (label && (!cur || Object.values(TRANSPORT_LABELS).includes(cur))) {
+          it.title = label;
+          const ta = document.querySelector(`textarea[data-sub-list="transports"][data-day-index="${dayIdx}"][data-item-index="${idx}"][data-sub-field="title"]`);
+          if (ta) { ta.value = label; autoResizeTextarea(ta); }
+        }
+      }
+      const emo = document.getElementById(`tr-emoji-${dayIdx}-${idx}`);
+      if (emo) emo.textContent = getTransportEmoji(it);
+    }
+
+    // Aktivität: Zeile 1 Status + Erledigt | Zeile 2 Aktivität (voller Text) | Zeile 3 Hinweise | Zeile 4 Preis + URL
+    function renderActivityItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) {
+      const attr = (field) => `data-sub-list="activities" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="${field}"`;
+      const base = `data-sub-list="activities" data-day-index="${dayIdx}" data-item-index="${itemIdx}"`;
+      const arrow = (dir, disabled, icon) => `<button data-action="move-item-${dir}" ${base} class="w-6 h-6 rounded flex items-center justify-center text-[10px] ${disabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon} pointer-events-none"></i></button>`;
+      return `
+                  <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <select ${attr('costStatus')} class="text-[11px] font-bold rounded px-2 py-1.5 border transition ${getStatusBadgeClass(st)}">
+                        <option value="geplant" ${st === 'geplant' ? 'selected' : ''}>⏳ Geplant</option>
+                        <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
+                        <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
+                      </select>
+                      <div class="ml-auto flex items-center gap-0.5 no-print">
+                        ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
+                        <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
+                        <div class="relative">
+                          <button type="button" data-action="toggle-activity-menu" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 py-1 rounded transition" title="Weitere Optionen" aria-label="Weitere Optionen" aria-expanded="false"><i class="fa-solid fa-ellipsis-vertical pointer-events-none"></i></button>
+                          <div id="activity-menu-${dayIdx}-${itemIdx}" class="activity-action-dropdown hidden absolute right-0 top-full mt-1 w-40 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-20">
+                            <label class="flex items-center gap-2 px-2.5 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 cursor-pointer select-none">
+                              <input type="checkbox" ${it.done ? 'checked' : ''} data-action="toggle-activity-done" data-day-index="${dayIdx}" data-act-index="${itemIdx}" class="rounded border-slate-300 dark:border-slate-600 text-indigo-600 focus:ring-0">
+                              <span>Erledigt</span>
+                            </label>
+                          </div>
+                        </div>
+                        <button data-action="remove-item" ${base} class="text-rose-500 hover:text-rose-700 px-1.5 text-base leading-none" title="Löschen">&times;</button>
+                      </div>
+                    </div>
+                    <textarea rows="1" id="act-title-input-${dayIdx}-${itemIdx}" placeholder="Aktivität / Plan" ${attr('title')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2.5 py-1 font-semibold text-slate-900 dark:text-white ${it.done ? 'line-through text-slate-400' : ''}">${escapeHtml(it.title || '')}</textarea>
+                    <textarea rows="1" placeholder="Hinweise..." ${attr('hint')} class="auto-hint w-full bg-slate-50 dark:bg-slate-900/60 border border-slate-300 dark:border-slate-700/60 rounded px-2 py-1 text-amber-800 dark:text-amber-200">${escapeHtml(it.hint || '')}</textarea>
+                    <div class="flex items-center gap-2">
+                      <div class="relative flex items-center w-28 shrink-0">
+                        <input type="text" inputmode="decimal" placeholder="Preis" value="${escapeHtml(it.cost || '')}" ${attr('cost')} class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded pl-1.5 pr-5 py-1 text-slate-900 dark:text-white font-mono text-right">
+                        <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
+                      </div>
+                      <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
+                      <a id="activities-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                    </div>
+                  </div>`;
+    }
+
+    function renderSubItemListHTML(day, dayIdx, type) {
+      const isTr = type === 'transports', items = day[type] || [], total = items.length;
+      const title = isTr ? 'Transport & Route' : 'Aktivitäten & Tickets';
+      const icon = isTr ? 'fa-plane-departure text-cyan-600' : 'fa-ticket text-emerald-600';
+      const addAct = isTr ? 'add-transport' : 'add-activity';
+      const addTxt = isTr ? '+ Weiterer Transport' : '+ Weitere Aktivität';
+
+      return `
+        <div id="${type}-box-${dayIdx}" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid ${icon}"></i> ${title}</h3>
+              <button data-action="${addAct}" data-day-index="${dayIdx}" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">${addTxt}</button>
+            </div>
+            <div class="space-y-2.5">
+              ${items.map((it, itemIdx) => {
+                const safeUrl = formatSafeUrl(it.link), isFirst = itemIdx === 0, isLast = itemIdx === total - 1, st = it.costStatus || 'geplant';
+                return isTr ? renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) : renderActivityItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl);
+              }).join('')}
+            </div>
+          </div>
+        </div>`;
+    }
+
+    function createDayElement(day, index, isToday) {
+      const visual = getDayVisualClasses(day, isToday), { dayName, dayFormatted } = formatISODate(day.date);
+      const costs = getDayCostBreakdown(day), hasTr = day.transports?.length > 0, hasAct = day.activities?.length > 0;
+      const images = day.images || [], l = getLodgingForDay(day.date);
+      const card = document.createElement('div');
+      card.id = 'day-card-' + index;
+
+      if (day.isCollapsed) {
+        card.className = `day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm hover:brightness-95 dark:hover:brightness-110 ${visual.cardClass}`;
+        card.setAttribute('data-action', 'toggle-collapse'); card.setAttribute('data-day-index', index);
+        const trTxt = hasTr ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') : '—';
+        const lodHtml = isDayNoLodging(day) ? '✈️ Keine Übernachtung' : (l ? `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}` : `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> <span class="italic text-slate-400 dark:text-slate-500">Noch keine Unterkunft</span>`);
+        const ind = (day.notes?.trim() || images.length) ? `<span class="text-slate-400">|</span><span class="inline-flex items-center gap-1.5">${day.notes?.trim() ? '📝' : ''}${images.length ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : ''}</span>` : '';
+
+        card.innerHTML = `
+          <div class="flex-1 min-w-0 pr-2">
+           <div class="flex items-center space-x-2 sm:space-x-2.5 overflow-x-auto no-scrollbar whitespace-nowrap">
+            <span class="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-800 dark:text-indigo-200 font-bold font-mono">Tag ${index + 1} · ${dayName} · ${dayFormatted ? dayFormatted.slice(0, 5) : '--.--'}</span>
+            <span class="text-slate-400">|</span>
+            <span class="font-bold text-slate-900 dark:text-slate-100">📍 ${escapeHtml(day.location) || 'Ohne Ort'}</span>
+            <span class="text-slate-400">|</span>
+            <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trTxt)}</span>
+            ${ind}
+           </div>
+           <div class="mt-0.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 truncate">${lodHtml}</div>
+          </div>
+          <div class="flex items-center gap-1.5 shrink-0 no-print"><span class="p-1 text-slate-500"><i class="fa-solid fa-chevron-down text-xs"></i></span></div>`;
+        return card;
+      }
+
+      card.className = `day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ${visual.cardClass}`;
+      const statusInfo = getLodgingStatusInfo(day);
+      const hasDailyLodgingPrice = Boolean(l && l.totalPrice !== undefined && String(l.totalPrice).trim() !== '');
+      const lodgingDailyCost = hasDailyLodgingPrice ? formatEuro(costs.lodging) : '';
+      const lodgingBadgeLabel = hasDailyLodgingPrice ? `${statusInfo.btnLabel}, pro Tag ${lodgingDailyCost}` : statusInfo.btnLabel;
+      const hasPrev = index > 0, hasNext = index < tripData.days.length - 1;
+      const canSwapPrev = hasPrev && !hasFixedLodging(day) && !hasFixedLodging(tripData.days[index - 1]);
+      const canSwapNext = hasNext && !hasFixedLodging(day) && !hasFixedLodging(tripData.days[index + 1]);
+
+      card.innerHTML = `
+        <div id="day-header-${index}" class="px-3 py-2 sm:px-5 sm:py-4 print-compact flex flex-wrap items-center gap-x-2 gap-y-2 border-b ${visual.headerClass}">
+          <div class="flex items-center gap-1.5 sm:gap-2 cursor-pointer min-w-0 shrink-0" data-action="toggle-collapse" data-day-index="${index}">
+            <div class="px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl bg-indigo-600 dark:bg-indigo-500 text-white text-center border border-indigo-500 shrink-0 shadow-sm">
+              <div class="text-[9px] uppercase font-bold text-indigo-100">Tag ${index + 1} · ${dayName}</div>
+              <div class="text-sm sm:text-lg font-black tracking-tight">${dayFormatted}</div>
+            </div>
+            <div class="min-w-0 whitespace-nowrap">
+              ${isToday ? '<span class="ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-500 text-white animate-pulse no-print">HEUTE</span>' : ''}
+            </div>
+          </div>
+
+          <div class="flex flex-1 min-w-[190px] flex-wrap items-center gap-1 sm:gap-1.5">
+            <button type="button" title="Tag löschen" aria-label="Tag löschen" data-action="delete-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-rose-200 dark:border-rose-800 text-rose-600 hover:bg-rose-50 dark:bg-slate-800 dark:text-rose-300 dark:hover:text-rose-200 dark:hover:bg-rose-950/50 flex items-center justify-center no-print"><i class="fa-solid fa-trash-can text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tag einfügen" aria-label="Tag einfügen" data-action="insert-day" data-day-index="${index}" class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-700 text-indigo-600 hover:bg-indigo-50 dark:bg-slate-800 dark:text-indigo-300 dark:hover:text-indigo-200 dark:hover:bg-indigo-950/60 flex items-center justify-center no-print"><i class="fa-solid fa-calendar-plus text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tag nach oben tauschen" aria-label="Tag nach oben tauschen" data-action="swap-day-prev" data-day-index="${index}" ${!canSwapPrev ? 'disabled' : ''} class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${canSwapPrev ? 'text-slate-600 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}"><i class="fa-solid fa-arrow-up text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tag nach unten tauschen" aria-label="Tag nach unten tauschen" data-action="swap-day-next" data-day-index="${index}" ${!canSwapNext ? 'disabled' : ''} class="day-action-button w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center transition no-print ${canSwapNext ? 'text-slate-600 hover:text-indigo-600 dark:text-slate-200 dark:hover:text-indigo-400' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}"><i class="fa-solid fa-arrow-down text-xs pointer-events-none"></i></button>
+            <button type="button" title="Tagesansicht zuklappen" aria-label="Tagesansicht zuklappen" data-action="toggle-collapse" data-day-index="${index}" class="day-action-button ml-auto w-9 h-9 sm:w-8 sm:h-8 shrink-0 rounded-lg sm:rounded-xl bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 text-slate-700 hover:bg-slate-100 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-700 flex items-center justify-center no-print"><i class="fa-solid fa-chevron-up text-xs pointer-events-none"></i></button>
+          </div>
+
+          <div class="w-full min-w-0">
+            <div id="loc-box-${index}" class="${getLocationBoxClasses(day)}">
+              <button type="button" data-action="open-maps" data-day-index="${index}" class="${getLocationMapsIconClasses(day)}"><i class="fa-solid fa-map-location-dot text-base sm:text-lg pointer-events-none"></i></button>
+              <button type="button" data-action="open-offline-maps" data-day-index="${index}" class="mr-2.5 shrink-0 transition no-print sm:hidden ${day.location?.trim() ? 'text-emerald-600' : 'hidden'}"><i class="fa-solid fa-compass text-sm pointer-events-none"></i></button>
+              <input type="text" value="${escapeHtml(day.location || '')}" placeholder="Tagesort / Etappe eintragen..." data-day-index="${index}" data-field="location" class="w-full bg-transparent text-base sm:text-xl font-black text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="w-full flex min-w-0 items-center justify-between gap-1">
+            <div class="flex min-w-0 items-center gap-1">
+              <button type="button" title="${lodgingBadgeLabel}" aria-label="${lodgingBadgeLabel}" onclick="openLodgingForDay('${day.date}')" class="h-7 max-w-[220px] sm:max-w-none min-w-0 justify-center px-1.5 sm:px-3 rounded-lg sm:rounded-xl text-[9px] sm:text-xs font-bold transition flex items-center gap-1 shadow no-print whitespace-nowrap overflow-hidden ${visual.btnClass}">
+                <svg class="ico-house pointer-events-none shrink-0" aria-hidden="true"><use href="#icon-house"></use></svg><span class="min-w-0 truncate">${statusInfo.btnLabel}</span>${hasDailyLodgingPrice ? `<span class="shrink-0 opacity-70">·</span><span class="shrink-0 font-mono">pro Tag ${lodgingDailyCost}</span>` : ''}
+              </button>
+            </div>
+            <div class="h-7 shrink-0 px-1.5 sm:px-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] sm:text-xs font-mono flex items-center gap-1" title="Gesamte Tageskosten einschließlich anteiliger Unterkunftskosten">
+              <i class="fa-solid fa-wallet text-violet-500"></i>
+              <span class="text-slate-500 dark:text-slate-400">Gesamt</span>
+              <span id="day-cost-display-${index}" class="font-bold text-slate-800 dark:text-slate-200">${formatEuro(costs.total)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div id="day-body-${index}" class="p-4 sm:p-5 print-compact space-y-4 sm:space-y-5">
+          <div id="day-modules-grid-${index}" class="space-y-4 sm:space-y-5">
+            ${hasTr ? renderSubItemListHTML(day, index, 'transports') : ''}
+            ${hasAct ? renderSubItemListHTML(day, index, 'activities') : ''}
+          </div>
+
+          <div id="day-add-buttons-${index}" class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 no-print ${hasTr && hasAct ? 'hidden' : ''}">
+            ${!hasTr ? `<button data-action="add-transport" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 bg-cyan-50/70 text-cyan-800 dark:bg-cyan-950/20 dark:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Transport hinzufügen</button>` : ''}
+            ${!hasAct ? `<button data-action="add-activity" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Aktivität hinzufügen</button>` : ''}
+          </div>
+
+          <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2.5 sm:space-y-3 rounded-xl transition-all p-1 -m-1">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege</span>
+              <div class="flex items-center gap-2 no-print">
+                <input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})">
+                <button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs text-indigo-600 font-semibold flex items-center gap-1"><i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen</button>
+              </div>
+            </div>
+            <textarea rows="2" placeholder="Notizen..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
+            <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
+          </div>
+
+          ${renderDayLodgingSummaryHTML(day, index)}
+        </div>`;
+      return card;
+    }
+
+    function setupEventDelegation() {
+      const container = document.getElementById('daysContainer');
+      const chkContainer = document.getElementById('checklistContainer');
+
+      container.addEventListener('click', e => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl) return;
+        const action = actionEl.getAttribute('data-action');
+        const dayIdx = parseInt(actionEl.getAttribute('data-day-index'), 10);
+        const subList = actionEl.getAttribute('data-sub-list');
+        const itemIdx = parseInt(actionEl.getAttribute('data-item-index'), 10);
+
+        if (action === 'toggle-collapse') {
+          if (!isNaN(dayIdx)) openOnlyDay(dayIdx);
+          return;
+        }
+
+        const actions = {
+          'open-maps': () => tripData.days[dayIdx] && openGoogleMaps(tripData.days[dayIdx].location),
+          'open-offline-maps': () => tripData.days[dayIdx] && openOfflineMaps(tripData.days[dayIdx].location),
+          'swap-day-prev': () => swapDayWithAdjacent(dayIdx, -1),
+          'swap-day-next': () => swapDayWithAdjacent(dayIdx, 1),
+          'insert-day': () => openDayActionModal('insert', dayIdx),
+          'delete-day': () => openDayActionModal('delete', dayIdx),
+          'add-transport': () => addListRow(dayIdx, 'transports', { title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' }),
+          'add-activity': () => addListRow(dayIdx, 'activities', { title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false }),
+          'remove-item': () => removeListRow(dayIdx, subList, itemIdx),
+          'move-item-up': () => moveArrayItem(dayIdx, subList, itemIdx, -1),
+          'move-item-down': () => moveArrayItem(dayIdx, subList, itemIdx, 1),
+          'move-item-day': () => openMoveItemModal(dayIdx, subList, itemIdx),
+          'toggle-activity-menu': () => {
+            const menu = document.getElementById(`activity-menu-${dayIdx}-${itemIdx}`);
+            const willOpen = menu?.classList.contains('hidden');
+            document.querySelectorAll('.activity-action-dropdown').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('[data-action="toggle-activity-menu"]').forEach(el => el.setAttribute('aria-expanded', 'false'));
+            menu?.classList.toggle('hidden', !willOpen);
+            actionEl.setAttribute('aria-expanded', String(!!willOpen));
+          },
+          'trigger-file-upload': () => document.getElementById('file-upload-' + dayIdx)?.click(),
+          'open-lightbox': () => openLightbox(actionEl.getAttribute('data-media-id'), dayIdx),
+          'open-pdf': () => openPdfAttachment(actionEl.getAttribute('data-media-id'), actionEl.getAttribute('data-file-name')),
+          'rename-attachment': () => renameDayAttachment(dayIdx, itemIdx),
+          'delete-attachment': () => deleteDayAttachment(dayIdx, itemIdx)
+        };
+        actions[action]?.();
+      });
+
+      const handleFieldUpdate = e => {
+        const t = e.target, dayIdx = parseInt(t.getAttribute('data-day-index'), 10), day = tripData.days[dayIdx];
+        if (!day) return;
+
+        if (e.type === 'input' && t.classList.contains('auto-hint')) autoResizeTextarea(t);
+
+        if (e.type === 'change' && t.getAttribute('data-action') === 'toggle-activity-done') {
+          const actIdx = parseInt(t.getAttribute('data-act-index'), 10);
+          if (day.activities[actIdx]) {
+            day.activities[actIdx].done = t.checked;
+            const titleInput = document.getElementById(`act-title-input-${dayIdx}-${actIdx}`);
+            if (titleInput) { titleInput.classList.toggle('line-through', t.checked); titleInput.classList.toggle('text-slate-400', t.checked); }
+            recordChangeForReminder(); saveToStorage();
+          }
+          return;
+        }
+
+        const field = t.getAttribute('data-field');
+        if (field) {
+          day[field] = t.value;
+          if (field === 'location') { updateDayCardVisualStatus(dayIdx); if (day.images?.length) renderAllAttachmentsOverview(); }
+          recordChangeForReminder(); saveToStorage();
+          return;
+        }
+
+        const subList = t.getAttribute('data-sub-list'), subField = t.getAttribute('data-sub-field'), idx = parseInt(t.getAttribute('data-item-index'), 10);
+        if (subList && subField === 'cost' && day[subList]?.[idx]) {
+          if (e.type === 'input') return;
+          if (!isValidAmountInput(t.value)) {
+            t.value = day[subList][idx].cost || '';
+            showToast('Bitte einen gültigen nicht-negativen Betrag eingeben.', true);
+            return;
+          }
+        }
+        if (subList && subField && day[subList]?.[idx]) {
+          day[subList][idx][subField] = t.value;
+          if (subList === 'transports' && (subField === 'category' || subField === 'title')) syncTransportIconAndTitle(day, dayIdx, idx, subField);
+          if (subField === 'costStatus') t.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(t.value);
+          if (subField === 'link') {
+            const btn = document.getElementById(`${subList}-link-btn-${dayIdx}-${idx}`);
+            if (btn) { const u = formatSafeUrl(t.value); btn.href = u || '#'; btn.classList.toggle('hidden', !u); }
+          }
+          refreshDayHeaderCost(dayIdx); recordChangeForReminder(); saveToStorage();
+        }
+      };
+
+      container.addEventListener('change', handleFieldUpdate);
+      container.addEventListener('input', handleFieldUpdate);
+
+      if (chkContainer) {
+        chkContainer.addEventListener('change', e => {
+          if (e.target.getAttribute('data-action') === 'toggle-checklist-item') toggleChecklistItem(parseInt(e.target.getAttribute('data-idx'), 10));
+        });
+        chkContainer.addEventListener('click', e => {
+          const btn = e.target.closest('[data-action="remove-checklist-item"]');
+          if (btn) removeChecklistItem(parseInt(btn.getAttribute('data-idx'), 10));
+        });
+      }
+    }
+
+    function updateDayCardVisualStatus(dayIdx) {
+      const d = tripData.days[dayIdx]; if (!d) return;
+      const visual = getDayVisualClasses(d, d.date === getTodayIso()), hasLoc = Boolean((d.location || '').trim());
+      const card = document.getElementById('day-card-' + dayIdx), hdr = document.getElementById('day-header-' + dayIdx);
+      if (card) card.className = d.isCollapsed ? `day-card cursor-pointer border rounded-xl px-3 py-2 sm:px-3.5 sm:py-2.5 transition-all duration-200 flex items-center justify-between text-xs sm:text-sm shadow-sm ${visual.cardClass}` : `day-card rounded-2xl border transition-all duration-200 overflow-hidden shadow-sm dark:shadow-md ${visual.cardClass}`;
+      if (hdr) hdr.className = `px-4 py-3 sm:px-5 sm:py-4 print-compact flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 border-b ${visual.headerClass}`;
+
+      const locBox = document.getElementById('loc-box-' + dayIdx);
+      if (locBox) {
+        locBox.className = getLocationBoxClasses(d);
+        const mapsBtn = locBox.querySelector('[data-action="open-maps"]'), offMapsBtn = locBox.querySelector('[data-action="open-offline-maps"]');
+        if (mapsBtn) mapsBtn.className = getLocationMapsIconClasses(d);
+        if (offMapsBtn) offMapsBtn.className = `mr-2.5 shrink-0 transition no-print sm:hidden ${hasLoc ? 'text-emerald-600' : 'hidden'}`;
+      }
+      refreshDayHeaderCost(dayIdx); updateStats();
+    }
+
+    function refreshDayHeaderCost(dayIdx) {
+      if (!tripData.days[dayIdx]) return;
+      const d = document.getElementById('day-cost-display-' + dayIdx);
+      if (d) d.innerText = formatEuro(getDayCostBreakdown(tripData.days[dayIdx]).total);
+      updateStats();
+    }
+
+    function addListRow(dayIdx, key, def) {
+      const d = tripData.days[dayIdx]; if (!d) return;
+      (d[key] = d[key] || []).push(def);
+      recordChangeForReminder(); saveToStorage(); renderDays();
+    }
+
+    function removeListRow(dayIdx, key, idx) {
+      if (!tripData.days[dayIdx]?.[key]) return;
+      tripData.days[dayIdx][key].splice(idx, 1);
+      recordChangeForReminder(); saveToStorage(); renderDays();
+    }
+
+    function moveArrayItem(dayIdx, key, idx, dir) {
+      const list = tripData.days[dayIdx]?.[key], target = idx + dir;
+      if (!list || target < 0 || target >= list.length) return;
+      const [it] = list.splice(idx, 1); list.splice(target, 0, it);
+      recordChangeForReminder(); saveToStorage(); renderDays();
+      showToast("Reihenfolge geändert");
+    }
+
+    // --- MOVE ITEM MODAL ---
+    function openMoveItemModal(dayIdx, subList, itemIdx) {
+      if ((tripData.days || []).length <= 1) return showToast("Mindestens 2 Tage erforderlich", true);
+      const item = tripData.days[dayIdx]?.[subList]?.[itemIdx];
+      if (!item) return;
+
+      pendingMoveItem = { dayIndex: dayIdx, listKey: subList, itemIndex: itemIdx };
+      const select = document.getElementById('moveItemTargetSelect'), pBtn = document.getElementById('moveItemPrevDayBtn'), nBtn = document.getElementById('moveItemNextDayBtn');
+      document.getElementById('moveItemModalSubtitle').innerText = `Tag ${dayIdx + 1}: ${item.title || 'Eintrag'}`;
+
+      if (pBtn) { const has = dayIdx > 0; pBtn.disabled = !has; pBtn.classList.toggle('opacity-40', !has); }
+      if (nBtn) { const has = dayIdx < tripData.days.length - 1; nBtn.disabled = !has; nBtn.classList.toggle('opacity-40', !has); }
+
+      select.innerHTML = '';
+      tripData.days.forEach((d, i) => {
+        if (i === dayIdx) return;
+        const opt = new Option(`Tag ${i + 1} (${formatISODate(d.date).dayFormatted}) – ${d.location || 'Ohne Ort'}`, String(i));
+        if (i === dayIdx + 1 || (dayIdx === tripData.days.length - 1 && i === dayIdx - 1)) opt.selected = true;
+        select.add(opt);
+      });
+      toggleModal('moveItemModal', true);
+    }
+
+    function closeMoveItemModal() { toggleModal('moveItemModal', false); pendingMoveItem = null; }
+
+    function confirmMoveItemToDay(mode) {
+      if (!pendingMoveItem) return;
+      const { dayIndex, listKey, itemIndex } = pendingMoveItem;
+      const targetIdx = mode === 'prev' ? dayIndex - 1 : (mode === 'next' ? dayIndex + 1 : parseInt(document.getElementById('moveItemTargetSelect')?.value, 10));
+
+      if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) return closeMoveItemModal();
+      const [moved] = tripData.days[dayIndex][listKey].splice(itemIndex, 1);
+      (tripData.days[targetIdx][listKey] = tripData.days[targetIdx][listKey] || []).push(moved);
+
+      closeMoveItemModal(); recordChangeForReminder(); saveToStorage(); renderDays();
+      showToast(`Auf Tag ${targetIdx + 1} verschoben`);
+    }
+
+    async function swapDayWithAdjacent(dayIdx, dir) {
+      const target = dayIdx + dir, dA = tripData.days?.[dayIdx], dB = tripData.days?.[target];
+      if (!dA || !dB) return;
+      if (hasFixedLodging(dA) || hasFixedLodging(dB)) return showToast('Tage neben gebuchten oder reservierten Unterkünften können nicht getauscht werden.', true);
+      const lbl = (d, i) => `Tag ${i + 1} (${(formatISODate(d.date).dayFormatted || '').slice(0, 5)}, ${(d.location || '').trim() || 'Ohne Ort'})`;
+      if (!await showAppConfirm(`${lbl(dA, dayIdx)} und ${lbl(dB, target)} tauschen?\n\nDie Inhalte (Ort, Transport, Aktivitäten, Notizen, Anhänge) wechseln die Plätze, die Daten bleiben. Unterkünfte folgen weiterhin den Datumsangaben.`, { title: "Tage tauschen", confirmText: "Tauschen", variant: "amber", icon: "fa-right-left" })) return;
+      await createRollingBackup();
+      const [dtA, dtB] = [dA.date, dB.date];
+      tripData.days[dayIdx] = Object.assign(dB, { date: dtA, isCollapsed: true });
+      tripData.days[target] = Object.assign(dA, { date: dtB, isCollapsed: false });
+      recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
+      showToast(`Tag ${dayIdx + 1} mit Tag ${target + 1} getauscht`);
+    }
+
+    function openDayActionModal(type, dayIdx) {
+      pendingModalAction = { type, dayIndex: dayIdx };
+      const day = tripData.days[dayIdx], setEl = (id, prop, v) => { const el = document.getElementById(id); if (el) el[prop] = v; };
+      if (!day) return;
+      document.getElementById('dayActionModalWarnings').classList.add('hidden');
+
+      if (type === 'delete') {
+        setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-trash-can text-rose-500"></i> Tag ${dayIdx + 1} leeren / entfernen`);
+        setEl('dayActionModalDesc', 'innerHTML', `Datum: <b>${formatISODate(day.date).dayFormatted}</b>`);
+        setEl('dayActionModalTitleA', 'innerText', "Modus A: Tag leeren & Datum behalten");
+        setEl('dayActionModalDescA', 'innerText', "Inhalte leeren, Kalender unverändert lassen.");
+        setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-shield-halved"></i> Tag leeren (Modus A)`);
+        setEl('dayActionModalBtnA', 'className', "w-full py-2 px-3 rounded-xl bg-emerald-600 text-white font-semibold text-xs shadow flex items-center justify-center gap-1.5");
+        setEl('dayActionModalTitleB', 'innerText', "Modus B: Reise verkürzen (-1 Tag)");
+        setEl('dayActionModalDescB', 'innerText', "Tag vollständig entfernen, Folgetage rücken nach.");
+        setEl('dayActionModalBtnB', 'innerHTML', `<i class="fa-solid fa-calendar-minus"></i> Tag löschen & kürzen (Modus B)`);
+        setEl('dayActionModalBtnB', 'className', "w-full py-2 px-3 rounded-xl bg-rose-600 text-white font-semibold text-xs shadow flex items-center justify-center gap-1.5");
+      } else {
+        setEl('dayActionModalTitle', 'innerHTML', `<i class="fa-solid fa-calendar-plus text-indigo-500"></i> Tag einfügen`);
+        setEl('dayActionModalDesc', 'innerHTML', `Neuer Tag nach Tag ${dayIdx + 1}.`);
+        setEl('dayActionModalTitleA', 'innerText', "Reise verlängern (+1 Tag)");
+        setEl('dayActionModalDescA', 'innerText', "Fügt einen Tag ein, Folgetage rücken nach hinten.");
+        setEl('dayActionModalBtnA', 'innerHTML', `<i class="fa-solid fa-calendar-plus"></i> Tag einfügen (+1 Tag)`);
+        setEl('dayActionModalBtnA', 'className', "w-full py-2 px-3 rounded-xl bg-indigo-600 text-white font-semibold text-xs shadow flex items-center justify-center gap-1.5");
+        setEl('dayActionModalTitleB', 'innerText', "Abbrechen");
+        setEl('dayActionModalDescB', 'innerText', "Aktion abbrechen.");
+        setEl('dayActionModalBtnB', 'innerHTML', `Abbrechen`);
+        setEl('dayActionModalBtnB', 'className', "w-full py-2 px-3 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-xs");
+      }
+      toggleModal('dayActionModal', true);
+    }
+
+    function closeDayActionModal() { toggleModal('dayActionModal', false); pendingModalAction = null; }
+
+    async function executeDayAction(mode) {
+      if (!pendingModalAction) return;
+      const { type, dayIndex } = pendingModalAction;
+      if (type === 'insert' && mode === 'A' && tripData.days.slice(dayIndex + 1).some(hasFixedLodging)) {
+        closeDayActionModal();
+        return showAppAlert('Ein Tag nach dieser Position hat eine gebuchte oder reservierte Unterkunft und kann nicht verschoben werden.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      if (type === 'delete' && mode === 'B' && tripData.days.slice(dayIndex).some(hasFixedLodging)) {
+        closeDayActionModal();
+        return showAppAlert('Dieser Tag oder ein Folgetag hat eine gebuchte oder reservierte Unterkunft und kann nicht verschoben werden.', 'Unterkunft schützt Reisetag', 'danger');
+      }
+      closeDayActionModal(); await createRollingBackup();
+
+      if (type === 'delete') {
+        const d = tripData.days[dayIndex];
+        if (mode === 'A') {
+          Object.assign(d, createEmptyDay(d.date, d.isCollapsed));
+                    showToast(`Tag ${dayIndex + 1} geleert (Modus A)`);
+        } else {
+          tripData.days.splice(dayIndex, 1);
+          for (let i = dayIndex; i < tripData.days.length; i++) tripData.days[i].date = addDaysISO(tripData.days[i].date, -1);
+          if (tripData.endDate) { tripData.endDate = addDaysISO(tripData.endDate, -1); document.getElementById('endDate').value = tripData.endDate; }
+                    showToast(`Tag ${dayIndex + 1} gelöscht (Modus B)`);
+        }
+      } else if (type === 'insert' && mode === 'A') {
+        const cur = tripData.days[dayIndex];
+        if (cur) {
+          tripData.days.splice(dayIndex + 1, 0, createEmptyDay(addDaysISO(cur.date, 1), false));
+          for (let i = dayIndex + 2; i < tripData.days.length; i++) tripData.days[i].date = addDaysISO(tripData.days[i].date, 1);
+          if (tripData.endDate) { tripData.endDate = addDaysISO(tripData.endDate, 1); document.getElementById('endDate').value = tripData.endDate; }
+          tripData.days.forEach((d, idx) => { if (idx !== dayIndex + 1) d.isCollapsed = true; });
+          showToast(`Neuer Tag eingefügt`);
+        }
+      }
+      normalizeDataModel(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview();
+    }
+
+    // --- BUDGET & TOTALS ---
+    function updateStats() {
+      const days = tripData.days || [], nights = days.filter(isNightDay);
+      const totalN = nights.length, booked = nights.filter(d => isDayLodgingSettled(d)).length;
+      let grand = 0, grandPaid = 0, sLodg = 0, sTr = 0, sAct = 0;
+
+      (tripData.lodgings || []).forEach(l => {
+        const c = parseFlexibleNumber(l.totalPrice);
+        sLodg += c; grand += c;
+        if (['gebucht', 'bezahlt'].includes((l.status || '').toLowerCase())) grandPaid += c;
+      });
+
+      days.forEach(d => {
+        if (!d) return;
+        const b = getDayCostBreakdown(d);
+        // Unterkunftskosten sind oben einmal als Gesamtpreis enthalten; die Tagesanteile
+        // dienen der Tagesansicht und dürfen die Reisegesamtsumme nicht verdoppeln.
+        grand += b.transport + b.activity;
+        grandPaid += b.transportPaid + b.activityPaid;
+        sTr += b.transport; sAct += b.activity;
+      });
+
+      const setT = (id, v) => { const el = document.getElementById(id); if (el) el.innerText = v; };
+      setT('statTotal', totalN); setT('statBooked', booked); setT('statOpen', totalN - booked);
+      setT('statCostTotal', formatEuro(grand)); setT('statCostPaid', formatEuro(grandPaid));
+      setT('statCostPending', formatEuro(grand - grandPaid));
+      setT('statCostPerDay', formatEuro(days.length ? grand / days.length : 0));
+
+      const pct = v => grand > 0 ? (v / grand * 100) : 0;
+      const setBar = (bId, tId, sum, p) => {
+        const b = document.getElementById(bId); if (b) b.style.width = p.toFixed(1) + '%';
+        setT(tId, `${formatEuro(sum)} (${p.toFixed(0)}%)`);
+      };
+      setBar('barLodging', 'breakdownLodging', sLodg, pct(sLodg));
+      setBar('barTransport', 'breakdownTransport', sTr, pct(sTr));
+      setBar('barActivity', 'breakdownActivity', sAct, pct(sAct));
+
+      updateTripCountdown();
+    }
+
+    async function createNewTrip() {
+      if (tripData.days?.length > 0 && !await showAppConfirm("Neue Reise anlegen?", { title: "Neue Reise", variant: "amber" })) return;
+      await createRollingBackup();
+      tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })), lodgings: [], days: [] };
+      activeFileHandle = null; resetBackupReminder(); saveToStorage(); updateFileStatus(null);
+      ['tripTitle', 'startDate', 'endDate', 'generalNotes', 'emergencyNotesInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+      switchTab('plan'); document.getElementById('tripConfigSection')?.classList.remove('hidden');
+      updateHeadline(); renderDays(); renderLodgingsTab(); renderChecklist(); renderAllAttachmentsOverview(); updateStats();
+    }
+
+    async function prepareForPrint() {
+      if (!tripData.days?.length || prePrintCollapsedStates !== null) return;
+      prePrintCollapsedStates = tripData.days.map(d => d.isCollapsed);
+      tripData.days.forEach(d => { if (d) d.isCollapsed = false; });
+      renderDays();
+      await Promise.all(tripData.days.map((_, idx) => updateImagesDOM(idx)));
+      autoResizeAllTextareas();
+    }
+
+    function restoreAfterPrint() {
+      if (prePrintCollapsedStates === null) return;
+      tripData.days.forEach((d, idx) => { if (d && prePrintCollapsedStates[idx] !== undefined) d.isCollapsed = prePrintCollapsedStates[idx]; });
+      prePrintCollapsedStates = null; renderDays();
+    }
+
+    async function printTripPlan() { await prepareForPrint(); setTimeout(() => { autoResizeAllTextareas(); window.print(); }, 300); }
+    window.addEventListener('beforeprint', prepareForPrint);
+    window.addEventListener('afterprint', restoreAfterPrint);
+
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    }
