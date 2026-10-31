@@ -876,7 +876,7 @@ const DEFAULT_CHECKLIST = [
     function renderLodgingCardHTML(l) {
       const pS = parseISOParts(l.checkIn), pE = parseISOParts(l.checkOut);
       const nights = (pS && pE) ? Math.max(0, Math.floor((Date.UTC(pE.y, pE.m - 1, pE.d) - Date.UTC(pS.y, pS.m - 1, pS.d)) / 86400000)) : 0;
-      const safeLink = formatSafeUrl(l.link), st = (l.status || 'geplant').toLowerCase();
+      const safeLink = formatSafeUrl(l.link), st = typeof l.status === 'string' ? l.status.toLowerCase() : 'geplant';
       const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
 
       return `
@@ -889,7 +889,7 @@ const DEFAULT_CHECKLIST = [
                   📅 ${formatISODate(l.checkIn).dayFormatted} bis ${formatISODate(l.checkOut).dayFormatted} <span class="font-bold text-indigo-600 dark:text-indigo-400">(${nights} ${nights === 1 ? 'Nacht' : 'Nächte'})</span>
                 </div>
               </div>
-              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${st}</span>
+              <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${escapeHtml(st)}</span>
             </div>
             <div>${renderCancellationBadge(l.freeCancellationUntil)}</div>
             <div class="text-xs text-slate-600 dark:text-slate-300 space-y-1 pt-1">
@@ -900,8 +900,8 @@ const DEFAULT_CHECKLIST = [
           <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
             <div class="text-xs font-mono font-black text-slate-900 dark:text-white">${formatEuro(parseFlexibleNumber(l.totalPrice))} <span class="text-[10px] font-normal text-slate-400">Gesamt</span></div>
             <div class="flex items-center gap-1.5">
-              ${safeLink ? `<a href="${escapeHtml(safeLink)}" target="_blank" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
-              <button onclick="openLodgingModal('${l.id}')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1">
+              ${safeLink ? `<a href="${escapeHtml(safeLink)}" target="_blank" rel="noopener noreferrer" class="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 text-xs font-semibold transition"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+              <button data-action="edit-lodging" data-lodging-id="${escapeHtml(String(l.id))}" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 text-xs font-semibold transition flex items-center gap-1">
                 <i class="fa-solid fa-pen text-[10px]"></i> Bearbeiten
               </button>
             </div>
@@ -1101,7 +1101,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.48', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.49', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1462,34 +1462,35 @@ const DEFAULT_CHECKLIST = [
     }
 
     function buildAttachmentCardHTML(item, dayIdx, itemIdx, prefix) {
-      const isPdf = item.type === 'pdf', name = escapeHtml(item.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg')), isOv = prefix === 'overview-thumb-';
-      const btns = isOv ? `
-        <button onclick="event.stopPropagation(); renameDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px]"><i class="fa-solid fa-pen"></i></button>
-        <button onclick="event.stopPropagation(); deleteDayAttachment(${dayIdx}, ${itemIdx})" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px]">&times;</button>` : `
+      const isPdf = item?.type === 'pdf';
+      const rawName = item?.name || (isPdf ? 'Dokument.pdf' : 'Screenshot.jpg');
+      const name = escapeHtml(rawName);
+      const mediaId = escapeHtml(String(item?.id ?? ''));
+      const elementId = escapeHtml(prefix + String(item?.id ?? ''));
+      const btns = `
         <button data-action="rename-attachment" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="no-print absolute top-1 left-1 w-5 h-5 bg-slate-800/85 hover:bg-indigo-600 text-white rounded-full flex items-center justify-center text-[9px]"><i class="fa-solid fa-pen pointer-events-none"></i></button>
         <button data-action="delete-attachment" data-day-index="${dayIdx}" data-item-index="${itemIdx}" class="no-print absolute top-1 right-1 w-5 h-5 bg-rose-600/90 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-[10px]">&times;</button>`;
 
       if (isPdf) {
-        const oAttr = isOv ? `onclick="openPdfAttachment('${item.id}', '${name}')"` : `data-action="open-pdf" data-media-id="${item.id}" data-file-name="${name}"`;
+        const actionAttr = `data-action="open-pdf" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-media-id="${mediaId}" data-file-name="${name}"`;
         return `
-          <div ${isOv ? oAttr : ''} class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[235px] shadow-sm cursor-pointer">
+          <div ${actionAttr} class="relative group rounded-xl border border-rose-300 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 p-2.5 pl-7 pr-7 flex items-center gap-2.5 max-w-[235px] shadow-sm cursor-pointer">
             <i class="fa-solid fa-file-pdf text-xl text-rose-600 shrink-0"></i>
-            <div class="overflow-hidden flex-1" ${!isOv ? oAttr : ''}>
+            <div class="overflow-hidden flex-1">
               <span class="block text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${name}</span>
               <span class="text-[10px] text-rose-600 dark:text-rose-400 font-medium">Öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></span>
             </div>${btns}
           </div>`;
       }
 
-      const imgAttr = isOv ? `onclick="openLightbox('${item.id}', ${dayIdx})"` : `data-action="open-lightbox" data-day-index="${dayIdx}" data-media-id="${item.id}"`;
+      const actionAttr = `data-action="open-lightbox" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-media-id="${mediaId}"`;
       return `
-        <div ${isOv ? imgAttr : ''} class="relative group cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center">
-          <img id="${prefix}${item.id}" ${!isOv ? imgAttr : ''} class="w-full h-full object-cover group-hover:scale-105 transition duration-200" src="" alt="${name}">
+        <div ${actionAttr} class="relative group cursor-pointer rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700 bg-slate-900 shadow-sm w-24 h-20 flex items-center justify-center">
+          <img id="${elementId}" class="w-full h-full object-cover group-hover:scale-105 transition duration-200" src="" alt="${name}">
           <span class="pointer-events-none absolute bottom-0 inset-x-0 bg-slate-950/75 text-white text-[9px] px-1 py-0.5 truncate text-center">${name}</span>
           ${btns}
         </div>`;
     }
-
     async function loadThumbnailsForItems(items, prefix) {
       await Promise.all((items || []).map(async it => {
         if (it?.type !== 'pdf' && it?.id) {
@@ -1595,7 +1596,14 @@ const DEFAULT_CHECKLIST = [
       currentLightboxList = []; currentLightboxIndex = 0;
     }
 
-    const formatSafeUrl = u => { const t = (u || '').trim(); return !t ? '' : /^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//i.test(t) ? t : 'https://' + t; };
+    const formatSafeUrl = value => {
+      const raw = typeof value === 'string' ? value.trim() : '';
+      if (!raw) return '';
+      try {
+        const url = new URL(/^[a-zA-Z][a-zA-Z\d+\-.]*:/i.test(raw) ? raw : 'https://' + raw);
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+      } catch { return ''; }
+    };
 
     function escapeCsvCell(value) {
       let text = String(value ?? '');
@@ -2283,7 +2291,7 @@ const DEFAULT_CHECKLIST = [
             </div>
           </div>`;
       }
-      const st = (l.status || 'geplant').toLowerCase();
+      const st = typeof l.status === 'string' ? l.status.toLowerCase() : 'geplant';
       const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
 
       return `
@@ -2293,7 +2301,7 @@ const DEFAULT_CHECKLIST = [
             <div class="truncate">
               <div class="flex items-center gap-2">
                 <span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(l.name)}</span>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${st}</span>
+                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${escapeHtml(st)}</span>
               </div>
               <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5"><i class="fa-solid fa-map-pin text-[10px]"></i> ${escapeHtml(l.address || 'Keine Adresse')}</div>
             </div>
@@ -2354,7 +2362,7 @@ const DEFAULT_CHECKLIST = [
                         <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
                       </div>
                       <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
-                      <a id="transports-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                      <a id="transports-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                     </div>
                   </div>`;
     }
@@ -2411,7 +2419,7 @@ const DEFAULT_CHECKLIST = [
                         <span class="absolute right-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">€</span>
                       </div>
                       <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
-                      <a id="activities-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
+                      <a id="activities-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                     </div>
                   </div>`;
     }
@@ -2596,6 +2604,27 @@ const DEFAULT_CHECKLIST = [
         actions[action]?.();
       });
 
+      const lodgingList = document.getElementById('lodgingsListContainer');
+      lodgingList?.addEventListener('click', e => {
+        const actionEl = e.target.closest('[data-action="edit-lodging"]');
+        if (!actionEl || !lodgingList.contains(actionEl)) return;
+        const id = actionEl.getAttribute('data-lodging-id');
+        if (id) openLodgingModal(id);
+      });
+
+      const attachmentOverview = document.getElementById('allAttachmentsOverview');
+      attachmentOverview?.addEventListener('click', e => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl || !attachmentOverview.contains(actionEl)) return;
+        const action = actionEl.getAttribute('data-action');
+        const dayIdx = Number.parseInt(actionEl.getAttribute('data-day-index'), 10);
+        const itemIdx = Number.parseInt(actionEl.getAttribute('data-item-index'), 10);
+        if (!Number.isInteger(dayIdx) || !tripData.days[dayIdx]) return;
+        if (action === 'open-lightbox') openLightbox(actionEl.getAttribute('data-media-id'), dayIdx);
+        else if (action === 'open-pdf') openPdfAttachment(actionEl.getAttribute('data-media-id'), actionEl.getAttribute('data-file-name'));
+        else if (action === 'rename-attachment' && Number.isInteger(itemIdx)) renameDayAttachment(dayIdx, itemIdx);
+        else if (action === 'delete-attachment' && Number.isInteger(itemIdx)) deleteDayAttachment(dayIdx, itemIdx);
+      });
       const handleFieldUpdate = e => {
         const t = e.target, dayIdx = parseInt(t.getAttribute('data-day-index'), 10), day = tripData.days[dayIdx];
         if (!day) return;
