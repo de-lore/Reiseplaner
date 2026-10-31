@@ -24,6 +24,7 @@ const DEFAULT_CHECKLIST = [
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
     let saveStatusState = 'ready', saveFailureNotified = false, storageQuotaWarning = false, storageQuotaWarned = false, lastStorageEstimateAt = 0;
+    let offlineAssetsLabel = 'Offline-Paket wird eingerichtet', offlineAssetsReady = false;
     let activeDialogResolver = null, activeDialogType = 'confirm';
 
     const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
@@ -43,10 +44,17 @@ const DEFAULT_CHECKLIST = [
 
     function updateSaveStatus(state) {
       saveStatusState = state;
-      const badge = document.getElementById('saveStatusBadge'), icon = document.getElementById('saveStatusIcon'), text = document.getElementById('saveStatusText');
+      updateCombinedStatus();
+    }
+
+    function updateCombinedStatus() {
+      const badge = document.getElementById('saveStatusBadge');
+      const icon = document.getElementById('saveStatusIcon');
+      const text = document.getElementById('saveStatusText');
       if (!badge || !icon || !text) return;
-      if (state !== 'error' && storageQuotaWarning) state = 'quota';
-      const styles = {
+
+      const state = saveStatusState !== 'error' && storageQuotaWarning ? 'quota' : saveStatusState;
+      const saveStates = {
         ready: ['Bereit', 'fa-circle-check', 'text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-700'],
         saving: ['Speichert…', 'fa-spinner fa-spin', 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/70'],
         saved: ['Gespeichert', 'fa-circle-check', 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70'],
@@ -54,13 +62,20 @@ const DEFAULT_CHECKLIST = [
         error: ['Speichern fehlgeschlagen', 'fa-triangle-exclamation', 'text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-950/70'],
         quota: ['Speicher fast voll', 'fa-hard-drive', 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70']
       };
-      const [label, iconClass, classes] = styles[state] || styles.ready;
-      text.innerText = label;
-      icon.className = 'fa-solid ' + iconClass;
-      badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + classes;
-      badge.title = state === 'error' ? 'Lokales Speichern fehlgeschlagen. Erstelle sofort ein JSON-Backup.' : state === 'quota' ? 'Der verfügbare Gerätespeicher ist fast voll. Erstelle ein JSON-Backup und entferne nicht benötigte Belege.' : label;
-    }
+      const [saveLabel, iconClass, classes] = saveStates[state] || saveStates.ready;
+      const networkLabel = navigator.onLine ? 'Online' : (offlineAssetsReady ? 'Offline bereit' : 'Offline');
+      const cacheLabel = offlineAssetsReady ? 'Offline bereit' : offlineAssetsLabel;
+      const summary = navigator.onLine
+        ? `${networkLabel} · ${cacheLabel} · ${saveLabel}`
+        : `${networkLabel} · ${saveLabel}`;
 
+      text.innerText = summary;
+      icon.className = 'fa-solid ' + iconClass;
+      const displayClasses = !offlineAssetsReady && ['ready', 'saved', 'fileSaved'].includes(state) ? 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70' : classes;
+      badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + displayClasses;
+      const networkDetail = navigator.onLine ? 'Internetverbindung besteht' : 'Keine Internetverbindung';
+      badge.title = `${networkDetail} · ${offlineAssetsLabel} · ${saveLabel}`;
+    }
     async function checkStorageCapacity(force = false) {
       if (!navigator.storage?.estimate) return;
       const now = Date.now();
@@ -1127,22 +1142,14 @@ const DEFAULT_CHECKLIST = [
     }
 
     function updateNetworkBadge() {
-      const dot = document.getElementById('networkDot'), text = document.getElementById('networkText'), badge = document.getElementById('networkBadge');
-      if (!dot || !text || !badge) return;
-      const on = navigator.onLine;
-      badge.className = `hidden sm:inline-flex text-[9px] sm:text-[10px] font-normal px-1.5 py-0.5 rounded-full items-center gap-1 ${on ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`;
-      dot.className = `w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`;
-      text.innerText = on ? "Online" : "Offline";
+      updateCombinedStatus();
     }
 
     function updateOfflineAssetsStatus(label, ready) {
-      const badge = document.getElementById('offlineAssetsBadge');
-      if (!badge) return;
-      badge.className = `inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ${ready ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70' : 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70'}`;
-      badge.innerHTML = `<i class="fa-solid ${ready ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i><span>${escapeHtml(label)}</span>`;
-      badge.title = ready ? 'App-Oberfläche und benötigte Bibliotheken sind offline zwischengespeichert.' : 'Die App-Oberfläche oder benötigte Bibliotheken sind nicht vollständig offline zwischengespeichert.';
+      offlineAssetsLabel = label;
+      offlineAssetsReady = ready;
+      updateCombinedStatus();
     }
-
     async function checkOfflineReadiness() {
       if (!('serviceWorker' in navigator) || location.protocol === 'file:') {
         updateOfflineAssetsStatus('Offline-Paket nicht verfügbar', false); return;

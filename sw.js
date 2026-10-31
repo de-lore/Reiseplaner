@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-pro-v2.38';
+const CACHE_NAME = 'reiseplaner-pro-v2.39';
 
 const OFFLINE_ASSETS = [
   './',

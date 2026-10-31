@@ -38,3 +38,7 @@
 .app-header-grid > .app-header-title { grid-column: 2; grid-row: 1; }
 .app-header-grid > .app-header-status { grid-column: 2; grid-row: 3; }
 .app-header-grid > .app-header-details { grid-column: 2; grid-row: 2; }
+@media (max-width: 639px) {
+  .app-header-title #saveStatusBadge { max-width: 52vw; min-width: 0; }
+  .app-header-title #saveStatusText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
