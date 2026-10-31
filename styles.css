@@ -1,0 +1,34 @@
+    @media print {
+      .no-print { display: none !important; }
+      body { background: white !important; color: black !important; font-size: 10pt !important; padding-bottom: 0 !important; }
+      .tab-content { display: block !important; }
+      .day-card { break-inside: avoid; page-break-inside: avoid; box-shadow: none !important; border: 1px solid #94a3b8 !important; background: white !important; margin-bottom: 8px !important; border-radius: 8px !important; }
+      .day-card input, .day-card select, .day-card textarea { border: none !important; background: transparent !important; color: black !important; padding: 0 !important; font-size: 9pt !important; }
+      .print-compact { padding: 8px 12px !important; }
+    }
+    input:focus, textarea:focus, select:focus { outline: none; }
+    :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+      outline: 3px solid #818cf8 !important;
+      outline-offset: 2px;
+    }
+    button:disabled { opacity: 0.55; filter: grayscale(.8); cursor: not-allowed; }
+    .ico-house { display: inline-block; width: 1em; height: 1em; vertical-align: -0.125em; fill: currentColor; flex-shrink: 0; }
+    textarea.auto-hint { resize: none; overflow-y: hidden; min-height: 32px; line-height: 1.4; box-sizing: border-box; transition: height 0.1s ease; }
+    .today-highlight { box-shadow: 0 0 25px -5px rgba(99, 102, 241, 0.45); }
+    .drop-active { border-color: #6366f1 !important; background-color: rgba(99, 102, 241, 0.08) !important; box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .day-card { overflow-wrap: anywhere; }
+    @media (pointer: coarse) {
+      .day-action-button { min-width: 40px; min-height: 40px; }
+      .mobile-tab-button { min-height: 44px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
