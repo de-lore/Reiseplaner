@@ -27,6 +27,7 @@ const DEFAULT_CHECKLIST = [
     const OFFLINE_READY_KEY = 'reiseplaner_pro_offline_ready_v1';
     let offlineAssetsReady = (() => { try { return localStorage.getItem(OFFLINE_READY_KEY) === 'true'; } catch { return false; } })();
     let offlineAssetsLabel = offlineAssetsReady ? 'Offline bereit' : 'Offline-Paket wird eingerichtet';
+    let serviceWorkerPageReloaded = false;
     let activeDialogResolver = null, activeDialogType = 'confirm';
 
     const THEME_KEY = 'reiseplaner_pro_theme', LAST_EXPORT_KEY = 'reiseplaner_pro_last_export_time', CHANGES_COUNT_KEY = 'reiseplaner_pro_unsaved_changes';
@@ -1094,8 +1095,13 @@ const DEFAULT_CHECKLIST = [
         await loadFromStorage();
         await checkStorageCapacity(true);
         if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-          navigator.serviceWorker.addEventListener('controllerchange', checkOfflineReadiness);
-          navigator.serviceWorker.register('sw.js')
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            checkOfflineReadiness();
+            if (serviceWorkerPageReloaded) return;
+            serviceWorkerPageReloaded = true;
+            window.location.reload();
+          });
+          navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
