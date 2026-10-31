@@ -1104,7 +1104,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.51', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.52', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2030,7 +2030,10 @@ const DEFAULT_CHECKLIST = [
       const locallySaved = await tripsSet('trip_data', tripData);
       if (!locallySaved) updateSaveStatus('error');
       const json = JSON.stringify(await buildExportPayload(), null, 2);
-      const name = `Reiseplan_${(tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer'}.json`;
+      const base = (tripData.title || '').trim().replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_') || 'Planer';
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+      const name = `Reiseplan_${base}_${stamp}.json`;
 
       if ('showSaveFilePicker' in window) {
         try {
