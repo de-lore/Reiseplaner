@@ -19,7 +19,7 @@ const DEFAULT_CHECKLIST = [
       days: []
     };
 
-    let activeFileHandle = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
+    let activeFileHandle = null, activeFileName = null, currentTab = 'plan', currentFilter = 'all', searchQuery = '';
     let saveDebounceTimer = null, pendingModalAction = null, pendingMoveItem = null, prePrintCollapsedStates = null;
     let currentLightboxList = [], currentLightboxIndex = 0, touchStartX = 0, touchStartY = 0;
     let unsavedChangesCount = 0, lastExportTimestamp = Date.now();
@@ -1104,7 +1104,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.53', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.54', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2035,22 +2035,39 @@ const DEFAULT_CHECKLIST = [
       const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
       const name = `Reiseplan_${base}_${stamp}.json`;
 
-      if ('showSaveFilePicker' in window) {
+      if (!forceSaveAs && activeFileName && !activeFileHandle) {
+        return showAppAlert(`„${activeFileName}“ wurde ohne Schreibzugriff geöffnet. Diese Datei kann der Browser nicht überschreiben. Nutze „Speichern unter“, um eine neue Version zu erstellen.`, 'Datei kann nicht überschrieben werden', 'amber', 'fa-triangle-exclamation');
+      }
+
+      let targetHandle = forceSaveAs ? null : activeFileHandle;
+      if (forceSaveAs || (!activeFileName && !targetHandle)) {
+        if ('showSaveFilePicker' in window) {
+          try {
+            targetHandle = await window.showSaveFilePicker({ suggestedName: name, types: [{ accept: { 'application/json': ['.json'] } }] });
+          } catch (err) {
+            if (err.name === 'AbortError') return;
+          }
+        }
+      }
+
+      if (targetHandle) {
         try {
-          if (!activeFileHandle || forceSaveAs) activeFileHandle = await window.showSaveFilePicker({ suggestedName: name, types: [{ accept: { 'application/json': ['.json'] } }] });
-          const wr = await activeFileHandle.createWritable();
+          const wr = await targetHandle.createWritable();
           await wr.write(json); await wr.close();
-          updateFileStatus(activeFileHandle.name); resetBackupReminder();
+          activeFileHandle = targetHandle;
+          activeFileName = targetHandle.name;
+          updateFileStatus(activeFileName); resetBackupReminder();
           if (locallySaved) updateSaveStatus('fileSaved');
-          return showExportConfirmation(activeFileHandle.name, 'Ausgewählter Speicherort (der Browser gibt den Gerätepfad nicht frei).');
-        } catch (err) { if (err.name === 'AbortError') return; }
+          return showExportConfirmation(activeFileName, 'Datei wurde am ausgewählten Speicherort gespeichert.');
+        } catch (err) {
+          return showAppAlert(`„${targetHandle.name}“ konnte nicht gespeichert werden. Prüfe den Schreibzugriff oder nutze „Speichern unter“.`, 'Speichern fehlgeschlagen', 'danger', 'fa-triangle-exclamation');
+        }
       }
 
       downloadJsonFile(json, name); resetBackupReminder();
       if (locallySaved) updateSaveStatus('fileSaved');
-      showExportConfirmation(name, 'Downloads-Ordner des Browsers (der genaue Gerätepfad wird vom Browser verwaltet).');
+      return showExportConfirmation(name, 'Downloads-Ordner des Browsers. Dies ist eine neue Datei; eine zuvor geöffnete Datei wurde nicht überschrieben.');
     }
-
     // Download als Datei (URL erst verzögert freigeben – sonst bricht der Download auf Android teils ab)
     function downloadJsonFile(json, name) {
       const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
@@ -2199,7 +2216,7 @@ const DEFAULT_CHECKLIST = [
         return showAppAlert('Der Import wurde abgebrochen. Deine bisherige Reise bleibt geöffnet. ' + (error?.message || ''), 'Import fehlgeschlagen', 'danger');
       }
 
-      activeFileHandle = handle;
+      activeFileHandle = handle; activeFileName = handle?.name || name || null;
       clearTimeout(saveDebounceTimer);
       saveDebounceTimer = null;
       saveFailureNotified = false;
@@ -2952,7 +2969,7 @@ const DEFAULT_CHECKLIST = [
       if (tripData.days?.length > 0 && !await showAppConfirm("Neue Reise anlegen?", { title: "Neue Reise", variant: "amber" })) return;
       await createRollingBackup();
       tripData = { title: "", startDate: "", endDate: "", generalNotes: "", emergencyNotes: "", checklist: DEFAULT_CHECKLIST.map(t => ({ text: t, done: false })), lodgings: [], days: [] };
-      activeFileHandle = null; resetBackupReminder(); saveToStorage(); updateFileStatus(null);
+      activeFileHandle = null; activeFileName = null; resetBackupReminder(); saveToStorage(); updateFileStatus(null);
       ['tripTitle', 'startDate', 'endDate', 'generalNotes', 'emergencyNotesInput'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
       switchTab('plan'); document.getElementById('tripConfigSection')?.classList.remove('hidden');
       updateHeadline(); renderDays(); renderLodgingsTab(); renderChecklist(); renderAllAttachmentsOverview(); updateStats();
