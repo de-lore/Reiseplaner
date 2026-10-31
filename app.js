@@ -1130,15 +1130,15 @@ const DEFAULT_CHECKLIST = [
       const dot = document.getElementById('networkDot'), text = document.getElementById('networkText'), badge = document.getElementById('networkBadge');
       if (!dot || !text || !badge) return;
       const on = navigator.onLine;
-      badge.className = `hidden sm:inline-flex text-[10px] font-normal px-2 py-0.5 rounded-full items-center gap-1 ${on ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`;
+      badge.className = `inline-flex text-[9px] sm:text-[10px] font-normal px-1.5 py-0.5 rounded-full items-center gap-1 ${on ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/70 dark:text-emerald-300 dark:border-emerald-800' : 'bg-slate-200 text-slate-800 border border-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'}`;
       dot.className = `w-1.5 h-1.5 rounded-full ${on ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`;
-      text.innerText = on ? "Online" : "Offline bereit";
+      text.innerText = on ? "Online" : "Offline";
     }
 
     function updateOfflineAssetsStatus(label, ready) {
       const badge = document.getElementById('offlineAssetsBadge');
       if (!badge) return;
-      badge.className = `hidden lg:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ${ready ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70' : 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70'}`;
+      badge.className = `inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ${ready ? 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/70' : 'text-amber-800 dark:text-amber-200 bg-amber-100 dark:bg-amber-950/70'}`;
       badge.innerHTML = `<i class="fa-solid ${ready ? 'fa-circle-check' : 'fa-triangle-exclamation'}"></i><span>${escapeHtml(label)}</span>`;
       badge.title = ready ? 'App-Oberfläche und benötigte Bibliotheken sind offline zwischengespeichert.' : 'Die App-Oberfläche oder benötigte Bibliotheken sind nicht vollständig offline zwischengespeichert.';
     }
