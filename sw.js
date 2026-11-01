@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reiseplaner-pro-v2.59';
+const CACHE_NAME = 'reiseplaner-pro-v2.60';
 
 const OFFLINE_ASSETS = [
   './',
@@ -19,7 +19,16 @@ const OFFLINE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(OFFLINE_ASSETS)));
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    // Einzelne fehlende Dateien dürfen die Installation des Workers nicht verhindern.
+    // Der nächste Statuscheck versucht fehlende Einträge online erneut zu laden.
+    await Promise.allSettled(OFFLINE_ASSETS.map(async url => {
+      const request = new Request(new URL(url, self.registration.scope).href);
+      const response = await fetch(request, { cache: 'reload' });
+      if (response.ok) await cache.put(request, response);
+    }));
+  })());
 });
 
 self.addEventListener('activate', (event) => {
@@ -34,11 +43,24 @@ self.addEventListener('message', (event) => {
   if (event.data?.type !== 'CHECK_OFFLINE_ASSETS') return;
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
-    let missing = 0;
+    const missing = [];
     for (const url of OFFLINE_ASSETS) {
-      if (!(await cache.match(url, { ignoreVary: true }))) missing++;
+      const request = new Request(new URL(url, self.registration.scope).href);
+      if (await cache.match(request, { ignoreVary: true })) continue;
+
+      // Wenn die App online ist, fehlende Ressourcen direkt nachladen.
+      // Jeder Abruf ist einzeln, damit ein einzelner 404 nicht den ganzen Cache-Aufbau abbricht.
+      if (self.navigator.onLine) {
+        try {
+          const response = await fetch(request, { cache: 'reload' });
+          if (response.ok) await cache.put(request, response.clone());
+        } catch (error) {
+          // Der Eintrag bleibt in der Liste und wird unten als fehlend gemeldet.
+        }
+      }
+      if (!(await cache.match(request, { ignoreVary: true }))) missing.push(url);
     }
-    event.ports?.[0]?.postMessage({ missing, total: OFFLINE_ASSETS.length });
+    event.ports?.[0]?.postMessage({ missing: missing.length, missingAssets: missing, total: OFFLINE_ASSETS.length });
   })());
 });
 

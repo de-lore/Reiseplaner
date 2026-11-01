@@ -27,6 +27,7 @@ const DEFAULT_CHECKLIST = [
     const OFFLINE_READY_KEY = 'reiseplaner_pro_offline_ready_v1';
     let offlineAssetsReady = (() => { try { return localStorage.getItem(OFFLINE_READY_KEY) === 'true'; } catch { return false; } })();
     let offlineAssetsLabel = offlineAssetsReady ? 'Offline bereit' : 'Offline-Paket wird eingerichtet';
+    let offlineAssetsDetails = [];
     let serviceWorkerPageReloaded = false;
     let activeDialogResolver = null, activeDialogType = 'confirm';
 
@@ -73,7 +74,8 @@ const DEFAULT_CHECKLIST = [
       badge.className = 'inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] shrink-0 ' + displayClasses;
       const localStoreInfo = ['saving', 'error'].includes(saveStatusState) ? `Lokaler Speicher: ${saveLabel}` : `Lokal gespeichert im Browser auf diesem Gerät (IndexedDB): ${saveLabel}`;
       const jsonInfo = !hasJsonSnapshot ? 'JSON-Sicherung: noch nicht erstellt oder geladen' : (unsavedChangesCount > 0 ? `JSON-Sicherung veraltet: ${unsavedChangesCount} Änderung(en) seit dem letzten Laden/Export` : `JSON-Sicherung aktuell seit ${new Date(lastExportTimestamp).toLocaleString('de-DE')}`);
-      badge.title = `Offline-Paket: ${offlineAssetsLabel} · ${localStoreInfo} · ${jsonInfo}`;
+      const missingInfo = offlineAssetsDetails.length ? ` · Fehlende Dateien: ${offlineAssetsDetails.join(', ')}` : '';
+      badge.title = `Offline-Paket: ${offlineAssetsLabel}${missingInfo} · ${localStoreInfo} · ${jsonInfo}`;
     }
     async function checkStorageCapacity(force = false) {
       if (!navigator.storage?.estimate) return;
@@ -1114,7 +1116,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.59', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.60', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1175,6 +1177,7 @@ const DEFAULT_CHECKLIST = [
       if (ready) {
         offlineAssetsReady = true;
         offlineAssetsLabel = 'Offline bereit';
+        offlineAssetsDetails = [];
         writeLocalSetting(OFFLINE_READY_KEY, 'true');
       } else if (offlineAssetsReady && transient) {
         // Ein voriger erfolgreicher Cache-Check bleibt gültig, wenn der Worker offline nicht antwortet.
@@ -1199,9 +1202,11 @@ const DEFAULT_CHECKLIST = [
         channel.port1.onmessage = event => {
           clearTimeout(timeout);
           const missing = Number(event.data?.missing || 0);
+          offlineAssetsDetails = Array.isArray(event.data?.missingAssets) ? event.data.missingAssets : [];
           updateOfflineAssetsStatus(missing ? `Offline unvollständig (${missing})` : 'Offline bereit', missing === 0);
           channel.port1.close();
         };
+        updateOfflineAssetsStatus(navigator.onLine ? 'Offline-Paket wird vervollständigt' : 'Offline-Status wird geprüft', false);
         worker.postMessage({ type: 'CHECK_OFFLINE_ASSETS' }, [channel.port2]);
       } catch (e) { updateOfflineAssetsStatus('Offline-Status unbekannt', false); }
     }
