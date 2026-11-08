@@ -788,12 +788,13 @@ const DEFAULT_CHECKLIST = [
     }
 
     // --- LOGIK UNTERKÜNFTE & STATI ---
-    const getLodgingForDay = d => d && tripData.lodgings ? tripData.lodgings.find(l => l.checkIn <= d && d < l.checkOut) || null : null;
+    const getLodgingsForDay = d => d && tripData.lodgings ? tripData.lodgings.filter(l => l.checkIn <= d && d < l.checkOut).sort((a, b) => Number(Boolean(a.secondary)) - Number(Boolean(b.secondary))) : [];
+    const getLodgingForDay = d => getLodgingsForDay(d)[0] || null;
     const hasFixedLodging = day => (tripData.lodgings || []).some(l => l.checkIn <= day?.date && day?.date < l.checkOut && ['gebucht', 'bezahlt', 'reserviert'].includes((l.status || '').toLowerCase()));
     const isDayNoLodging = d => Boolean(d?.noLodgingNeeded);
-    const isDayBooked = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+    const isDayBooked = d => isDayNoLodging(d) || getLodgingsForDay(d?.date).some(l => ['gebucht', 'bezahlt', 'reserviert'].includes((l.status || '').toLowerCase()));
     const isNightDay = (d, i, arr) => Boolean(d) && !isDayNoLodging(d) && (i < arr.length - 1 || Boolean(getLodgingForDay(d.date)));
-    const isDayLodgingSettled = d => isDayNoLodging(d) || ['gebucht', 'bezahlt', 'reserviert'].includes((getLodgingForDay(d?.date)?.status || '').toLowerCase());
+    const isDayLodgingSettled = d => isDayNoLodging(d) || getLodgingsForDay(d?.date).some(l => ['gebucht', 'bezahlt', 'reserviert'].includes((l.status || '').toLowerCase()));
 
     function getLodgingStatusInfo(day) {
       if (isDayNoLodging(day)) return { btnLabel: 'Ohne Unterkunft', shortLabel: 'Keine' };
@@ -923,9 +924,11 @@ const DEFAULT_CHECKLIST = [
       document.getElementById('autoFillBookingInput').value = '';
       lastBookingPdf = null;
       document.getElementById('modalLodgingId').value = isEdit ? l.id : '';
+      document.getElementById('lodgingConflictPanel')?.classList.add('hidden');
+      document.getElementById('lodgingConflictList').innerHTML = '';
       document.getElementById('modalLodgingName').value = l?.name || '';
       document.getElementById('modalLodgingLocation').value = l?.location || '';
-      document.getElementById('modalLodgingStatus').value = l?.status || 'gebucht';
+      document.getElementById('modalLodgingStatus').value = l?.status || 'reserviert';
       document.getElementById('modalLodgingCheckIn').value = l?.checkIn || tripData.startDate || '';
       document.getElementById('modalLodgingCheckOut').value = l?.checkOut || (tripData.startDate ? addDaysISO(tripData.startDate, 1) : '');
       document.getElementById('modalLodgingPrice').value = l?.totalPrice || '';
@@ -951,7 +954,7 @@ const DEFAULT_CHECKLIST = [
       infoEl.innerText = "Dauer: Bitte gültigen Zeitraum wählen";
     }
 
-    function saveLodgingFromModal() {
+    function saveLodgingFromModal(conflictChoice = '') {
       const id = document.getElementById('modalLodgingId').value, name = document.getElementById('modalLodgingName').value.trim();
       const location = document.getElementById('modalLodgingLocation').value.trim(), checkIn = document.getElementById('modalLodgingCheckIn').value, checkOut = document.getElementById('modalLodgingCheckOut').value;
       if (!name || !location) return showAppAlert("Name und Ort sind erforderlich.", "Eingabe unvollständig");
@@ -962,11 +965,14 @@ const DEFAULT_CHECKLIST = [
       const cancellationDate = document.getElementById('modalLodgingFreeCancel').value;
       if (cancellationDate && !isValidISODateTimeLocal(cancellationDate)) return showAppAlert("Bitte ein gültiges Datum und eine gültige Uhrzeit für die kostenlose Stornierung wählen.", "Ungültiges Datum", "danger");
 
-      const overlapping = (tripData.lodgings || []).find(l => (!id || l.id !== id) && typeof l.checkIn === 'string' && typeof l.checkOut === 'string' && checkIn < l.checkOut && l.checkIn < checkOut);
-      if (overlapping) return showAppAlert(
-        'Der Zeitraum überschneidet sich mit „' + (overlapping.name || 'einer anderen Unterkunft') + '“ (' + overlapping.checkIn + ' bis ' + overlapping.checkOut + '). Bitte prüfe die Daten.',
-        'Unterkunftszeiträume überschneiden sich', 'danger'
-      );
+      const overlapping = (tripData.lodgings || []).filter(l => l.id !== id && typeof l.checkIn === 'string' && typeof l.checkOut === 'string' && checkIn < l.checkOut && l.checkIn < checkOut);
+      if (overlapping.length && !conflictChoice) {
+        const panel = document.getElementById('lodgingConflictPanel');
+        document.getElementById('lodgingConflictList').innerHTML = overlapping.map(l => `<div class="rounded-lg border border-amber-300 bg-white/70 px-2.5 py-2 dark:border-amber-800 dark:bg-slate-900/50"><strong>${escapeHtml(l.name || 'Unterkunft')}</strong> · ${escapeHtml(l.location || '')} · ${escapeHtml(l.checkIn)} bis ${escapeHtml(l.checkOut)} · ${escapeHtml(l.status || 'geplant')}${l.secondary ? ' · bereits zweite Unterkunft' : ''}</div>`).join('');
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+      }
 
       const obj = {
         id: id || generateUUID(), name, location,
@@ -975,10 +981,15 @@ const DEFAULT_CHECKLIST = [
         freeCancellationUntil: cancellationDate,
         address: document.getElementById('modalLodgingAddress').value.trim(),
         link: document.getElementById('modalLodgingLink').value.trim(),
-        notes: document.getElementById('modalLodgingNotes').value.trim()
+        notes: document.getElementById('modalLodgingNotes').value.trim(),
+        ...(conflictChoice === 'secondary' ? { secondary: true } : {})
       };
 
       if (!Array.isArray(tripData.lodgings)) tripData.lodgings = [];
+      if (conflictChoice === 'replace') {
+        const overlapIds = new Set(overlapping.map(l => l.id));
+        tripData.lodgings = tripData.lodgings.filter(l => !overlapIds.has(l.id));
+      }
       const idx = tripData.lodgings.findIndex(it => it.id === id);
       if (idx !== -1) tripData.lodgings[idx] = obj; else tripData.lodgings.push(obj);
 
@@ -1007,6 +1018,15 @@ const DEFAULT_CHECKLIST = [
         if (day?.location) document.getElementById('modalLodgingLocation').value = day.location;
         updateModalNightsCalc();
       }
+    }
+
+    function openNewLodgingForDay(dateStr) {
+      openLodgingModal(null);
+      document.getElementById('modalLodgingCheckIn').value = dateStr;
+      document.getElementById('modalLodgingCheckOut').value = addDaysISO(dateStr, 1);
+      const day = tripData.days.find(d => d.date === dateStr);
+      if (day?.location) document.getElementById('modalLodgingLocation').value = day.location;
+      updateModalNightsCalc();
     }
 
     // --- NAVIGATION & VIEWS ---
@@ -1116,7 +1136,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.60', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.61', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1701,13 +1721,13 @@ const DEFAULT_CHECKLIST = [
     const openGoogleMaps = loc => launchMap(loc, false, "Tagesort erforderlich");
     const openOfflineMaps = loc => launchMap(loc, true, "Tagesort erforderlich");
 
-    function openHotelMaps(idx) {
-      const d = tripData.days[idx], l = getLodgingForDay(d?.date);
+    function openHotelMaps(idx, lodgingId = '') {
+      const d = tripData.days[idx], l = lodgingId ? tripData.lodgings.find(item => item.id === lodgingId) : getLodgingForDay(d?.date);
       launchMap([l?.name, l?.address, d?.location].filter(Boolean).join(', '), false, "Hoteldaten fehlen");
     }
 
-    async function copyHotelInfo(idx) {
-      const l = getLodgingForDay(tripData.days[idx]?.date);
+    async function copyHotelInfo(idx, lodgingId = '') {
+      const l = lodgingId ? tripData.lodgings.find(item => item.id === lodgingId) : getLodgingForDay(tripData.days[idx]?.date);
       const text = [l?.name, l?.address].filter(Boolean).join(', ');
       if (!text) return showToast("Keine Hoteldaten vorhanden", true);
       try {
@@ -2244,13 +2264,14 @@ const DEFAULT_CHECKLIST = [
       for (let i = 0; i < (parsed.lodgings || []).length; i++) {
         const lodging = parsed.lodgings[i];
         if (!isRecord(lodging) || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
+        if (lodging.secondary !== undefined && typeof lodging.secondary !== 'boolean') return 'Unterkunft ' + (i + 1) + ' enthält eine ungültige Kennzeichnung für eine zusätzliche Unterkunft.';
         for (const key of ['id', 'name', 'status', 'address', 'link', 'notes', 'freeCancellationUntil']) {
           if (!isOptionalString(lodging, key)) return 'Unterkunft ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
         }
         if (!validAmount(lodging, 'totalPrice')) return 'Unterkunft ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
         for (let j = 0; j < i; j++) {
           const other = parsed.lodgings[j];
-          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut) return 'Die Zeiträume der Unterkünfte überschneiden sich.';
+          if (lodging.checkIn < other.checkOut && other.checkIn < lodging.checkOut && !lodging.secondary && !other.secondary) return 'Die Zeiträume der Unterkünfte überschneiden sich.';
         }
       }
       return '';
@@ -2432,7 +2453,7 @@ const DEFAULT_CHECKLIST = [
     }
 
     function renderDayLodgingSummaryHTML(day, index) {
-      const noL = isDayNoLodging(day), l = getLodgingForDay(day.date);
+      const noL = isDayNoLodging(day), lodgings = getLodgingsForDay(day.date), l = getLodgingForDay(day.date);
       if (noL) {
         return `
           <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
@@ -2446,9 +2467,18 @@ const DEFAULT_CHECKLIST = [
             <div class="flex items-center gap-2.5"><span class="text-base text-amber-500"><svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg></span><div><span class="text-xs font-bold text-amber-800 dark:text-amber-300">Noch keine Unterkunft</span></div></div>
             <div class="flex items-center gap-1.5 no-print">
               <button onclick="toggleDayNoLodging(${index})" class="px-2.5 py-1 rounded-lg border border-slate-300 dark:border-slate-700 text-[11px] font-semibold text-slate-600 dark:text-slate-400">Keine</button>
-              <button onclick="openLodgingForDay('${day.date}')" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-sm">+ Zuweisen</button>
+              <button onclick="openNewLodgingForDay('${day.date}')" class="px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold shadow-sm">+ Zuweisen</button>
             </div>
           </div>`;
+      }
+      if (lodgings.length > 1) {
+        const summaries = lodgings.map((item, lodgingIndex) => {
+          const itemStatus = typeof item.status === 'string' ? item.status.toLowerCase() : 'geplant';
+          const itemBadge = itemStatus === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (itemStatus === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
+          const itemId = escapeHtml(String(item.id)), isSecondary = lodgingIndex > 0 || item.secondary;
+          return `<div class="${isSecondary ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 dark:border-orange-500 ring-2 ring-orange-400/60' : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'} rounded-xl p-3 border-2 flex items-center justify-between gap-3"><div class="min-w-0">${isSecondary ? '<div><span class="inline-block rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-black uppercase text-white">⚠ ZWEITE UNTERKUNFT</span></div>' : ''}<div class="flex items-center gap-2"><span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(item.name)}</span><span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${itemBadge}">${escapeHtml(itemStatus)}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(item.address || 'Keine Adresse')}</div></div><div class="flex items-center gap-1.5 shrink-0 no-print"><button onclick="copyHotelInfo(${index}, '${itemId}')" title="Kopieren" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-regular fa-copy"></i></button><button onclick="openHotelMaps(${index}, '${itemId}')" title="Maps" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button><button onclick="openLodgingModal('${itemId}')" title="Bearbeiten" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-solid fa-pen"></i></button></div></div>`;
+        }).join('');
+        return `<div class="space-y-2"><div class="rounded-lg border-2 border-orange-500 bg-orange-100 px-3 py-2 text-xs font-black text-orange-950 dark:bg-orange-950 dark:text-orange-100"><i class="fa-solid fa-triangle-exclamation"></i> ${lodgings.length} UNTERKÜNFTE FÜR DIESEN TAG</div>${summaries}<div class="no-print"><button onclick="openNewLodgingForDay('${day.date}')" class="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300"><i class="fa-solid fa-plus"></i> Weitere Unterkunft hinzufügen</button></div></div>`;
       }
       const st = typeof l.status === 'string' ? l.status.toLowerCase() : 'geplant';
       const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
@@ -2468,6 +2498,7 @@ const DEFAULT_CHECKLIST = [
           <div class="flex items-center gap-1.5 shrink-0 no-print">
             <button onclick="copyHotelInfo(${index})" title="Kopieren" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs"><i class="fa-regular fa-copy"></i></button>
             <button onclick="openHotelMaps(${index})" title="Maps" class="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button>
+            <button onclick="openNewLodgingForDay('${day.date}')" title="Weitere Unterkunft für diesen Tag hinzufügen" class="px-2 py-1.5 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200 text-[10px] font-bold"><i class="fa-solid fa-plus"></i> Unterkunft</button>
             <button onclick="openLodgingForDay('${day.date}')" title="Details" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
           </div>
         </div>`;
