@@ -1172,7 +1172,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.69', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.68', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2789,7 +2789,7 @@ const DEFAULT_CHECKLIST = [
         card.setAttribute('data-action', 'toggle-collapse'); card.setAttribute('data-day-index', index);
         const trTxt = hasTr ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') : '—';
         const lodHtml = isDayNoLodging(day) ? '✈️ Keine Übernachtung' : (l ? `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}` : `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> <span class="italic text-slate-400 dark:text-slate-500">Noch keine Unterkunft</span>`);
-        const ind = images.length ? `<span class="text-slate-400">|</span><span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : '';
+        const ind = (day.notes?.trim() || images.length) ? `<span class="text-slate-400">|</span><span class="inline-flex items-center gap-1.5">${day.notes?.trim() ? '📝' : ''}${images.length ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : ''}</span>` : '';
 
         card.innerHTML = `
           <div class="flex-1 min-w-0 pr-2">
@@ -2801,10 +2801,7 @@ const DEFAULT_CHECKLIST = [
             <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trTxt)}</span>
             ${ind}
            </div>
-           <div class="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
-             <span class="inline-flex min-w-0 max-w-[55%] items-center gap-1 truncate font-medium">${lodHtml}</span>
-             ${day.notes?.trim() ? `<span class="shrink-0 text-slate-400">·</span><span class="min-w-0 truncate" title="${escapeHtml(day.notes.trim())}"><i class="fa-regular fa-note-sticky mr-1 text-amber-500" aria-hidden="true"></i>${escapeHtml(day.notes.trim())}</span>` : ''}
-           </div>
+           <div class="mt-0.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 truncate">${lodHtml}</div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0 no-print"><span class="p-1 text-slate-500"><i class="fa-solid fa-chevron-down text-xs"></i></span></div>`;
         return card;
@@ -2871,19 +2868,20 @@ const DEFAULT_CHECKLIST = [
             <button data-action="add-activity" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Aktivität hinzufügen</button>
           </div>
 
-          <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2.5 sm:space-y-3 rounded-xl transition-all p-1 -m-1">
+          ${renderDayLodgingSummaryHTML(day, index)}
+
+          <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2 rounded-xl transition-all p-1 -m-1">
             <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen & Belege</span>
+              <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen</span>
               <div class="flex items-center gap-2 no-print">
                 <input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})">
                 <button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs text-indigo-600 font-semibold flex items-center gap-1"><i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen</button>
               </div>
             </div>
-            <textarea rows="2" placeholder="Notizen..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
+            <textarea rows="1" placeholder="Notizen..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
             <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
           </div>
 
-          ${renderDayLodgingSummaryHTML(day, index)}
         </div>`;
       return card;
     }
