@@ -1136,7 +1136,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.62', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.63', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2621,22 +2621,25 @@ const DEFAULT_CHECKLIST = [
       const entries = [
         ...(day.transports || []).map((item, itemIdx) => ({ type: 'transports', item, itemIdx, order: itemIdx })),
         ...(day.activities || []).map((item, itemIdx) => ({ type: 'activities', item, itemIdx, order: (day.transports || []).length + itemIdx }))
-      ].sort((a, b) => {
-        const aTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(a.item.time || '') ? a.item.time : '99:99';
-        const bTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(b.item.time || '') ? b.item.time : '99:99';
-        return aTime.localeCompare(bTime) || a.order - b.order;
-      });
-      const content = entries.map(({ type, item, itemIdx }) => {
+      ];
+      const hasValidTime = entry => /^([01]\d|2[0-3]):[0-5]\d$/.test(entry.item.time || '');
+      const timedEntries = entries.filter(hasValidTime).sort((a, b) => a.item.time.localeCompare(b.item.time) || a.order - b.order);
+      const untimedEntries = entries.filter(entry => !hasValidTime(entry)).sort((a, b) => a.order - b.order);
+      const renderEntry = ({ type, item, itemIdx }) => {
         const isTransport = type === 'transports';
         const count = day[type].length, status = item.costStatus || 'geplant', safeUrl = formatSafeUrl(item.link);
         const label = isTransport ? 'Transport' : 'Aktivität';
         const icon = isTransport ? 'fa-plane-departure' : 'fa-ticket';
+        const title = (item.title || '').trim() || label;
+        const typeClasses = isTransport ? 'bg-cyan-50 text-cyan-800 dark:bg-cyan-950/60 dark:text-cyan-200' : 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-200';
         const card = isTransport
           ? renderTransportItemHTML(item, dayIdx, itemIdx, itemIdx === 0, itemIdx === count - 1, status, safeUrl)
           : renderActivityItemHTML(item, dayIdx, itemIdx, itemIdx === 0, itemIdx === count - 1, status, safeUrl);
-        return `<div class="relative pl-8"><span class="absolute left-[3px] top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 ${isTransport ? 'border-cyan-500 bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300' : 'border-emerald-500 bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}"><i class="fa-solid ${icon} text-[9px]"></i></span><div class="mb-1 flex items-center gap-2 text-[11px] font-bold ${isTransport ? 'text-cyan-700 dark:text-cyan-300' : 'text-emerald-700 dark:text-emerald-300'}"><span>${escapeHtml(item.time || 'Uhrzeit offen')}</span><span class="uppercase tracking-wide">${label}</span></div>${card}</div>`;
-      }).join('');
-      return `<section class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-900/60"><div class="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"><i class="fa-regular fa-clock mr-1.5 text-indigo-500"></i> Tagesablauf</h3><div class="flex items-center gap-3 no-print"><button data-action="add-transport" data-day-index="${dayIdx}" class="text-xs font-semibold text-cyan-700 dark:text-cyan-300">+ Transport</button><button data-action="add-activity" data-day-index="${dayIdx}" class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">+ Aktivität</button></div></div><div class="relative space-y-3"><div class="absolute bottom-3 left-[12px] top-3 w-0.5 bg-slate-300 dark:bg-slate-700"></div>${content}</div></section>`;
+        return `<details data-timeline-item="${type}-${itemIdx}" class="group overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors open:border-slate-300 open:shadow-sm dark:border-slate-700 dark:bg-slate-800/70 dark:open:border-slate-600"><summary class="flex min-h-12 cursor-pointer list-none items-center gap-2.5 px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700/40"><span class="shrink-0 rounded-lg px-2 py-1 font-mono text-xs font-black ${item.time ? 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-white' : 'bg-slate-50 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}">${escapeHtml(item.time || '—:—')}</span><span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${typeClasses}"><i class="fa-solid ${icon} text-xs"></i></span><span data-timeline-title class="min-w-0 flex-1 truncate text-sm font-semibold ${item.done ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}">${escapeHtml(title)}</span><span data-timeline-status class="hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize sm:inline-flex ${getStatusBadgeClass(status)}">${escapeHtml(status)}</span>${item.done ? '<i data-timeline-done class="fa-solid fa-check text-emerald-600" title="Erledigt"></i>' : '<i data-timeline-done class="hidden fa-solid fa-check text-emerald-600" title="Erledigt"></i>'}<i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-slate-400 transition-transform group-open:rotate-180"></i></summary><div class="border-t border-slate-100 p-2.5 dark:border-slate-700">${card}</div></details>`;
+      };
+      const renderTimed = timedEntries.map(entry => `<div class="relative pl-8"><span class="absolute left-[3px] top-3 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 ${entry.type === 'transports' ? 'border-cyan-500 bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300' : 'border-emerald-500 bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}"><i class="fa-solid ${entry.type === 'transports' ? 'fa-plane-departure' : 'fa-ticket'} text-[9px]"></i></span>${renderEntry(entry)}</div>`).join('');
+      const renderUntimed = untimedEntries.map(renderEntry).join('');
+      return `<section class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-900/60"><div class="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"><i class="fa-regular fa-clock mr-1.5 text-indigo-500"></i> Tagesablauf</h3><div class="flex items-center gap-3 no-print"><button data-action="add-transport" data-day-index="${dayIdx}" class="text-xs font-semibold text-cyan-700 dark:text-cyan-300">+ Transport</button><button data-action="add-activity" data-day-index="${dayIdx}" class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">+ Aktivität</button></div></div>${timedEntries.length ? `<div class="relative space-y-2.5"><div class="absolute bottom-3 left-[12px] top-3 w-0.5 bg-slate-300 dark:bg-slate-700"></div>${renderTimed}</div>` : ''}${untimedEntries.length ? `<div class="${timedEntries.length ? 'mt-4 border-t border-slate-200 pt-3 dark:border-slate-700' : ''}"><h4 class="mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Noch ohne Uhrzeit</h4><div class="space-y-2.5">${renderUntimed}</div></div>` : ''}</section>`;
     }
 
     function createDayElement(day, index, isToday) {
@@ -2827,6 +2830,13 @@ const DEFAULT_CHECKLIST = [
             day.activities[actIdx].done = t.checked;
             const titleInput = document.getElementById(`act-title-input-${dayIdx}-${actIdx}`);
             if (titleInput) { titleInput.classList.toggle('line-through', t.checked); titleInput.classList.toggle('text-slate-400', t.checked); }
+            const summary = document.querySelector(`#day-card-${dayIdx} details[data-timeline-item="activities-${actIdx}"]`);
+            const summaryTitle = summary?.querySelector('[data-timeline-title]'), doneIcon = summary?.querySelector('[data-timeline-done]');
+            summaryTitle?.classList.toggle('line-through', t.checked);
+            summaryTitle?.classList.toggle('text-slate-400', t.checked);
+            summaryTitle?.classList.toggle('text-slate-900', !t.checked);
+            summaryTitle?.classList.toggle('dark:text-white', !t.checked);
+            doneIcon?.classList.toggle('hidden', !t.checked);
             recordChangeForReminder(); saveToStorage();
           }
           return;
@@ -2852,13 +2862,26 @@ const DEFAULT_CHECKLIST = [
         if (subList && subField && day[subList]?.[idx]) {
           day[subList][idx][subField] = t.value;
           if (subList === 'transports' && (subField === 'category' || subField === 'title')) syncTransportIconAndTitle(day, dayIdx, idx, subField);
+          if (subField === 'title' || (subList === 'transports' && subField === 'category')) {
+            const summary = document.querySelector(`#day-card-${dayIdx} details[data-timeline-item="${subList}-${idx}"] [data-timeline-title]`);
+            if (summary) summary.textContent = day[subList][idx].title?.trim() || (subList === 'transports' ? 'Transport' : 'Aktivität');
+          }
           if (subField === 'costStatus') t.className = 'text-[11px] font-bold rounded px-2 py-1 border transition ' + getStatusBadgeClass(t.value);
+          if (subField === 'costStatus') {
+            const summaryStatus = document.querySelector(`#day-card-${dayIdx} details[data-timeline-item="${subList}-${idx}"] [data-timeline-status]`);
+            if (summaryStatus) { summaryStatus.textContent = t.value; summaryStatus.className = 'hidden shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize sm:inline-flex ' + getStatusBadgeClass(t.value); }
+          }
           if (subField === 'link') {
             const btn = document.getElementById(`${subList}-link-btn-${dayIdx}-${idx}`);
             if (btn) { const u = formatSafeUrl(t.value); btn.href = u || '#'; btn.classList.toggle('hidden', !u); }
           }
           refreshDayHeaderCost(dayIdx); recordChangeForReminder(); saveToStorage();
-          if (subField === 'time' && e.type === 'change') renderDays();
+          if (subField === 'time' && e.type === 'change') {
+            const timelineItem = `${subList}-${idx}`;
+            renderDays();
+            const updatedDetails = document.querySelector(`#day-card-${dayIdx} details[data-timeline-item="${timelineItem}"]`);
+            if (updatedDetails) { updatedDetails.open = true; updatedDetails.querySelector('input[data-sub-field="time"]')?.focus(); }
+          }
         }
       };
 
