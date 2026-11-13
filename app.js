@@ -726,6 +726,29 @@ const DEFAULT_CHECKLIST = [
       return null;
     }
 
+    function findDayImageById(id) {
+      if (!id) return null;
+      for (let dayIdx = 0; dayIdx < (tripData.days || []).length; dayIdx++) {
+        const images = tripData.days[dayIdx]?.images || [], imageIdx = images.findIndex(item => item?.id === id);
+        if (imageIdx >= 0) return { item: images[imageIdx], dayIdx, imageIdx };
+      }
+      return null;
+    }
+
+    function getLodgingAttachmentRecords(lodging) {
+      return (lodging?.attachments || []).map(findDayImageById).filter(Boolean);
+    }
+
+    function buildLodgingAttachmentSectionHTML(lodging, prefix) {
+      const records = getLodgingAttachmentRecords(lodging);
+      const cards = records.map(({ item, dayIdx, imageIdx }) => buildAttachmentCardHTML(item, dayIdx, imageIdx, `${prefix}-thumb-`)).join('');
+      return `<section class="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2" aria-label="Unterkunftsbelege">
+        <div class="flex items-center justify-between gap-2"><h5 class="text-xs font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-paperclip text-indigo-500"></i> Belege <span class="text-slate-400">(${records.length})</span></h5>
+          <label class="no-print cursor-pointer rounded-lg bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1.5 text-[11px] font-semibold text-white"><i class="fa-solid fa-plus"></i> Beleg zuordnen<input type="file" accept="image/*,application/pdf" multiple class="hidden" data-lodging-id="${escapeHtml(String(lodging.id))}" onchange="handleLodgingAttachmentSelect(event, this.dataset.lodgingId)"></label></div>
+        ${records.length ? `<div class="flex flex-wrap gap-2.5">${cards}</div>` : '<p class="text-[11px] text-slate-500">Noch keine Belege zugeordnet.</p>'}
+      </section>`;
+    }
+
     function revokeMediaBlobUrl(id) {
       if (activeMediaObjectUrls.has(id)) {
         URL.revokeObjectURL(activeMediaObjectUrls.get(id));
@@ -879,9 +902,14 @@ const DEFAULT_CHECKLIST = [
       }
 
       container.innerHTML = `<div class="grid grid-cols-1 gap-3.5">${lodgings.map(renderLodgingCardHTML).join('')}</div>`;
+      lodgings.forEach(lodging => {
+        const lodgingIndex = tripData.lodgings.indexOf(lodging);
+        loadThumbnailsForItems(getLodgingAttachmentRecords(lodging).map(record => record.item), `lodging-tab-${lodgingIndex}-thumb-`);
+      });
     }
 
     function renderLodgingCardHTML(l) {
+      const lodgingIndex = tripData.lodgings.indexOf(l);
       const pS = parseISOParts(l.checkIn), pE = parseISOParts(l.checkOut);
       const nights = (pS && pE) ? Math.max(0, Math.floor((Date.UTC(pE.y, pE.m - 1, pE.d) - Date.UTC(pS.y, pS.m - 1, pS.d)) / 86400000)) : 0;
       const safeLink = formatSafeUrl(l.link), st = typeof l.status === 'string' ? l.status.toLowerCase() : 'geplant';
@@ -904,6 +932,7 @@ const DEFAULT_CHECKLIST = [
               ${l.address ? `<div class="flex items-start gap-1.5"><i class="fa-solid fa-map-pin text-slate-400 mt-0.5 shrink-0 text-[11px]"></i><span class="truncate">${escapeHtml(l.address)}</span></div>` : ''}
               ${l.notes ? `<div class="flex items-start gap-1.5 text-slate-500 dark:text-slate-400 italic text-[11px]"><i class="fa-regular fa-comment-dots text-slate-400 mt-0.5 shrink-0"></i><span>${escapeHtml(l.notes)}</span></div>` : ''}
             </div>
+            ${buildLodgingAttachmentSectionHTML(l, `lodging-tab-${lodgingIndex}`)}
           </div>
           <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between gap-2">
             <div class="text-xs font-mono font-black text-slate-900 dark:text-white">${formatEuro(parseFlexibleNumber(l.totalPrice))} <span class="text-[10px] font-normal text-slate-400">Gesamt</span></div>
@@ -982,6 +1011,7 @@ const DEFAULT_CHECKLIST = [
         address: document.getElementById('modalLodgingAddress').value.trim(),
         link: document.getElementById('modalLodgingLink').value.trim(),
         notes: document.getElementById('modalLodgingNotes').value.trim(),
+        attachments: (tripData.lodgings || []).find(item => item.id === id)?.attachments || [],
         ...(conflictChoice === 'secondary' ? { secondary: true } : {})
       };
 
@@ -1136,7 +1166,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.66', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.67', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1423,7 +1453,7 @@ const DEFAULT_CHECKLIST = [
       event.target.value = '';
     }
 
-    async function processAndAddAttachment(file, dayIdx, flightItem = null) {
+    async function processAndAddAttachment(file, dayIdx, flightItem = null, lodgingItem = null) {
       const day = tripData.days[dayIdx];
       if (!day) return;
       if (!Array.isArray(day.images)) day.images = [];
@@ -1436,8 +1466,13 @@ const DEFAULT_CHECKLIST = [
             if (!Array.isArray(flightItem.attachments)) flightItem.attachments = [];
             flightItem.attachments.push(id);
           }
+          if (lodgingItem && tripData.lodgings?.includes(lodgingItem)) {
+            if (!Array.isArray(lodgingItem.attachments)) lodgingItem.attachments = [];
+            lodgingItem.attachments.push(id);
+          }
           recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
           if (flightItem) { updateFlightAttachmentDOM(dayIdx, flightItem); renderFlightsView(); }
+          if (lodgingItem) { renderLodgingsTab(); renderDays(); }
           showToast(okMsg);
         } else showToast("Fehler beim Speichern", true);
       };
@@ -1468,6 +1503,16 @@ const DEFAULT_CHECKLIST = [
       for (const file of files) await processAndAddAttachment(file, dayIdx, flight);
     }
 
+    async function handleLodgingAttachmentSelect(event, lodgingId) {
+      const files = Array.from(event.target.files || []), lodging = tripData.lodgings?.find(item => String(item.id) === String(lodgingId));
+      event.target.value = '';
+      if (!lodging) return;
+      const matchingDay = tripData.days.findIndex(day => day.date >= lodging.checkIn && day.date < lodging.checkOut);
+      const dayIdx = matchingDay >= 0 ? matchingDay : tripData.days.findIndex(day => day.date >= lodging.checkIn);
+      if (dayIdx < 0) return showToast('Für diese Unterkunft gibt es keinen passenden Reisetag zum Ablegen der Belege.', true);
+      for (const file of files) await processAndAddAttachment(file, dayIdx, null, lodging);
+    }
+
     async function renameDayAttachment(dayIdx, itemIdx) {
       const item = tripData.days[dayIdx]?.images?.[itemIdx];
       if (!item) return;
@@ -1483,7 +1528,7 @@ const DEFAULT_CHECKLIST = [
         if (rec?.blob) await mediaStorePut(item.id, rec.blob, newName, item.type, item.size || rec.size);
       }
       for (let d = 0; d < (tripData.days || []).length; d++) for (let i = 0; i < (tripData.days[d]?.transports || []).length; i++) updateFlightAttachmentDOM(d, tripData.days[d].transports[i]);
-      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview(); renderFlightsView();
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview(); renderFlightsView(); renderLodgingsTab(); renderDays();
       const lb = currentLightboxList[currentLightboxIndex];
       if (lb && lb.id === item.id) { lb.name = newName; document.getElementById('lightboxCaption').innerText = newName; }
       showToast("Beleg umbenannt");
@@ -1510,8 +1555,11 @@ const DEFAULT_CHECKLIST = [
       for (const transport of tripData.days[dayIdx]?.transports || []) {
         if (Array.isArray(transport.attachments)) transport.attachments = transport.attachments.filter(id => id !== removedId);
       }
+      for (const lodging of tripData.lodgings || []) {
+        if (Array.isArray(lodging.attachments)) lodging.attachments = lodging.attachments.filter(id => id !== removedId);
+      }
       recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
-      renderDays(); renderFlightsView();
+      renderDays(); renderFlightsView(); renderLodgingsTab();
       showToast("Beleg entfernt");
     }
 
@@ -2097,6 +2145,7 @@ const DEFAULT_CHECKLIST = [
       tripData = tripData || {};
       tripData.checklist = tripData.checklist || DEFAULT_CHECKLIST.map(t => ({ text: t, done: false }));
       tripData.lodgings = tripData.lodgings || [];
+      tripData.lodgings = tripData.lodgings.map(lodging => ({ ...lodging, attachments: Array.isArray(lodging.attachments) ? lodging.attachments.filter(id => typeof id === 'string') : [] }));
       tripData.days = tripData.days || [];
 
       if (tripData.lodgings.length === 0 && tripData.days.some(d => d.lodging && (d.lodging.name || d.lodging.price))) {
@@ -2309,6 +2358,7 @@ const DEFAULT_CHECKLIST = [
       for (let i = 0; i < (parsed.lodgings || []).length; i++) {
         const lodging = parsed.lodgings[i];
         if (!isRecord(lodging) || !isValidISODate(lodging.checkIn) || !isValidISODate(lodging.checkOut) || lodging.checkIn >= lodging.checkOut) return 'Unterkunft ' + (i + 1) + ' hat ungültige Daten.';
+        if (lodging.attachments !== undefined && (!Array.isArray(lodging.attachments) || !lodging.attachments.every(id => typeof id === 'string' && id.length))) return 'Ein Unterkunftsbeleg in Unterkunft ' + (i + 1) + ' hat ein ungültiges Format.';
         if (lodging.secondary !== undefined && typeof lodging.secondary !== 'boolean') return 'Unterkunft ' + (i + 1) + ' enthält eine ungültige Kennzeichnung für eine zusätzliche Unterkunft.';
         for (const key of ['id', 'name', 'status', 'address', 'link', 'notes', 'freeCancellationUntil']) {
           if (!isOptionalString(lodging, key)) return 'Unterkunft ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
@@ -2353,6 +2403,7 @@ const DEFAULT_CHECKLIST = [
         }
         for (const transport of day.transports || []) transport.attachments = (transport.attachments || []).map(id => importedMediaIdMap.get(id) || id);
       }
+      for (const lodging of candidate.lodgings || []) lodging.attachments = (lodging.attachments || []).map(id => importedMediaIdMap.get(id) || id);
 
       await flushPendingSave();
       await createRollingBackup();
@@ -2494,7 +2545,13 @@ const DEFAULT_CHECKLIST = [
 
         matches++;
         container.appendChild(createDayElement(day, idx, day.date === today));
-        if (!day.isCollapsed) updateImagesDOM(idx);
+        if (!day.isCollapsed) {
+          updateImagesDOM(idx);
+          getLodgingsForDay(day.date).forEach(lodging => {
+            const lodgingIndex = tripData.lodgings.indexOf(lodging);
+            loadThumbnailsForItems(getLodgingAttachmentRecords(lodging).map(record => record.item), `lodging-day-${idx}-${lodgingIndex}-thumb-`);
+          });
+        }
       });
 
       if (!matches) {
@@ -2527,7 +2584,8 @@ const DEFAULT_CHECKLIST = [
           const itemStatus = typeof item.status === 'string' ? item.status.toLowerCase() : 'geplant';
           const itemBadge = itemStatus === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (itemStatus === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
           const itemId = escapeHtml(String(item.id)), isSecondary = lodgingIndex > 0 || item.secondary;
-          return `<div class="${isSecondary ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 dark:border-orange-500 ring-2 ring-orange-400/60' : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'} rounded-xl p-3 border-2 flex items-center justify-between gap-3"><div class="min-w-0">${isSecondary ? '<div><span class="inline-block rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-black uppercase text-white">⚠ ZWEITE UNTERKUNFT</span></div>' : ''}<div class="flex items-center gap-2"><span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(item.name)}</span><span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${itemBadge}">${escapeHtml(itemStatus)}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(item.address || 'Keine Adresse')}</div></div><div class="flex items-center gap-1.5 shrink-0 no-print"><button onclick="copyHotelInfo(${index}, '${itemId}')" title="Kopieren" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-regular fa-copy"></i></button><button onclick="openHotelMaps(${index}, '${itemId}')" title="Maps" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button><button onclick="openLodgingModal('${itemId}')" title="Bearbeiten" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-solid fa-pen"></i></button></div></div>`;
+          const card = `<div class="${isSecondary ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 dark:border-orange-500 ring-2 ring-orange-400/60' : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'} rounded-xl p-3 border-2 flex items-center justify-between gap-3"><div class="min-w-0">${isSecondary ? '<div><span class="inline-block rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-black uppercase text-white">⚠ ZWEITE UNTERKUNFT</span></div>' : ''}<div class="flex items-center gap-2"><span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(item.name)}</span><span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${itemBadge}">${escapeHtml(itemStatus)}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(item.address || 'Keine Adresse')}</div></div><div class="flex items-center gap-1.5 shrink-0 no-print"><button onclick="copyHotelInfo(${index}, '${itemId}')" title="Kopieren" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-regular fa-copy"></i></button><button onclick="openHotelMaps(${index}, '${itemId}')" title="Maps" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button><button onclick="openLodgingModal('${itemId}')" title="Bearbeiten" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-solid fa-pen"></i></button></div></div>`;
+          return `<div class="space-y-2">${card}${buildLodgingAttachmentSectionHTML(item, `lodging-day-${index}-${tripData.lodgings.indexOf(item)}`)}</div>`;
         }).join('');
         return `<div class="space-y-2"><div class="rounded-lg border-2 border-orange-500 bg-orange-100 px-3 py-2 text-xs font-black text-orange-950 dark:bg-orange-950 dark:text-orange-100"><i class="fa-solid fa-triangle-exclamation"></i> ${lodgings.length} UNTERKÜNFTE FÜR DIESEN TAG</div>${summaries}<div class="no-print"><button onclick="openNewLodgingForDay('${day.date}')" class="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300"><i class="fa-solid fa-plus"></i> Weitere Unterkunft hinzufügen</button></div></div>`;
       }
@@ -2535,7 +2593,7 @@ const DEFAULT_CHECKLIST = [
       const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
 
       return `
-        <div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
+        <div class="space-y-2"><div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
           <div class="flex items-center gap-2.5 min-w-0">
             <span class="text-base text-slate-700 dark:text-slate-200"><svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg></span>
             <div class="truncate">
@@ -2552,7 +2610,7 @@ const DEFAULT_CHECKLIST = [
             <button onclick="openNewLodgingForDay('${day.date}')" title="Weitere Unterkunft für diesen Tag hinzufügen" class="px-2 py-1.5 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200 text-[10px] font-bold"><i class="fa-solid fa-plus"></i> Unterkunft</button>
             <button onclick="openLodgingForDay('${day.date}')" title="Details" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
           </div>
-        </div>`;
+        </div>${buildLodgingAttachmentSectionHTML(l, `lodging-day-${index}-${tripData.lodgings.indexOf(l)}`)}</div>`;
     }
 
     function toggleDayNoLodging(idx) {
@@ -2870,8 +2928,16 @@ const DEFAULT_CHECKLIST = [
 
       const lodgingList = document.getElementById('lodgingsListContainer');
       lodgingList?.addEventListener('click', e => {
-        const actionEl = e.target.closest('[data-action="edit-lodging"]');
+        const actionEl = e.target.closest('[data-action]');
         if (!actionEl || !lodgingList.contains(actionEl)) return;
+        const action = actionEl.getAttribute('data-action');
+        const dayIdx = Number.parseInt(actionEl.getAttribute('data-day-index'), 10);
+        const itemIdx = Number.parseInt(actionEl.getAttribute('data-item-index'), 10);
+        if (action === 'open-lightbox' && Number.isInteger(dayIdx)) openLightbox(actionEl.getAttribute('data-media-id'), dayIdx);
+        else if (action === 'open-pdf') openPdfAttachment(actionEl.getAttribute('data-media-id'), actionEl.getAttribute('data-file-name'));
+        else if (action === 'rename-attachment' && Number.isInteger(dayIdx) && Number.isInteger(itemIdx)) renameDayAttachment(dayIdx, itemIdx);
+        else if (action === 'delete-attachment' && Number.isInteger(dayIdx) && Number.isInteger(itemIdx)) deleteDayAttachment(dayIdx, itemIdx);
+        else if (action !== 'edit-lodging') return;
         const id = actionEl.getAttribute('data-lodging-id');
         if (id) openLodgingModal(id);
       });
