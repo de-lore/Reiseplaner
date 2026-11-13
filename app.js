@@ -1172,7 +1172,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.68', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.69', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2789,7 +2789,7 @@ const DEFAULT_CHECKLIST = [
         card.setAttribute('data-action', 'toggle-collapse'); card.setAttribute('data-day-index', index);
         const trTxt = hasTr ? day.transports.map(t => `${getTransportEmoji(t)} ${t.title || 'Transport'}`).join(' & ') : '—';
         const lodHtml = isDayNoLodging(day) ? '✈️ Keine Übernachtung' : (l ? `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name)}` : `<svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg> <span class="italic text-slate-400 dark:text-slate-500">Noch keine Unterkunft</span>`);
-        const ind = (day.notes?.trim() || images.length) ? `<span class="text-slate-400">|</span><span class="inline-flex items-center gap-1.5">${day.notes?.trim() ? '📝' : ''}${images.length ? `<span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : ''}</span>` : '';
+        const ind = images.length ? `<span class="text-slate-400">|</span><span class="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/70 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold">📎 ${images.length}</span>` : '';
 
         card.innerHTML = `
           <div class="flex-1 min-w-0 pr-2">
@@ -2801,7 +2801,10 @@ const DEFAULT_CHECKLIST = [
             <span class="text-slate-700 dark:text-slate-300">${escapeHtml(trTxt)}</span>
             ${ind}
            </div>
-           <div class="mt-0.5 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 truncate">${lodHtml}</div>
+           <div class="mt-0.5 flex min-w-0 items-center gap-2 text-[11px] sm:text-xs text-slate-600 dark:text-slate-300">
+             <span class="inline-flex min-w-0 max-w-[55%] items-center gap-1 truncate font-medium">${lodHtml}</span>
+             ${day.notes?.trim() ? `<span class="shrink-0 text-slate-400">·</span><span class="min-w-0 truncate" title="${escapeHtml(day.notes.trim())}"><i class="fa-regular fa-note-sticky mr-1 text-amber-500" aria-hidden="true"></i>${escapeHtml(day.notes.trim())}</span>` : ''}
+           </div>
           </div>
           <div class="flex items-center gap-1.5 shrink-0 no-print"><span class="p-1 text-slate-500"><i class="fa-solid fa-chevron-down text-xs"></i></span></div>`;
         return card;
