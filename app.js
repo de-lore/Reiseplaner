@@ -1136,7 +1136,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.64', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.65', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1423,7 +1423,7 @@ const DEFAULT_CHECKLIST = [
       event.target.value = '';
     }
 
-    async function processAndAddAttachment(file, dayIdx) {
+    async function processAndAddAttachment(file, dayIdx, flightItem = null) {
       const day = tripData.days[dayIdx];
       if (!day) return;
       if (!Array.isArray(day.images)) day.images = [];
@@ -1432,7 +1432,12 @@ const DEFAULT_CHECKLIST = [
         const id = generateUUID(), name = file.name || defName;
         if (await mediaStorePut(id, blob, name, type, blob.size)) {
           day.images.push({ id, name, type, size: blob.size });
+          if (flightItem && day.transports?.includes(flightItem)) {
+            if (!Array.isArray(flightItem.attachments)) flightItem.attachments = [];
+            flightItem.attachments.push(id);
+          }
           recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+          if (flightItem) { updateFlightAttachmentDOM(dayIdx, flightItem); renderFlightsView(); }
           showToast(okMsg);
         } else showToast("Fehler beim Speichern", true);
       };
@@ -1456,6 +1461,13 @@ const DEFAULT_CHECKLIST = [
       } else showToast("Nur Bilder & PDFs erlaubt", true);
     }
 
+    async function handleFlightAttachmentSelect(event, dayIdx, itemIdx) {
+      const files = Array.from(event.target.files || []), flight = tripData.days[dayIdx]?.transports?.[itemIdx];
+      event.target.value = '';
+      if (!flight) return;
+      for (const file of files) await processAndAddAttachment(file, dayIdx, flight);
+    }
+
     async function renameDayAttachment(dayIdx, itemIdx) {
       const item = tripData.days[dayIdx]?.images?.[itemIdx];
       if (!item) return;
@@ -1470,7 +1482,8 @@ const DEFAULT_CHECKLIST = [
         const rec = await mediaStoreGet(item.id);
         if (rec?.blob) await mediaStorePut(item.id, rec.blob, newName, item.type, item.size || rec.size);
       }
-      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+      for (let d = 0; d < (tripData.days || []).length; d++) for (let i = 0; i < (tripData.days[d]?.transports || []).length; i++) updateFlightAttachmentDOM(d, tripData.days[d].transports[i]);
+      recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview(); renderFlightsView();
       const lb = currentLightboxList[currentLightboxIndex];
       if (lb && lb.id === item.id) { lb.name = newName; document.getElementById('lightboxCaption').innerText = newName; }
       showToast("Beleg umbenannt");
@@ -1493,7 +1506,12 @@ const DEFAULT_CHECKLIST = [
 
       await createRollingBackup();
       images.splice(itemIdx, 1);
+      const removedId = target.id;
+      for (const transport of tripData.days[dayIdx]?.transports || []) {
+        if (Array.isArray(transport.attachments)) transport.attachments = transport.attachments.filter(id => id !== removedId);
+      }
       recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+      renderDays(); renderFlightsView();
       showToast("Beleg entfernt");
     }
 
@@ -1903,11 +1921,13 @@ const DEFAULT_CHECKLIST = [
       const flights = getFlightsForOverview();
       const states = [['geplant', 'Geplant', 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60'], ['reserviert', 'Reserviert', 'text-sky-700 dark:text-sky-300 bg-sky-100 dark:bg-sky-950/60'], ['gebucht', 'Gebucht', 'text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-950/60']];
       countsEl.innerHTML = states.map(([key, label, cls]) => `<div class="rounded-xl border border-slate-200 dark:border-slate-700 p-2.5 text-center"><div class="text-xl font-black text-slate-900 dark:text-white">${flights.filter(f => f.status === key).length}</div><div class="text-[10px] font-semibold px-2 py-0.5 rounded-full inline-block ${cls}">${label}</div></div>`).join('');
-      list.innerHTML = flights.map(({ day, dayIndex, item, status }) => {
+      list.innerHTML = flights.map(({ day, dayIndex, itemIndex, item, status }) => {
         const statusMeta = states.find(([key]) => key === status) || states[0];
         const date = formatISODate(day.date).dayFormatted;
         const link = formatSafeUrl(item.link);
         const amount = parseFlexibleNumber(item.cost);
+        const attachments = (item.attachments || []).map(id => ({ item: (day.images || []).find(image => image?.id === id), imageIdx: (day.images || []).findIndex(image => image?.id === id) })).filter(entry => entry.item && entry.imageIdx >= 0);
+        const attachmentPrefix = `flight-view-${dayIndex}-${itemIndex}-`;
         return `<article class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1"><p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}</p><h3 class="font-black text-base sm:text-lg leading-snug text-slate-900 dark:text-white whitespace-normal break-words">${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3></div>
@@ -1915,8 +1935,13 @@ const DEFAULT_CHECKLIST = [
           </div>
           ${item.hint ? `<p class="mt-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line">${escapeHtml(item.hint)}</p>` : ''}
           <div class="mt-3 flex items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}<div class="flex items-center gap-3"><a href="#day-card-${dayIndex}" onclick="openFlightDay(${dayIndex}); return false;" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Zum Tag im Reiseplan</a>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div></div>
+          <div class="mt-4 border-t border-slate-200 pt-3 dark:border-slate-700"><div class="mb-2 flex items-center justify-between gap-2"><h4 class="text-xs font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-ticket text-indigo-500"></i> Flugbelege <span class="text-slate-400">(${attachments.length})</span></h4><label for="flight-view-upload-${dayIndex}-${itemIndex}" class="cursor-pointer rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-500"><i class="fa-solid fa-paperclip"></i> Beleg zuordnen</label><input id="flight-view-upload-${dayIndex}-${itemIndex}" type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFlightAttachmentSelect(event, ${dayIndex}, ${itemIndex})"></div>${attachments.length ? `<div class="flex flex-wrap gap-2.5">${attachments.map(({ item: attachment, imageIdx }) => buildAttachmentCardHTML(attachment, dayIndex, imageIdx, attachmentPrefix)).join('')}</div>` : '<p class="text-[11px] text-slate-500">Noch keine Belege zugeordnet.</p>'}</div>
         </article>`;
       }).join('');
+      flights.forEach(({ day, dayIndex, itemIndex, item }) => {
+        const items = (item.attachments || []).map(id => (day.images || []).find(image => image?.id === id)).filter(Boolean);
+        loadThumbnailsForItems(items, `flight-view-${dayIndex}-${itemIndex}-`);
+      });
     }
     function updateFlightsTabAvailability() {
       const visible = getFlightsForOverview().length > 0;
@@ -2080,7 +2105,7 @@ const DEFAULT_CHECKLIST = [
       tripData.days.forEach(d => {
         d.noLodgingNeeded = Boolean(d.noLodgingNeeded || (d.lodging?.costStatus === 'keine'));
         d.images = d.images || [];
-        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', time: t.time || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '' }));
+        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', time: t.time || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '', attachments: Array.isArray(t.attachments) ? t.attachments.filter(id => typeof id === 'string') : [] }));
         d.activities = (d.activities || []).map(a => ({ title: a.title || '', time: a.time || '', cost: a.cost || '', costStatus: a.costStatus || 'geplant', hint: a.hint || '', link: a.link || '', done: Boolean(a.done) }));
       });
     }
@@ -2253,6 +2278,7 @@ const DEFAULT_CHECKLIST = [
               if (!isRecord(item) || !isOptionalString(item, 'id') || !isOptionalString(item, 'name') || !isOptionalString(item, 'type') || !isOptionalString(item, 'data')) return 'Ein Beleg in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
             } else {
               if (!isRecord(item)) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
+              if (key === 'transports' && item.attachments !== undefined && (!Array.isArray(item.attachments) || !item.attachments.every(id => typeof id === 'string' && id.length))) return 'Ein Flugbeleg in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
               for (const field of ['title', 'category', 'time', 'hint', 'link', 'costStatus']) {
                 if (!isOptionalString(item, field)) return 'Tag ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
               }
@@ -2298,10 +2324,16 @@ const DEFAULT_CHECKLIST = [
       }
 
       // Neue IDs verhindern, dass ein Import bestehende Belegdateien überschreibt.
+      const importedMediaIdMap = new Map();
       for (const day of candidate.days || []) {
         for (const item of day.images || []) {
-          if (item && typeof item === 'object' && item.data?.startsWith('data:')) item.id = generateUUID();
+          if (item && typeof item === 'object' && item.data?.startsWith('data:')) {
+            const previousId = item.id, nextId = generateUUID();
+            if (previousId) importedMediaIdMap.set(previousId, nextId);
+            item.id = nextId;
+          }
         }
+        for (const transport of day.transports || []) transport.attachments = (transport.attachments || []).map(id => importedMediaIdMap.get(id) || id);
       }
 
       await flushPendingSave();
@@ -2519,10 +2551,25 @@ const DEFAULT_CHECKLIST = [
     ];
     const TRANSPORT_LABELS = Object.fromEntries(TRANSPORT_CATS.filter(c => c[0]).map(c => [c[0], c[1]]));
 
+    function buildFlightAttachmentSectionHTML(dayIdx, itemIdx) {
+      const day = tripData.days[dayIdx], flight = day?.transports?.[itemIdx];
+      if (!flight || (flight.category !== 'flugzeug' && !flight.attachments?.length)) return '';
+      const attachments = (flight.attachments || []).map(id => ({ item: (day.images || []).find(image => image?.id === id), imageIdx: (day.images || []).findIndex(image => image?.id === id) })).filter(entry => entry.item && entry.imageIdx >= 0);
+      return `<div class="space-y-2 border-t border-slate-200 pt-2.5 dark:border-slate-700"><div class="flex flex-wrap items-center justify-between gap-2"><div class="text-[11px] font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-ticket text-indigo-500"></i> Flugbelege <span class="text-slate-400">(${attachments.length})</span></div>${flight.category === 'flugzeug' ? `<label for="flight-file-${dayIdx}-${itemIdx}" class="cursor-pointer rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-500 no-print"><i class="fa-solid fa-paperclip"></i> Beleg zuordnen</label><input id="flight-file-${dayIdx}-${itemIdx}" type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFlightAttachmentSelect(event, ${dayIdx}, ${itemIdx})">` : ''}</div>${attachments.length ? `<div class="flex flex-wrap gap-2">${attachments.map(({ item, imageIdx }) => buildAttachmentCardHTML(item, dayIdx, imageIdx, `flight-day-${dayIdx}-${itemIdx}-`)).join('')}</div>` : '<p class="text-[10px] text-slate-500">Noch keine Belege zugeordnet.</p>'}</div>`;
+    }
+
+    function updateFlightAttachmentDOM(dayIdx, flightItem) {
+      const itemIdx = tripData.days[dayIdx]?.transports?.indexOf(flightItem);
+      if (itemIdx === undefined || itemIdx < 0) return;
+      const container = document.getElementById(`flight-attachments-${dayIdx}-${itemIdx}`);
+      if (container) container.innerHTML = buildFlightAttachmentSectionHTML(dayIdx, itemIdx);
+    }
+
     // Zeile 1: Icon + Status (+ Sortieren/Verschieben/Löschen) | Zeile 2: Art | Zeile 3: Hinweise | Zeile 4: Preis + URL
     function renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) {
       const attr = (field) => `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="${field}"`;
       const base = `data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}"`;
+      const flightAttachments = buildFlightAttachmentSectionHTML(dayIdx, itemIdx);
       const arrow = (dir, disabled, icon) => `<button data-action="move-item-${dir}" ${base} class="w-6 h-6 rounded flex items-center justify-center text-[10px] ${disabled ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'}" ${disabled ? 'disabled' : ''}><i class="fa-solid ${icon} pointer-events-none"></i></button>`;
       return `
                   <div class="bg-white dark:bg-slate-800/80 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 space-y-2 text-xs shadow-sm">
@@ -2556,6 +2603,7 @@ const DEFAULT_CHECKLIST = [
                       <input type="url" placeholder="URL" value="${escapeHtml(it.link || '')}" ${attr('link')} class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded px-2 py-1 text-slate-900 dark:text-white no-print">
                       <a id="transports-link-btn-${dayIdx}-${itemIdx}" href="${escapeHtml(safeUrl || '#')}" target="_blank" rel="noopener noreferrer" class="${safeUrl ? '' : 'hidden'} px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded flex items-center justify-center shrink-0 text-xs no-print shadow"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>
                     </div>
+                    <div id="flight-attachments-${dayIdx}-${itemIdx}">${flightAttachments}</div>
                   </div>`;
     }
 
@@ -2577,6 +2625,7 @@ const DEFAULT_CHECKLIST = [
       if (summaryIcon) summaryIcon.textContent = getTransportEmoji(it);
       const markerIcon = document.querySelector(`#day-card-${dayIdx} [data-timeline-marker="transports-${idx}"]`);
       if (markerIcon) markerIcon.textContent = getTransportEmoji(it);
+      updateFlightAttachmentDOM(dayIdx, it);
     }
 
     // Aktivität: Zeile 1 Status + Erledigt | Zeile 2 Aktivität (voller Text) | Zeile 3 Hinweise | Zeile 4 Preis + URL
@@ -2822,6 +2871,19 @@ const DEFAULT_CHECKLIST = [
         else if (action === 'rename-attachment' && Number.isInteger(itemIdx)) renameDayAttachment(dayIdx, itemIdx);
         else if (action === 'delete-attachment' && Number.isInteger(itemIdx)) deleteDayAttachment(dayIdx, itemIdx);
       });
+      const flightsView = document.getElementById('flightsViewList');
+      flightsView?.addEventListener('click', e => {
+        const actionEl = e.target.closest('[data-action]');
+        if (!actionEl || !flightsView.contains(actionEl)) return;
+        const action = actionEl.getAttribute('data-action');
+        const dayIdx = Number.parseInt(actionEl.getAttribute('data-day-index'), 10);
+        const itemIdx = Number.parseInt(actionEl.getAttribute('data-item-index'), 10);
+        if (!Number.isInteger(dayIdx) || !tripData.days[dayIdx]) return;
+        if (action === 'open-lightbox') openLightbox(actionEl.getAttribute('data-media-id'), dayIdx);
+        else if (action === 'open-pdf') openPdfAttachment(actionEl.getAttribute('data-media-id'), actionEl.getAttribute('data-file-name'));
+        else if (action === 'rename-attachment' && Number.isInteger(itemIdx)) renameDayAttachment(dayIdx, itemIdx);
+        else if (action === 'delete-attachment' && Number.isInteger(itemIdx)) deleteDayAttachment(dayIdx, itemIdx);
+      });
       const handleFieldUpdate = e => {
         const t = e.target, dayIdx = parseInt(t.getAttribute('data-day-index'), 10), day = tripData.days[dayIdx];
         if (!day) return;
@@ -2978,10 +3040,17 @@ const DEFAULT_CHECKLIST = [
       const targetIdx = mode === 'prev' ? dayIndex - 1 : (mode === 'next' ? dayIndex + 1 : parseInt(document.getElementById('moveItemTargetSelect')?.value, 10));
 
       if (isNaN(targetIdx) || targetIdx < 0 || targetIdx >= tripData.days.length || targetIdx === dayIndex) return closeMoveItemModal();
-      const [moved] = tripData.days[dayIndex][listKey].splice(itemIndex, 1);
-      (tripData.days[targetIdx][listKey] = tripData.days[targetIdx][listKey] || []).push(moved);
+      const sourceDay = tripData.days[dayIndex], targetDay = tripData.days[targetIdx];
+      const [moved] = sourceDay[listKey].splice(itemIndex, 1);
+      (targetDay[listKey] = targetDay[listKey] || []).push(moved);
+      if (listKey === 'transports' && moved.attachments?.length) {
+        const attachmentIds = new Set(moved.attachments);
+        const movedImages = (sourceDay.images || []).filter(image => attachmentIds.has(image?.id));
+        sourceDay.images = (sourceDay.images || []).filter(image => !attachmentIds.has(image?.id));
+        targetDay.images = [...(targetDay.images || []), ...movedImages];
+      }
 
-      closeMoveItemModal(); recordChangeForReminder(); saveToStorage(); renderDays();
+      closeMoveItemModal(); recordChangeForReminder(); saveToStorage(); renderDays(); renderAllAttachmentsOverview(); renderFlightsView();
       showToast(`Auf Tag ${targetIdx + 1} verschoben`);
     }
 
