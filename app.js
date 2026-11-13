@@ -921,8 +921,14 @@ const DEFAULT_CHECKLIST = [
             <div class="flex items-start justify-between gap-2">
               <div>
                 <h4 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5"><svg class="ico-house text-indigo-500" aria-hidden="true"><use href="#icon-house"></use></svg> ${escapeHtml(l.name || 'Unbenannt')}</h4>
-                <div class="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5">
-                  📅 ${formatISODate(l.checkIn).dayFormatted} bis ${formatISODate(l.checkOut).dayFormatted} <span class="font-bold text-indigo-600 dark:text-indigo-400">(${nights} ${nights === 1 ? 'Nacht' : 'Nächte'})</span>
+                <div class="mt-2 inline-flex items-center gap-2 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 dark:border-indigo-800/70 dark:bg-indigo-950/50">
+                  <i class="fa-regular fa-calendar text-indigo-600 dark:text-indigo-300" aria-hidden="true"></i>
+                  <div class="flex items-center gap-2.5">
+                    <div><span class="block text-[9px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Check-in</span><span class="block text-sm font-extrabold leading-tight text-slate-900 dark:text-white">${formatISODate(l.checkIn).dayFormatted}</span></div>
+                    <i class="fa-solid fa-arrow-right text-[10px] text-indigo-400" aria-hidden="true"></i>
+                    <div><span class="block text-[9px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Check-out</span><span class="block text-sm font-extrabold leading-tight text-slate-900 dark:text-white">${formatISODate(l.checkOut).dayFormatted}</span></div>
+                    <span class="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-indigo-700 shadow-sm dark:bg-slate-800 dark:text-indigo-300">${nights} ${nights === 1 ? 'Nacht' : 'Nächte'}</span>
+                  </div>
                 </div>
               </div>
               <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${escapeHtml(st)}</span>
@@ -1166,7 +1172,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.67', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.68', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
