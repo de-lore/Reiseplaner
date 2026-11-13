@@ -1172,7 +1172,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.68', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.69', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1476,7 +1476,7 @@ const DEFAULT_CHECKLIST = [
             if (!Array.isArray(lodgingItem.attachments)) lodgingItem.attachments = [];
             lodgingItem.attachments.push(id);
           }
-          recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview();
+          recordChangeForReminder(); saveToStorage(); updateImagesDOM(dayIdx); renderAllAttachmentsOverview(); updateNotesDisclosureSummary(dayIdx);
           if (flightItem) { updateFlightAttachmentDOM(dayIdx, flightItem); renderFlightsView(); }
           if (lodgingItem) { renderLodgingsTab(); renderDays(); }
           showToast(okMsg);
@@ -1615,13 +1615,30 @@ const DEFAULT_CHECKLIST = [
       }));
     }
 
+    function getDayNoteAttachmentRecords(day) {
+      const assignedIds = new Set();
+      for (const lodging of tripData.lodgings || []) for (const id of lodging.attachments || []) assignedIds.add(id);
+      for (const transport of day?.transports || []) for (const id of transport.attachments || []) assignedIds.add(id);
+      return (day?.images || []).map((item, imageIdx) => ({ item, imageIdx })).filter(({ item }) => !item?.id || !assignedIds.has(item.id));
+    }
+
+    function updateNotesDisclosureSummary(dayIdx) {
+      const day = tripData.days[dayIdx], details = document.getElementById(`notes-dropzone-${dayIdx}`);
+      if (!day || !details) return;
+      const preview = details.querySelector('[data-notes-preview]'), count = details.querySelector('[data-notes-attachment-count]');
+      if (preview) preview.textContent = day.notes?.trim() || 'Keine Notizen';
+      const noteCount = getDayNoteAttachmentRecords(day).length;
+      if (count) { count.textContent = `📎 ${noteCount}`; count.classList.toggle('hidden', !noteCount); }
+    }
+
     async function updateImagesDOM(dayIdx) {
       const c = document.getElementById('images-container-' + dayIdx);
       if (!c) return;
-      const items = tripData.days[dayIdx]?.images || [];
+      const records = getDayNoteAttachmentRecords(tripData.days[dayIdx]);
+      const items = records.map(record => record.item);
       c.classList.toggle('hidden', !items.length);
       if (!items.length) { c.innerHTML = ''; return; }
-      c.innerHTML = items.map((it, idx) => buildAttachmentCardHTML(it, dayIdx, idx, 'thumb-')).join('');
+      c.innerHTML = records.map(({ item, imageIdx }) => buildAttachmentCardHTML(item, dayIdx, imageIdx, 'thumb-')).join('');
       await loadThumbnailsForItems(items, 'thumb-');
     }
 
@@ -2566,6 +2583,26 @@ const DEFAULT_CHECKLIST = [
       updateStats(); autoResizeAllTextareas();
     }
 
+    function loadLodgingDayThumbnails(dayIndex, lodgingIndex) {
+      const lodging = tripData.lodgings?.[lodgingIndex];
+      if (lodging) loadThumbnailsForItems(getLodgingAttachmentRecords(lodging).map(record => record.item), `lodging-day-${dayIndex}-${lodgingIndex}-thumb-`);
+    }
+
+    function renderDayLodgingDetails(lodging, dayIndex, secondary = false) {
+      const lodgingIndex = tripData.lodgings.indexOf(lodging);
+      const status = String(lodging.status || 'geplant').toLowerCase();
+      const badge = status === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : status === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300';
+      const itemId = escapeHtml(String(lodging.id));
+      const frame = secondary ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 ring-2 ring-orange-400/60' : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800';
+      return `<details class="rounded-xl border-2 ${frame}" ontoggle="if(this.open) loadLodgingDayThumbnails(${dayIndex}, ${lodgingIndex})">
+        <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl p-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/50">
+          <span class="flex min-w-0 items-center gap-2"><svg class="ico-house shrink-0 text-indigo-500" aria-hidden="true"><use href="#icon-house"></use></svg><span class="truncate text-xs font-bold text-slate-900 dark:text-white">${escapeHtml(lodging.name || 'Unterkunft')}</span>${secondary ? '<span class="shrink-0 rounded-md bg-orange-600 px-2 py-0.5 text-[9px] font-black uppercase text-white">Zweite Unterkunft</span>' : ''}<span class="shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${badge}">${escapeHtml(status)}</span></span>
+          <i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-slate-400 transition-transform"></i>
+        </summary>
+        <div class="space-y-2 border-t border-slate-200 p-3 dark:border-slate-700"><div class="flex flex-wrap items-center justify-between gap-2"><span class="min-w-0 truncate text-[11px] text-slate-500 dark:text-slate-400"><i class="fa-solid fa-map-pin text-[10px]"></i> ${escapeHtml(lodging.address || 'Keine Adresse')}</span><div class="flex items-center gap-1.5 no-print"><button onclick="copyHotelInfo(${dayIndex}, '${itemId}')" title="Kopieren" class="rounded-lg bg-slate-100 px-2 py-1.5 text-xs dark:bg-slate-800"><i class="fa-regular fa-copy"></i></button><button onclick="openHotelMaps(${dayIndex}, '${itemId}')" title="Maps" class="rounded-lg bg-indigo-50 px-2 py-1.5 text-xs text-indigo-600 dark:bg-indigo-950/60"><i class="fa-solid fa-location-dot"></i></button><button onclick="openLodgingModal('${itemId}')" title="Bearbeiten" class="rounded-lg bg-slate-100 px-2 py-1.5 text-xs dark:bg-slate-800"><i class="fa-solid fa-pen"></i></button></div></div>${buildLodgingAttachmentSectionHTML(lodging, `lodging-day-${dayIndex}-${lodgingIndex}`)}</div>
+      </details>`;
+    }
+
     function renderDayLodgingSummaryHTML(day, index) {
       const noL = isDayNoLodging(day), lodgings = getLodgingsForDay(day.date), l = getLodgingForDay(day.date);
       if (noL) {
@@ -2586,37 +2623,10 @@ const DEFAULT_CHECKLIST = [
           </div>`;
       }
       if (lodgings.length > 1) {
-        const summaries = lodgings.map((item, lodgingIndex) => {
-          const itemStatus = typeof item.status === 'string' ? item.status.toLowerCase() : 'geplant';
-          const itemBadge = itemStatus === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (itemStatus === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
-          const itemId = escapeHtml(String(item.id)), isSecondary = lodgingIndex > 0 || item.secondary;
-          const card = `<div class="${isSecondary ? 'bg-orange-50 dark:bg-orange-950/50 border-orange-500 dark:border-orange-500 ring-2 ring-orange-400/60' : 'bg-white dark:bg-slate-900/80 border-slate-200 dark:border-slate-800'} rounded-xl p-3 border-2 flex items-center justify-between gap-3"><div class="min-w-0">${isSecondary ? '<div><span class="inline-block rounded-md bg-orange-600 px-2 py-0.5 text-[10px] font-black uppercase text-white">⚠ ZWEITE UNTERKUNFT</span></div>' : ''}<div class="flex items-center gap-2"><span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(item.name)}</span><span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${itemBadge}">${escapeHtml(itemStatus)}</span></div><div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5">${escapeHtml(item.address || 'Keine Adresse')}</div></div><div class="flex items-center gap-1.5 shrink-0 no-print"><button onclick="copyHotelInfo(${index}, '${itemId}')" title="Kopieren" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-regular fa-copy"></i></button><button onclick="openHotelMaps(${index}, '${itemId}')" title="Maps" class="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button><button onclick="openLodgingModal('${itemId}')" title="Bearbeiten" class="p-2 rounded-lg bg-white/70 dark:bg-slate-800 text-xs"><i class="fa-solid fa-pen"></i></button></div></div>`;
-          return `<div class="space-y-2">${card}${buildLodgingAttachmentSectionHTML(item, `lodging-day-${index}-${tripData.lodgings.indexOf(item)}`)}</div>`;
-        }).join('');
-        return `<div class="space-y-2"><div class="rounded-lg border-2 border-orange-500 bg-orange-100 px-3 py-2 text-xs font-black text-orange-950 dark:bg-orange-950 dark:text-orange-100"><i class="fa-solid fa-triangle-exclamation"></i> ${lodgings.length} UNTERKÜNFTE FÜR DIESEN TAG</div>${summaries}<div class="no-print"><button onclick="openNewLodgingForDay('${day.date}')" class="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300"><i class="fa-solid fa-plus"></i> Weitere Unterkunft hinzufügen</button></div></div>`;
+        const summaries = lodgings.map((item, lodgingIndex) => renderDayLodgingDetails(item, index, lodgingIndex > 0 || item.secondary)).join('');
+        return `<div class="space-y-2">${summaries}<div class="no-print"><button onclick="openNewLodgingForDay('${day.date}')" class="rounded-lg border border-dashed border-slate-400 px-3 py-1.5 text-[11px] font-bold text-slate-600 dark:border-slate-600 dark:text-slate-300"><i class="fa-solid fa-plus"></i> Weitere Unterkunft hinzufügen</button></div></div>`;
       }
-      const st = typeof l.status === 'string' ? l.status.toLowerCase() : 'geplant';
-      const statusBadge = st === 'gebucht' ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/80 dark:text-emerald-300' : (st === 'reserviert' ? 'bg-sky-100 text-sky-800 border-sky-300 dark:bg-sky-950/80 dark:text-sky-300' : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/80 dark:text-amber-300');
-
-      return `
-        <div class="space-y-2"><div class="bg-white dark:bg-slate-900/80 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 shadow-sm">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <span class="text-base text-slate-700 dark:text-slate-200"><svg class="ico-house" aria-hidden="true"><use href="#icon-house"></use></svg></span>
-            <div class="truncate">
-              <div class="flex items-center gap-2">
-                <span class="font-bold text-xs text-slate-900 dark:text-white truncate">${escapeHtml(l.name)}</span>
-                <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full border capitalize ${statusBadge}">${escapeHtml(st)}</span>
-              </div>
-              <div class="text-[11px] text-slate-500 dark:text-slate-400 truncate mt-0.5"><i class="fa-solid fa-map-pin text-[10px]"></i> ${escapeHtml(l.address || 'Keine Adresse')}</div>
-            </div>
-          </div>
-          <div class="flex items-center gap-1.5 shrink-0 no-print">
-            <button onclick="copyHotelInfo(${index})" title="Kopieren" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs"><i class="fa-regular fa-copy"></i></button>
-            <button onclick="openHotelMaps(${index})" title="Maps" class="p-2 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 text-xs"><i class="fa-solid fa-location-dot"></i></button>
-            <button onclick="openNewLodgingForDay('${day.date}')" title="Weitere Unterkunft für diesen Tag hinzufügen" class="px-2 py-1.5 rounded-lg bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200 text-[10px] font-bold"><i class="fa-solid fa-plus"></i> Unterkunft</button>
-            <button onclick="openLodgingForDay('${day.date}')" title="Details" class="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-500 text-xs"><i class="fa-solid fa-arrow-up-right-from-square"></i></button>
-          </div>
-        </div>${buildLodgingAttachmentSectionHTML(l, `lodging-day-${index}-${tripData.lodgings.indexOf(l)}`)}</div>`;
+      return renderDayLodgingDetails(l, index);
     }
 
     function toggleDayNoLodging(idx) {
@@ -2780,7 +2790,7 @@ const DEFAULT_CHECKLIST = [
     function createDayElement(day, index, isToday) {
       const visual = getDayVisualClasses(day, isToday), { dayName, dayFormatted } = formatISODate(day.date);
       const costs = getDayCostBreakdown(day), hasTr = day.transports?.length > 0, hasAct = day.activities?.length > 0;
-      const images = day.images || [], l = getLodgingForDay(day.date);
+      const images = getDayNoteAttachmentRecords(day), l = getLodgingForDay(day.date);
       const card = document.createElement('div');
       card.id = 'day-card-' + index;
 
@@ -2870,17 +2880,17 @@ const DEFAULT_CHECKLIST = [
 
           ${renderDayLodgingSummaryHTML(day, index)}
 
-          <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2 rounded-xl transition-all p-1 -m-1">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5"><i class="fa-regular fa-note-sticky text-amber-500"></i> Notizen</span>
-              <div class="flex items-center gap-2 no-print">
-                <input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})">
-                <button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs text-indigo-600 font-semibold flex items-center gap-1"><i class="fa-solid fa-paperclip pointer-events-none"></i> Belege anhängen</button>
-              </div>
+          <details id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/40">
+            <summary class="flex cursor-pointer list-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/60">
+              <span class="flex min-w-0 items-center gap-2"><i class="fa-regular fa-note-sticky shrink-0 text-amber-500"></i><span class="shrink-0 text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300">Notizen</span><span data-notes-preview class="min-w-0 truncate text-xs text-slate-500 dark:text-slate-400">${escapeHtml(day.notes?.trim() || 'Keine Notizen')}</span><span data-notes-attachment-count class="shrink-0 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-900/70 dark:text-indigo-300 ${images.length ? '' : 'hidden'}">📎 ${images.length}</span></span>
+              <i class="fa-solid fa-chevron-down shrink-0 text-[10px] text-slate-400"></i>
+            </summary>
+            <div class="space-y-2 border-t border-slate-200 p-3 dark:border-slate-800">
+              <div class="flex items-center justify-end no-print"><input type="file" id="file-upload-${index}" accept="image/*,application/pdf" multiple class="hidden" onchange="handleDocFileSelect(event, ${index})"><button type="button" data-action="trigger-file-upload" data-day-index="${index}" class="text-xs font-semibold text-indigo-600 flex items-center gap-1"><i class="fa-solid fa-paperclip pointer-events-none"></i> Beleg anhängen</button></div>
+              <textarea rows="1" placeholder="Notizen..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
+              <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
             </div>
-            <textarea rows="1" placeholder="Notizen..." onpaste="handleDayPaste(event, ${index})" data-day-index="${index}" data-field="notes" class="auto-hint w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-white placeholder-slate-400 focus:border-indigo-500 shadow-sm">${escapeHtml(day.notes || '')}</textarea>
-            <div id="images-container-${index}" class="flex flex-wrap gap-2.5 pt-1 ${images.length === 0 ? 'hidden' : ''}"></div>
-          </div>
+          </details>
 
         </div>`;
       return card;
@@ -3002,6 +3012,7 @@ const DEFAULT_CHECKLIST = [
         const field = t.getAttribute('data-field');
         if (field) {
           day[field] = t.value;
+          if (field === 'notes') updateNotesDisclosureSummary(dayIdx);
           if (field === 'location') { updateDayCardVisualStatus(dayIdx); if (day.images?.length) renderAllAttachmentsOverview(); }
           recordChangeForReminder(); saveToStorage();
           return;
