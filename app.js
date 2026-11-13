@@ -1136,7 +1136,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.65', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.66', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -1915,6 +1915,24 @@ const DEFAULT_CHECKLIST = [
       }, 100);
     }
 
+    function openFlightStatusCheck(dayIndex, itemIndex) {
+      const flight = tripData.days[dayIndex]?.transports?.[itemIndex];
+      if (!flight) return;
+      const flightNumber = String(flight.flightNumber || '').trim().replace(/\s+/g, '').toLowerCase();
+      if (!flightNumber) {
+        showToast('Bitte zuerst die Flugnummer eintragen.', true);
+        openFlightDay(dayIndex);
+        setTimeout(() => {
+          const details = document.querySelector(`#day-card-${dayIndex} details[data-timeline-item="transports-${itemIndex}"]`);
+          if (details) details.open = true;
+          const input = details?.querySelector('[data-sub-field="flightNumber"]');
+          input?.focus(); input?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 180);
+        return;
+      }
+      window.open(`https://www.flightradar24.com/data/flights/${encodeURIComponent(flightNumber)}`, '_blank', 'noopener,noreferrer');
+    }
+
     function renderFlightsView() {
       const list = document.getElementById('flightsViewList'), countsEl = document.getElementById('flightStatusCounts');
       if (!list || !countsEl) return;
@@ -1930,11 +1948,11 @@ const DEFAULT_CHECKLIST = [
         const attachmentPrefix = `flight-view-${dayIndex}-${itemIndex}-`;
         return `<article class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-4 shadow-sm">
           <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex-1"><p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}</p><h3 class="font-black text-base sm:text-lg leading-snug text-slate-900 dark:text-white whitespace-normal break-words">${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3></div>
+            <div class="min-w-0 flex-1"><p class="text-[11px] text-slate-500 dark:text-slate-400 mb-1">Tag ${dayIndex + 1} · ${escapeHtml(date)}</p><h3 class="font-black text-base sm:text-lg leading-snug text-slate-900 dark:text-white whitespace-normal break-words">${escapeHtml(item.title || 'Flug ohne Bezeichnung')}</h3>${item.flightNumber ? `<span class="mt-1 inline-block rounded-md bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-700 dark:bg-slate-700 dark:text-slate-200">${escapeHtml(item.flightNumber)}</span>` : ''}</div>
             <span class="shrink-0 text-[10px] font-bold px-2.5 py-1 rounded-full ${statusMeta[2]}">${statusMeta[1]}${String(item.costStatus || '').toLowerCase() === 'bezahlt' ? ' · bezahlt' : ''}</span>
           </div>
           ${item.hint ? `<p class="mt-3 text-xs text-slate-600 dark:text-slate-300 whitespace-pre-line">${escapeHtml(item.hint)}</p>` : ''}
-          <div class="mt-3 flex items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}<div class="flex items-center gap-3"><a href="#day-card-${dayIndex}" onclick="openFlightDay(${dayIndex}); return false;" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Zum Tag im Reiseplan</a>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div></div>
+          <div class="mt-3 flex flex-wrap items-center justify-between gap-2">${amount > 0 ? `<span class="text-xs font-bold text-slate-800 dark:text-slate-200">${formatEuro(amount)}</span>` : '<span></span>'}<div class="flex flex-wrap items-center gap-3"><button type="button" onclick="openFlightStatusCheck(${dayIndex}, ${itemIndex})" class="text-xs font-bold text-sky-700 hover:underline dark:text-sky-300"><i class="fa-solid fa-arrow-up-right-from-square"></i> Flugstatus online prüfen</button><a href="#day-card-${dayIndex}" onclick="openFlightDay(${dayIndex}); return false;" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Zum Tag im Reiseplan</a>${link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline">Buchung öffnen <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>` : ''}</div></div>
           <div class="mt-4 border-t border-slate-200 pt-3 dark:border-slate-700"><div class="mb-2 flex items-center justify-between gap-2"><h4 class="text-xs font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-ticket text-indigo-500"></i> Flugbelege <span class="text-slate-400">(${attachments.length})</span></h4><label for="flight-view-upload-${dayIndex}-${itemIndex}" class="cursor-pointer rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-500"><i class="fa-solid fa-paperclip"></i> Beleg zuordnen</label><input id="flight-view-upload-${dayIndex}-${itemIndex}" type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFlightAttachmentSelect(event, ${dayIndex}, ${itemIndex})"></div>${attachments.length ? `<div class="flex flex-wrap gap-2.5">${attachments.map(({ item: attachment, imageIdx }) => buildAttachmentCardHTML(attachment, dayIndex, imageIdx, attachmentPrefix)).join('')}</div>` : '<p class="text-[11px] text-slate-500">Noch keine Belege zugeordnet.</p>'}</div>
         </article>`;
       }).join('');
@@ -2105,7 +2123,7 @@ const DEFAULT_CHECKLIST = [
       tripData.days.forEach(d => {
         d.noLodgingNeeded = Boolean(d.noLodgingNeeded || (d.lodging?.costStatus === 'keine'));
         d.images = d.images || [];
-        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', time: t.time || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '', attachments: Array.isArray(t.attachments) ? t.attachments.filter(id => typeof id === 'string') : [] }));
+        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', flightNumber: t.flightNumber || '', time: t.time || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '', attachments: Array.isArray(t.attachments) ? t.attachments.filter(id => typeof id === 'string') : [] }));
         d.activities = (d.activities || []).map(a => ({ title: a.title || '', time: a.time || '', cost: a.cost || '', costStatus: a.costStatus || 'geplant', hint: a.hint || '', link: a.link || '', done: Boolean(a.done) }));
       });
     }
@@ -2279,7 +2297,7 @@ const DEFAULT_CHECKLIST = [
             } else {
               if (!isRecord(item)) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
               if (key === 'transports' && item.attachments !== undefined && (!Array.isArray(item.attachments) || !item.attachments.every(id => typeof id === 'string' && id.length))) return 'Ein Flugbeleg in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
-              for (const field of ['title', 'category', 'time', 'hint', 'link', 'costStatus']) {
+              for (const field of ['title', 'category', 'flightNumber', 'time', 'hint', 'link', 'costStatus']) {
                 if (!isOptionalString(item, field)) return 'Tag ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
               }
               if (item.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)) return 'Tag ' + (i + 1) + ' enthält eine ungültige Uhrzeit.';
@@ -2555,7 +2573,7 @@ const DEFAULT_CHECKLIST = [
       const day = tripData.days[dayIdx], flight = day?.transports?.[itemIdx];
       if (!flight || (flight.category !== 'flugzeug' && !flight.attachments?.length)) return '';
       const attachments = (flight.attachments || []).map(id => ({ item: (day.images || []).find(image => image?.id === id), imageIdx: (day.images || []).findIndex(image => image?.id === id) })).filter(entry => entry.item && entry.imageIdx >= 0);
-      return `<div class="space-y-2 border-t border-slate-200 pt-2.5 dark:border-slate-700"><div class="flex flex-wrap items-center justify-between gap-2"><div class="text-[11px] font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-ticket text-indigo-500"></i> Flugbelege <span class="text-slate-400">(${attachments.length})</span></div>${flight.category === 'flugzeug' ? `<label for="flight-file-${dayIdx}-${itemIdx}" class="cursor-pointer rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-500 no-print"><i class="fa-solid fa-paperclip"></i> Beleg zuordnen</label><input id="flight-file-${dayIdx}-${itemIdx}" type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFlightAttachmentSelect(event, ${dayIdx}, ${itemIdx})">` : ''}</div>${attachments.length ? `<div class="flex flex-wrap gap-2">${attachments.map(({ item, imageIdx }) => buildAttachmentCardHTML(item, dayIdx, imageIdx, `flight-day-${dayIdx}-${itemIdx}-`)).join('')}</div>` : '<p class="text-[10px] text-slate-500">Noch keine Belege zugeordnet.</p>'}</div>`;
+      return `<div class="space-y-2 border-t border-slate-200 pt-2.5 dark:border-slate-700">${flight.category === 'flugzeug' ? `<div class="flex flex-wrap items-end gap-2"><label class="min-w-[9rem] flex-1 text-[10px] font-semibold text-slate-600 dark:text-slate-300">Flugnummer<input type="text" value="${escapeHtml(flight.flightNumber || '')}" placeholder="z. B. LH1234" data-sub-list="transports" data-day-index="${dayIdx}" data-item-index="${itemIdx}" data-sub-field="flightNumber" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-bold uppercase text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></label><button type="button" onclick="openFlightStatusCheck(${dayIdx}, ${itemIdx})" class="rounded-lg bg-sky-700 px-3 py-2 text-[11px] font-bold text-white hover:bg-sky-600"><i class="fa-solid fa-arrow-up-right-from-square"></i> Flugstatus online prüfen</button></div>` : ''}<div class="flex flex-wrap items-center justify-between gap-2"><div class="text-[11px] font-bold text-slate-700 dark:text-slate-200"><i class="fa-solid fa-ticket text-indigo-500"></i> Flugbelege <span class="text-slate-400">(${attachments.length})</span></div>${flight.category === 'flugzeug' ? `<label for="flight-file-${dayIdx}-${itemIdx}" class="cursor-pointer rounded-lg bg-indigo-600 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-indigo-500 no-print"><i class="fa-solid fa-paperclip"></i> Beleg zuordnen</label><input id="flight-file-${dayIdx}-${itemIdx}" type="file" accept="image/*,application/pdf" multiple class="hidden" onchange="handleFlightAttachmentSelect(event, ${dayIdx}, ${itemIdx})">` : ''}</div>${attachments.length ? `<div class="flex flex-wrap gap-2">${attachments.map(({ item, imageIdx }) => buildAttachmentCardHTML(item, dayIdx, imageIdx, `flight-day-${dayIdx}-${itemIdx}-`)).join('')}</div>` : '<p class="text-[10px] text-slate-500">Noch keine Belege zugeordnet.</p>'}</div>`;
     }
 
     function updateFlightAttachmentDOM(dayIdx, flightItem) {
@@ -2926,7 +2944,9 @@ const DEFAULT_CHECKLIST = [
           }
         }
         if (subList && subField && day[subList]?.[idx]) {
-          day[subList][idx][subField] = t.value;
+          const fieldValue = subField === 'flightNumber' ? t.value.trim().replace(/\s+/g, '').toUpperCase() : t.value;
+          day[subList][idx][subField] = fieldValue;
+          if (subField === 'flightNumber' && t.value !== fieldValue) t.value = fieldValue;
           if (subList === 'transports' && (subField === 'category' || subField === 'title')) syncTransportIconAndTitle(day, dayIdx, idx, subField);
           if (subField === 'title' || (subList === 'transports' && subField === 'category')) {
             const summary = document.querySelector(`#day-card-${dayIdx} details[data-timeline-item="${subList}-${idx}"] [data-timeline-title]`);
