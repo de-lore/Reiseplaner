@@ -1136,7 +1136,7 @@ const DEFAULT_CHECKLIST = [
             serviceWorkerPageReloaded = true;
             window.location.reload();
           });
-          navigator.serviceWorker.register('sw.js?v=2.61', { updateViaCache: 'none' })
+          navigator.serviceWorker.register('sw.js?v=2.62', { updateViaCache: 'none' })
             .then(registration => {
               // Prüfe den vorhandenen aktiven Worker sofort; ein Update darf offline warten.
               try { registration.update().catch(() => {}); } catch {}
@@ -2080,8 +2080,8 @@ const DEFAULT_CHECKLIST = [
       tripData.days.forEach(d => {
         d.noLodgingNeeded = Boolean(d.noLodgingNeeded || (d.lodging?.costStatus === 'keine'));
         d.images = d.images || [];
-        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '' }));
-        d.activities = (d.activities || []).map(a => ({ title: a.title || '', cost: a.cost || '', costStatus: a.costStatus || 'geplant', hint: a.hint || '', link: a.link || '', done: Boolean(a.done) }));
+        d.transports = (d.transports || []).map(t => ({ title: t.title || '', category: t.category || '', time: t.time || '', cost: t.cost || '', costStatus: t.costStatus || 'geplant', hint: t.hint || '', link: t.link || '' }));
+        d.activities = (d.activities || []).map(a => ({ title: a.title || '', time: a.time || '', cost: a.cost || '', costStatus: a.costStatus || 'geplant', hint: a.hint || '', link: a.link || '', done: Boolean(a.done) }));
       });
     }
 
@@ -2253,9 +2253,10 @@ const DEFAULT_CHECKLIST = [
               if (!isRecord(item) || !isOptionalString(item, 'id') || !isOptionalString(item, 'name') || !isOptionalString(item, 'type') || !isOptionalString(item, 'data')) return 'Ein Beleg in Tag ' + (i + 1) + ' hat ein ungültiges Format.';
             } else {
               if (!isRecord(item)) return 'Ein Eintrag in „' + key + '“ von Tag ' + (i + 1) + ' hat ein ungültiges Format.';
-              for (const field of ['title', 'category', 'hint', 'link', 'costStatus']) {
+              for (const field of ['title', 'category', 'time', 'hint', 'link', 'costStatus']) {
                 if (!isOptionalString(item, field)) return 'Tag ' + (i + 1) + ' enthält ein ungültiges Textfeld.';
               }
+              if (item.time && !/^([01]\d|2[0-3]):[0-5]\d$/.test(item.time)) return 'Tag ' + (i + 1) + ' enthält eine ungültige Uhrzeit.';
               if (!validAmount(item, 'cost')) return 'Tag ' + (i + 1) + ' enthält einen ungültigen oder negativen Betrag.';
             }
           }
@@ -2538,6 +2539,7 @@ const DEFAULT_CHECKLIST = [
                         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
                         <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
                       </select>
+                      <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400"><i class="fa-regular fa-clock"></i><input type="time" value="${escapeHtml(it.time || '')}" ${attr('time')} aria-label="Uhrzeit für Transport" class="w-[5.5rem] rounded border border-slate-300 bg-slate-50 px-1.5 py-1 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></label>
                       <div class="ml-auto flex items-center gap-0.5 no-print">
                         ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
                         <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
@@ -2586,6 +2588,7 @@ const DEFAULT_CHECKLIST = [
                         <option value="reserviert" ${st === 'reserviert' ? 'selected' : ''}>📌 Reserviert</option>
                         <option value="bezahlt" ${['bezahlt', 'gebucht'].includes(st) ? 'selected' : ''}>✅ Bezahlt</option>
                       </select>
+                      <label class="flex items-center gap-1 text-[10px] font-semibold text-slate-500 dark:text-slate-400"><i class="fa-regular fa-clock"></i><input type="time" value="${escapeHtml(it.time || '')}" ${attr('time')} aria-label="Uhrzeit für Aktivität" class="w-[5.5rem] rounded border border-slate-300 bg-slate-50 px-1.5 py-1 text-xs font-bold text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-white"></label>
                       <div class="ml-auto flex items-center gap-0.5 no-print">
                         ${arrow('up', isFirst, 'fa-chevron-up')}${arrow('down', isLast, 'fa-chevron-down')}
                         <button data-action="move-item-day" ${base} class="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 px-1.5 transition" title="Auf anderen Tag verschieben"><i class="fa-solid fa-calendar-day pointer-events-none"></i></button>
@@ -2614,28 +2617,26 @@ const DEFAULT_CHECKLIST = [
                   </div>`;
     }
 
-    function renderSubItemListHTML(day, dayIdx, type) {
-      const isTr = type === 'transports', items = day[type] || [], total = items.length;
-      const title = isTr ? 'Transport & Route' : 'Aktivitäten & Tickets';
-      const icon = isTr ? 'fa-plane-departure text-cyan-600' : 'fa-ticket text-emerald-600';
-      const addAct = isTr ? 'add-transport' : 'add-activity';
-      const addTxt = isTr ? '+ Weiterer Transport' : '+ Weitere Aktivität';
-
-      return `
-        <div id="${type}-box-${dayIdx}" class="bg-slate-50/80 dark:bg-slate-900/60 rounded-xl p-3.5 sm:p-4 border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
-          <div>
-            <div class="flex items-center justify-between mb-3">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2"><i class="fa-solid ${icon}"></i> ${title}</h3>
-              <button data-action="${addAct}" data-day-index="${dayIdx}" class="text-xs text-indigo-600 dark:text-indigo-400 font-semibold no-print">${addTxt}</button>
-            </div>
-            <div class="space-y-2.5">
-              ${items.map((it, itemIdx) => {
-                const safeUrl = formatSafeUrl(it.link), isFirst = itemIdx === 0, isLast = itemIdx === total - 1, st = it.costStatus || 'geplant';
-                return isTr ? renderTransportItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl) : renderActivityItemHTML(it, dayIdx, itemIdx, isFirst, isLast, st, safeUrl);
-              }).join('')}
-            </div>
-          </div>
-        </div>`;
+    function renderTimelineHTML(day, dayIdx) {
+      const entries = [
+        ...(day.transports || []).map((item, itemIdx) => ({ type: 'transports', item, itemIdx, order: itemIdx })),
+        ...(day.activities || []).map((item, itemIdx) => ({ type: 'activities', item, itemIdx, order: (day.transports || []).length + itemIdx }))
+      ].sort((a, b) => {
+        const aTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(a.item.time || '') ? a.item.time : '99:99';
+        const bTime = /^([01]\d|2[0-3]):[0-5]\d$/.test(b.item.time || '') ? b.item.time : '99:99';
+        return aTime.localeCompare(bTime) || a.order - b.order;
+      });
+      const content = entries.map(({ type, item, itemIdx }) => {
+        const isTransport = type === 'transports';
+        const count = day[type].length, status = item.costStatus || 'geplant', safeUrl = formatSafeUrl(item.link);
+        const label = isTransport ? 'Transport' : 'Aktivität';
+        const icon = isTransport ? 'fa-plane-departure' : 'fa-ticket';
+        const card = isTransport
+          ? renderTransportItemHTML(item, dayIdx, itemIdx, itemIdx === 0, itemIdx === count - 1, status, safeUrl)
+          : renderActivityItemHTML(item, dayIdx, itemIdx, itemIdx === 0, itemIdx === count - 1, status, safeUrl);
+        return `<div class="relative pl-8"><span class="absolute left-[3px] top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full border-2 ${isTransport ? 'border-cyan-500 bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300' : 'border-emerald-500 bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'}"><i class="fa-solid ${icon} text-[9px]"></i></span><div class="mb-1 flex items-center gap-2 text-[11px] font-bold ${isTransport ? 'text-cyan-700 dark:text-cyan-300' : 'text-emerald-700 dark:text-emerald-300'}"><span>${escapeHtml(item.time || 'Uhrzeit offen')}</span><span class="uppercase tracking-wide">${label}</span></div>${card}</div>`;
+      }).join('');
+      return `<section class="rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 dark:border-slate-800 dark:bg-slate-900/60"><div class="mb-3 flex flex-wrap items-center justify-between gap-2"><h3 class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300"><i class="fa-regular fa-clock mr-1.5 text-indigo-500"></i> Tagesablauf</h3><div class="flex items-center gap-3 no-print"><button data-action="add-transport" data-day-index="${dayIdx}" class="text-xs font-semibold text-cyan-700 dark:text-cyan-300">+ Transport</button><button data-action="add-activity" data-day-index="${dayIdx}" class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">+ Aktivität</button></div></div><div class="relative space-y-3"><div class="absolute bottom-3 left-[12px] top-3 w-0.5 bg-slate-300 dark:bg-slate-700"></div>${content}</div></section>`;
     }
 
     function createDayElement(day, index, isToday) {
@@ -2721,13 +2722,12 @@ const DEFAULT_CHECKLIST = [
 
         <div id="day-body-${index}" class="p-4 sm:p-5 print-compact space-y-4 sm:space-y-5">
           <div id="day-modules-grid-${index}" class="space-y-4 sm:space-y-5">
-            ${hasTr ? renderSubItemListHTML(day, index, 'transports') : ''}
-            ${hasAct ? renderSubItemListHTML(day, index, 'activities') : ''}
+            ${hasTr || hasAct ? renderTimelineHTML(day, index) : ''}
           </div>
 
-          <div id="day-add-buttons-${index}" class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 no-print ${hasTr && hasAct ? 'hidden' : ''}">
-            ${!hasTr ? `<button data-action="add-transport" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 bg-cyan-50/70 text-cyan-800 dark:bg-cyan-950/20 dark:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Transport hinzufügen</button>` : ''}
-            ${!hasAct ? `<button data-action="add-activity" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Aktivität hinzufügen</button>` : ''}
+          <div id="day-add-buttons-${index}" class="flex flex-wrap items-center gap-2.5 sm:gap-3 pt-1 no-print ${hasTr || hasAct ? 'hidden' : ''}">
+            <button data-action="add-transport" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-cyan-400 bg-cyan-50/70 text-cyan-800 dark:bg-cyan-950/20 dark:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Transport hinzufügen</button>
+            <button data-action="add-activity" data-day-index="${index}" class="w-full sm:w-auto px-4 py-2 rounded-xl border border-dashed border-emerald-400 bg-emerald-50/70 text-emerald-800 dark:bg-emerald-950/20 dark:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5">+ Aktivität hinzufügen</button>
           </div>
 
           <div id="notes-dropzone-${index}" ondragover="handleDayDragOver(event, ${index})" ondragleave="handleDayDragLeave(event, ${index})" ondrop="handleDayDrop(event, ${index})" class="space-y-2.5 sm:space-y-3 rounded-xl transition-all p-1 -m-1">
@@ -2771,8 +2771,8 @@ const DEFAULT_CHECKLIST = [
           'swap-day-next': () => swapDayWithAdjacent(dayIdx, 1),
           'insert-day': () => openDayActionModal('insert', dayIdx),
           'delete-day': () => openDayActionModal('delete', dayIdx),
-          'add-transport': () => addListRow(dayIdx, 'transports', { title: '', category: '', cost: '', costStatus: 'geplant', hint: '', link: '' }),
-          'add-activity': () => addListRow(dayIdx, 'activities', { title: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false }),
+          'add-transport': () => addListRow(dayIdx, 'transports', { title: '', category: '', time: '', cost: '', costStatus: 'geplant', hint: '', link: '' }),
+          'add-activity': () => addListRow(dayIdx, 'activities', { title: '', time: '', cost: '', costStatus: 'geplant', hint: '', link: '', done: false }),
           'remove-item': () => removeListRow(dayIdx, subList, itemIdx),
           'move-item-up': () => moveArrayItem(dayIdx, subList, itemIdx, -1),
           'move-item-down': () => moveArrayItem(dayIdx, subList, itemIdx, 1),
@@ -2858,6 +2858,7 @@ const DEFAULT_CHECKLIST = [
             if (btn) { const u = formatSafeUrl(t.value); btn.href = u || '#'; btn.classList.toggle('hidden', !u); }
           }
           refreshDayHeaderCost(dayIdx); recordChangeForReminder(); saveToStorage();
+          if (subField === 'time' && e.type === 'change') renderDays();
         }
       };
 
